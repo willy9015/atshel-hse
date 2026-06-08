@@ -1,0 +1,115 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://elhweuwczmcatypphnco.supabase.co; connect-src 'self' https://elhweuwczmcatypphnco.supabase.co wss://elhweuwczmcatypphnco.supabase.co https://*.powersync.journeyapps.com wss://*.powersync.journeyapps.com; media-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+        },
+
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+
+        {
+          "key": "Cross-Origin-Embedder-Policy",
+          "value": "require-corp"
+        },
+
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        },
+
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+
+        {
+          "key": "X-XSS-Protection",
+          "value": "0"
+        },
+
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(self), microphone=(self), geolocation=(self), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=(), interest-cohort=()"
+        }
+
+      ]
+    },
+
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+
+    {
+      "source": "/vendor/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
+        }
+      ]
+    },
+
+    {
+      "source": "/js/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    },
+
+    {
+      "source": "/css/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    }
+  ],
+
+  "rewrites": [
+    {
+      "source": "/((?!api|_next|favicon|manifest|sw|vendor|js|css|img|fonts).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
