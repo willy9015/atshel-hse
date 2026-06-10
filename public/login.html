@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#1C1C1E">
+	<meta name="description" content="ATSHEL HSE Manager — Acceso">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<title>ATSHEL — Ingresar</title>
+	<link rel="manifest" href="/manifest.json">
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+	<style>
+		body {
+			display: flex;
+			flex-direction: column;
+			min-height: 100dvh;
+			justify-content: center;
+			align-items: center;
+			padding: var(--s4);
+			background: var(--color-bg);
+		}
+
+		/* ── Marca ── */
+		.login-brand {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: var(--s3);
+			margin-bottom: var(--s8);
+			animation: fade-up 0.35s ease both;
+		}
+
+		.login-brand__mark {
+			width: 68px;
+			height: 68px;
+			background: var(--color-yellow);
+			border-radius: var(--radius);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.login-brand__mark svg {
+			width: 40px;
+			height: 40px;
+			color: var(--color-bg);
+		}
+
+		.login-brand__name {
+			font-family: var(--font-display);
+			font-size: var(--text-4xl);
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			color: var(--color-text);
+			line-height: 1;
+		}
+
+		.login-brand__sub {
+			font-family: var(--font-display);
+			font-size: var(--text-xs);
+			font-weight: 600;
+			letter-spacing: 0.14em;
+			text-transform: uppercase;
+			color: var(--color-text-muted);
+		}
+
+		/* ── Card ── */
+		.login-card {
+			width: 100%;
+			max-width: 400px;
+			animation: fade-up 0.35s 0.08s ease both;
+		}
+
+		/* ── Vistas ── */
+		.login-view          { display: none; }
+		.login-view--active  { display: block; }
+
+		/* ── Campos ── */
+		.field {
+			display: flex;
+			flex-direction: column;
+			gap: var(--s1);
+			margin-bottom: var(--s4);
+		}
+
+		.field__label {
+			font-family: var(--font-display);
+			font-size: var(--text-xs);
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: var(--color-text-muted);
+		}
+
+		.field__input {
+			width: 100%;
+			padding: var(--s3) var(--s4);
+			background: var(--color-surface-2);
+			border: 1px solid var(--color-border);
+			border-radius: var(--radius-sm);
+			color: var(--color-text);
+			font-size: var(--text-base);
+			min-height: 52px;
+			transition: border-color var(--transition);
+			-webkit-appearance: none;
+		}
+
+		.field__input:focus {
+			outline: none;
+			border-color: var(--color-yellow);
+		}
+
+		.field__input::placeholder { color: var(--color-text-muted); }
+		.field__input--error       { border-color: var(--color-red) !important; }
+
+		.field__error {
+			font-size: var(--text-xs);
+			color: var(--color-red);
+			display: none;
+		}
+		.field__error--visible { display: block; }
+
+		/* Toggle contraseña */
+		.field__wrap         { position: relative; }
+		.field__wrap .field__input { padding-right: 52px; }
+
+		.field__toggle {
+			position: absolute;
+			right: 0; top: 0; bottom: 0;
+			width: 52px;
+			display: flex; align-items: center; justify-content: center;
+			color: var(--color-text-muted);
+			background: none; border: none; cursor: pointer;
+		}
+		.field__toggle svg { width: 20px; height: 20px; }
+
+		/* ── Cabecera de vista ── */
+		.view-header         { margin-bottom: var(--s6); }
+		.view-header__title  {
+			font-family: var(--font-display);
+			font-size: var(--text-2xl);
+			font-weight: 700;
+			color: var(--color-text);
+			margin-bottom: var(--s1);
+		}
+		.view-header__sub    { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+		/* ── Botón volver ── */
+		.btn-back {
+			display: inline-flex; align-items: center; gap: var(--s2);
+			color: var(--color-text-muted);
+			font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600;
+			margin-bottom: var(--s5); min-height: 44px;
+			background: none; border: none; cursor: pointer; padding: 0;
+		}
+		.btn-back svg { width: 18px; height: 18px; }
+
+		/* ── Alertas ── */
+		.alert {
+			display: none;
+			padding: var(--s3) var(--s4);
+			border-radius: var(--radius-sm);
+			font-size: var(--text-sm);
+			font-weight: 500;
+			margin-bottom: var(--s4);
+			line-height: 1.4;
+		}
+		.alert--success { background: var(--color-green-dim);  color: var(--color-green);  border: 1px solid var(--color-green); }
+		.alert--error   { background: var(--color-red-dim);    color: var(--color-red);    border: 1px solid var(--color-red); }
+		.alert--visible { display: block; }
+
+		/* ── Link secundario ── */
+		.login-link {
+			display: inline-block;
+			font-size: var(--text-sm);
+			color: var(--color-yellow);
+			font-family: var(--font-display);
+			font-weight: 600;
+			margin-top: var(--s3);
+			min-height: 44px;
+			line-height: 44px;
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 0;
+			width: 100%;
+			text-align: center;
+		}
+
+		/* ── Loading en botón ── */
+		.btn--loading {
+			opacity: 0.65;
+			pointer-events: none;
+			position: relative;
+		}
+
+		/* ── Footer ── */
+		.login-footer {
+			margin-top: var(--s8);
+			text-align: center;
+			font-size: var(--text-xs);
+			color: var(--color-text-muted);
+			font-family: var(--font-display);
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			animation: fade-up 0.35s 0.16s ease both;
+		}
+
+		@keyframes fade-up {
+			from { opacity: 0; transform: translateY(10px); }
+			to   { opacity: 1; transform: translateY(0); }
+		}
+	</style>
+</head>
+<body>
+
+<!-- ── Marca ───────────────────────────────────────────── -->
+<div class="login-brand" aria-label="ATSHEL HSE Manager">
+	<div class="login-brand__mark" aria-hidden="true">
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+			<path d="M12 2C8 2 4 5.5 4 10v1h16v-1c0-4.5-4-8-8-8z"/>
+			<rect x="2" y="11" width="20" height="3" rx="1"/>
+			<line x1="7" y1="18" x2="17" y2="18"/>
+			<line x1="9" y1="21" x2="15" y2="21"/>
+		</svg>
+	</div>
+	<span class="login-brand__name">ATSHEL</span>
+	<span class="login-brand__sub">HSE Manager</span>
+</div>
+
+<!-- ── Card ────────────────────────────────────────────── -->
+<div class="login-card" role="main">
+
+	<!-- ══ VISTA 1: LOGIN ════════════════════════════════ -->
+	<div id="view-login" class="login-view login-view--active card" style="padding:var(--s6);">
+
+		<div class="view-header">
+			<h1 class="view-header__title">Ingresar</h1>
+			<p class="view-header__sub">Accedé con tu cuenta de empresa</p>
+		</div>
+
+		<div id="alert-login" class="alert" role="alert" aria-live="assertive"></div>
+
+		<form id="form-login" novalidate>
+
+			<div class="field">
+				<label class="field__label" for="inp-email">Correo electrónico</label>
+				<input
+					class="field__input"
+					type="email"
+					id="inp-email"
+					name="email"
+					placeholder="tu@empresa.com"
+					autocomplete="email"
+					autocapitalize="none"
+					autocorrect="off"
+					inputmode="email"
+					required
+					aria-required="true"
+					aria-describedby="err-email"
+				>
+				<span class="field__error" id="err-email" role="alert"></span>
+			</div>
+
+			<div class="field">
+				<label class="field__label" for="inp-password">Contraseña</label>
+				<div class="field__wrap">
+					<input
+						class="field__input"
+						type="password"
+						id="inp-password"
+						name="password"
+						placeholder="••••••••"
+						autocomplete="current-password"
+						required
+						aria-required="true"
+						aria-describedby="err-password"
+					>
+					<button
+						type="button"
+						class="field__toggle"
+						id="toggle-pw"
+						aria-label="Mostrar contraseña"
+						aria-pressed="false"
+					>
+						<!-- ojo abierto -->
+						<svg id="ico-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+							<circle cx="12" cy="12" r="3"/>
+						</svg>
+						<!-- ojo cerrado -->
+						<svg id="ico-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="display:none;">
+							<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+							<line x1="1" y1="1" x2="23" y2="23"/>
+						</svg>
+					</button>
+				</div>
+				<span class="field__error" id="err-password" role="alert"></span>
+			</div>
+
+			<button type="submit" class="btn btn--primary btn--full" id="btn-login">
+				Ingresar
+			</button>
+
+		</form>
+
+		<button type="button" class="login-link" id="btn-ir-recuperar">
+			¿Olvidaste tu contraseña?
+		</button>
+
+	</div>
+
+	<!-- ══ VISTA 2: RECUPERAR CONTRASEÑA ════════════════ -->
+	<div id="view-recuperar" class="login-view card" style="padding:var(--s6);">
+
+		<button type="button" class="btn-back" id="btn-volver-login" aria-label="Volver al login">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+				<polyline points="15 18 9 12 15 6"/>
+			</svg>
+			Volver
+		</button>
+
+		<div class="view-header">
+			<h2 class="view-header__title">Recuperar acceso</h2>
+			<p class="view-header__sub">Te enviamos un enlace a tu correo para restablecer la contraseña.</p>
+		</div>
+
+		<div id="alert-recuperar" class="alert" role="alert" aria-live="assertive"></div>
+
+		<form id="form-recuperar" novalidate>
+			<div class="field">
+				<label class="field__label" for="inp-recuperar-email">Correo electrónico</label>
+				<input
+					class="field__input"
+					type="email"
+					id="inp-recuperar-email"
+					name="email"
+					placeholder="tu@empresa.com"
+					autocomplete="email"
+					autocapitalize="none"
+					autocorrect="off"
+					inputmode="email"
+					required
+					aria-required="true"
+					aria-describedby="err-recuperar-email"
+				>
+				<span class="field__error" id="err-recuperar-email" role="alert"></span>
+			</div>
+
+			<button type="submit" class="btn btn--primary btn--full" id="btn-recuperar">
+				Enviar enlace
+			</button>
+		</form>
+
+	</div>
+
+	<!-- ══ VISTA 3: NUEVA CONTRASEÑA (primer login) ═════ -->
+	<div id="view-nueva-pw" class="login-view card" style="padding:var(--s6);">
+
+		<div class="view-header">
+			<h2 class="view-header__title">Crear contraseña</h2>
+			<p class="view-header__sub">Es tu primer ingreso. Elegí una contraseña personal segura.</p>
+		</div>
+
+		<div id="alert-nueva-pw" class="alert" role="alert" aria-live="assertive"></div>
+
+		<form id="form-nueva-pw" novalidate>
+
+			<div class="field">
+				<label class="field__label" for="inp-new-pw">Nueva contraseña</label>
+				<div class="field__wrap">
+					<input
+						class="field__input"
+						type="password"
+						id="inp-new-pw"
+						name="password"
+						placeholder="Mínimo 8 caracteres"
+						autocomplete="new-password"
+						minlength="8"
+						required
+						aria-required="true"
+						aria-describedby="err-new-pw"
+					>
+					<button type="button" class="field__toggle" id="toggle-new-pw" aria-label="Mostrar contraseña" aria-pressed="false">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+							<circle cx="12" cy="12" r="3"/>
+						</svg>
+					</button>
+				</div>
+				<span class="field__error" id="err-new-pw" role="alert"></span>
+			</div>
+
+			<div class="field">
+				<label class="field__label" for="inp-confirm-pw">Confirmar contraseña</label>
+				<input
+					class="field__input"
+					type="password"
+					id="inp-confirm-pw"
+					name="confirm"
+					placeholder="Repetí la contraseña"
+					autocomplete="new-password"
+					required
+					aria-required="true"
+					aria-describedby="err-confirm-pw"
+				>
+				<span class="field__error" id="err-confirm-pw" role="alert"></span>
+			</div>
+
+			<button type="submit" class="btn btn--primary btn--full" id="btn-nueva-pw">
+				Guardar y continuar
+			</button>
+
+		</form>
+
+	</div>
+
+</div><!-- /login-card -->
+
+<!-- Footer -->
+<p class="login-footer" aria-hidden="true">
+	ATSHEL · Seguridad Industrial · Vaca Muerta
+</p>
+
+<!-- Scripts (orden obligatorio, sin defer/async) -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/js/atshel-supabase.js"></script>
+
+<script>
+/* ──────────────────────────────────────────────────────────
+   login.js — Autenticación ATSHEL
+   Flujo:
+     1. Sesión activa       → redirige a index.html o pin-setup.html
+     2. Login normal        → verifica términos aceptados → redirige
+     3. Primer login        → vista nueva contraseña → continúa flujo
+     4. Recuperar           → envía email Supabase (respuesta siempre OK)
+   Reglas:
+     - Event listeners SOLO en init()
+     - innerHTML SOLO con DOMPurify.sanitize()
+     - Mensajes de error genéricos (no revelan si el email existe)
+     - NUNCA service_role en cliente
+   ────────────────────────────────────────────────────────── */
+
+(function LoginModule() {
+	'use strict';
+
+	/* ── Helpers DOM ──────────────────────────────────── */
+	const $  = id => document.getElementById(id);
+	const q  = sel => document.querySelector(sel);
+
+	function showView(name) {
+		['login','recuperar','nueva-pw'].forEach(v => {
+			const el = $('view-' + v);
+			if (el) el.classList.toggle('login-view--active', v === name);
+		});
+	}
+
+	function setLoading(btnId, on) {
+		const btn = $(btnId);
+		if (!btn) return;
+		btn.disabled = on;
+		btn.classList.toggle('btn--loading', on);
+		if (on) {
+			btn.dataset.original = btn.textContent;
+			btn.textContent = 'Procesando...';
+		} else {
+			if (btn.dataset.original) btn.textContent = btn.dataset.original;
+		}
+	}
+
+	function showAlert(id, msg, type) {
+		const el = $(id);
+		if (!el) return;
+		el.textContent = DOMPurify.sanitize(msg, { ALLOWED_TAGS: [] });
+		el.className = 'alert alert--' + type + ' alert--visible';
+	}
+
+	function hideAlert(id) {
+		const el = $(id);
+		if (!el) return;
+		el.textContent = '';
+		el.className = 'alert';
+	}
+
+	function fieldError(inputId, errId, msg) {
+		const inp = $(inputId);
+		const err = $(errId);
+		if (inp) inp.classList.add('field__input--error');
+		if (err) { err.textContent = msg; err.classList.add('field__error--visible'); }
+	}
+
+	function clearErrors() {
+		document.querySelectorAll('.field__input--error').forEach(
+			el => el.classList.remove('field__input--error')
+		);
+		document.querySelectorAll('.field__error').forEach(el => {
+			el.textContent = '';
+			el.classList.remove('field__error--visible');
+		});
+	}
+
+	function validEmail(v) {
+		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+	}
+
+	/* Toggle visibilidad de contraseña */
+	function initToggle(btnId, inputId, eyeId, eyeOffId) {
+		const btn = $(btnId);
+		const inp = $(inputId);
+		if (!btn || !inp) return;
+		btn.addEventListener('click', () => {
+			const show = inp.type === 'password';
+			inp.type = show ? 'text' : 'password';
+			btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+			btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+			if (eyeId)    { const e = $(eyeId);    if (e) e.style.display = show ? 'none' : ''; }
+			if (eyeOffId) { const e = $(eyeOffId); if (e) e.style.display = show ? '' : 'none'; }
+		});
+	}
+
+	/* ── Determinar destino post-login ───────────────── */
+	async function postLoginRedirect(user) {
+		/*
+		  Lógica de destino:
+		  - Sin términos aceptados → /terminos.html
+		  - Sin PIN configurado   → /pin-setup.html
+		  - Todo completo         → /index.html (solo roles admin/supervisor/hse)
+		                          → /pin-setup.html (obreros con PIN pendiente)
+		*/
+		const terminosAceptados = user?.user_metadata?.terminos_aceptado_en;
+		const pinConfigurado    = user?.user_metadata?.pin_configurado;
+		const rol               = user?.app_metadata?.rol;
+		const oficio            = user?.app_metadata?.oficio;
+
+		if (!terminosAceptados) {
+			window.location.replace('/terminos.html');
+			return;
+		}
+
+		if (!pinConfigurado) {
+			window.location.replace('/pin-setup.html');
+			return;
+		}
+
+		/* Obreros: solo pueden ver términos y configurar PIN — ya los completaron */
+		if (!rol && oficio) {
+			/* Tiene oficio pero no rol de app → es obrero, ya completó su proceso */
+			window.location.replace('/pin-setup.html?completado=1');
+			return;
+		}
+
+		window.location.replace('/index.html');
+	}
+
+	/* ── Handler: Login ──────────────────────────────── */
+	async function handleLogin(e) {
+		e.preventDefault();
+		clearErrors();
+		hideAlert('alert-login');
+
+		const email = $('inp-email')?.value.trim() ?? '';
+		const pw    = $('inp-password')?.value ?? '';
+
+		let ok = true;
+		if (!validEmail(email)) {
+			fieldError('inp-email', 'err-email', 'Ingresá un correo válido.');
+			ok = false;
+		}
+		if (!pw) {
+			fieldError('inp-password', 'err-password', 'Ingresá tu contraseña.');
+			ok = false;
+		}
+		if (!ok) return;
+
+		setLoading('btn-login', true);
+
+		try {
+			const { data, error } = await window.ATSHEL_AUTH.signIn(email, pw);
+
+			if (error) {
+				/*
+				  Siempre mensaje genérico.
+				  No decir "email no encontrado" ni "contraseña incorrecta" —
+				  eso le dice a un atacante qué está bien y qué está mal.
+				*/
+				showAlert('alert-login',
+					'Correo o contraseña incorrectos. Si olvidaste tu contraseña, usá la opción de abajo.',
+					'error'
+				);
+				return;
+			}
+
+			const user = data?.user;
+
+			/* Primer login: Supabase puede marcar force_password_change */
+			if (user?.app_metadata?.force_password_change) {
+				showView('nueva-pw');
+				return;
+			}
+
+			await postLoginRedirect(user);
+
+		} catch (err) {
+			console.error('[Login] Error inesperado:', err);
+			showAlert('alert-login', 'Sin conexión. Verificá tu red e intentá de nuevo.', 'error');
+		} finally {
+			setLoading('btn-login', false);
+		}
+	}
+
+	/* ── Handler: Recuperar contraseña ──────────────── */
+	async function handleRecuperar(e) {
+		e.preventDefault();
+		clearErrors();
+		hideAlert('alert-recuperar');
+
+		const email = $('inp-recuperar-email')?.value.trim() ?? '';
+
+		if (!validEmail(email)) {
+			fieldError('inp-recuperar-email', 'err-recuperar-email', 'Ingresá un correo válido.');
+			return;
+		}
+
+		setLoading('btn-recuperar', true);
+
+		try {
+			await window.ATSHEL_AUTH.resetPassword(email);
+			/*
+			  Siempre mostramos éxito — nunca confirmamos si el email existe.
+			  Si el email no existe, Supabase igual retorna 200.
+			*/
+			showAlert(
+				'alert-recuperar',
+				'Si ese correo está registrado, vas a recibir el enlace en minutos. Revisá también la carpeta de spam.',
+				'success'
+			);
+
+		} catch (err) {
+			console.error('[Login] Error en reset:', err);
+			showAlert('alert-recuperar', 'Sin conexión. Verificá tu red e intentá de nuevo.', 'error');
+		} finally {
+			setLoading('btn-recuperar', false);
+		}
+	}
+
+	/* ── Handler: Nueva contraseña ───────────────────── */
+	async function handleNuevaPw(e) {
+		e.preventDefault();
+		clearErrors();
+		hideAlert('alert-nueva-pw');
+
+		const pw1 = $('inp-new-pw')?.value ?? '';
+		const pw2 = $('inp-confirm-pw')?.value ?? '';
+
+		let ok = true;
+		if (pw1.length < 8) {
+			fieldError('inp-new-pw', 'err-new-pw', 'Mínimo 8 caracteres.');
+			ok = false;
+		}
+		if (pw1 !== pw2) {
+			fieldError('inp-confirm-pw', 'err-confirm-pw', 'Las contraseñas no coinciden.');
+			ok = false;
+		}
+		if (!ok) return;
+
+		setLoading('btn-nueva-pw', true);
+
+		try {
+			const { data, error } = await window.ATSHEL_AUTH.updatePassword(pw1);
+
+			if (error) {
+				showAlert('alert-nueva-pw',
+					'No se pudo actualizar la contraseña. Cerrá la app e intentá de nuevo.',
+					'error'
+				);
+				return;
+			}
+
+			/* Contraseña actualizada — continuar con el flujo normal */
+			const session = await window.ATSHEL_AUTH.getSession();
+			await postLoginRedirect(session?.user);
+
+		} catch (err) {
+			console.error('[Login] Error nueva contraseña:', err);
+			showAlert('alert-nueva-pw', 'Sin conexión. Intentá de nuevo.', 'error');
+		} finally {
+			setLoading('btn-nueva-pw', false);
+		}
+	}
+
+	/* ── Init ────────────────────────────────────────── */
+	async function init() {
+
+		/* 1. Si ya hay sesión activa, redirigir */
+		if (typeof window.ATSHEL_AUTH !== 'undefined') {
+			try {
+				const session = await window.ATSHEL_AUTH.getSession();
+				if (session?.user) {
+					await postLoginRedirect(session.user);
+					return;
+				}
+			} catch (_) { /* Sin sesión — continúa */ }
+		}
+
+		/* 2. Toggles de contraseña */
+		initToggle('toggle-pw',     'inp-password', 'ico-eye', 'ico-eye-off');
+		initToggle('toggle-new-pw', 'inp-new-pw',   null,      null);
+
+		/* 3. Submit login */
+		const fLogin = $('form-login');
+		if (fLogin) fLogin.addEventListener('submit', handleLogin);
+
+		/* 4. Submit recuperar */
+		const fRecuperar = $('form-recuperar');
+		if (fRecuperar) fRecuperar.addEventListener('submit', handleRecuperar);
+
+		/* 5. Submit nueva contraseña */
+		const fNuevaPw = $('form-nueva-pw');
+		if (fNuevaPw) fNuevaPw.addEventListener('submit', handleNuevaPw);
+
+		/* 6. Navegación entre vistas */
+		const btnIrRecuperar = $('btn-ir-recuperar');
+		if (btnIrRecuperar) btnIrRecuperar.addEventListener('click', () => {
+			hideAlert('alert-login');
+			clearErrors();
+			showView('recuperar');
+		});
+
+		const btnVolverLogin = $('btn-volver-login');
+		if (btnVolverLogin) btnVolverLogin.addEventListener('click', () => {
+			hideAlert('alert-recuperar');
+			clearErrors();
+			showView('login');
+		});
+
+		/* 7. Limpiar errores al tipear */
+		['inp-email','inp-password','inp-recuperar-email','inp-new-pw','inp-confirm-pw']
+			.forEach(id => {
+				const el = $(id);
+				if (el) el.addEventListener('input', () => {
+					el.classList.remove('field__input--error');
+				});
+			});
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
+	}
+
+})();
+</script>
+
+</body>
+</html>
