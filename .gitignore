@@ -1,41 +1,29 @@
-# ═══════════════════════════════════════════════════════════
-# ATSHEL HSE Manager — .gitignore
-# ═══════════════════════════════════════════════════════════
+# Dependencias
+node_modules/
 
-# ── SECRETOS — NUNCA al repo ─────────────────────────────────
+# Build
+dist/
+
+# Variables de entorno — NUNCA commitear
 .env
 .env.local
 .env.*.local
-.env.production
 
-# ── Dependencias ─────────────────────────────────────────────
-node_modules/
-.pnp
-.pnp.js
+# Sistema operativo
+.DS_Store
+Thumbs.db
 
-# ── Build de Vite ─────────────────────────────────────────────
-dist/
-dist-ssr/
-*.local
-
-# ── Editores ──────────────────────────────────────────────────
+# Editores
 .vscode/
 .idea/
 *.swp
 *.swo
-.DS_Store
-Thumbs.db
 
-# ── Logs ──────────────────────────────────────────────────────
+# Logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# ── Supabase local ────────────────────────────────────────────
+# Supabase local (si usás CLI)
 supabase/.temp/
-supabase/config.toml.local
+supabase/.branches/
 
-# ── Archivos temporales de análisis ──────────────────────────
-*.tmp
-*.bak
