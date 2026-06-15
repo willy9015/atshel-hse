@@ -1,6 +1,6 @@
 {
   "buildCommand": "vite build",
-  "outputDirectory": "public",
+  "outputDirectory": "dist",
   "headers": [
     {
       "source": "/(.*)",
