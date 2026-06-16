@@ -1,0 +1,726 @@
+/**
+ * atshel-theme.css
+ * Sistema de diseño ATSHEL — Dark-first industrial
+ *
+ * Inspiración:
+ *   · IBM Carbon Design System (densidad, tipografía técnica)
+ *   · SafetyCulture/iAuditor (field-first, velocidad)
+ *   · Vercel Geist (precisión tipográfica, tokens)
+ *   · Warp Terminal (dark IDE aesthetic, jerarquía con luz)
+ *
+ * Filosofía:
+ *   · Dark-first: el técnico trabaja de noche, bajo luz artificial,
+ *     en pantallas brillantes al sol. El fondo oscuro reduce fatiga
+ *     y mejora el contraste bajo luz directa.
+ *   · 3 interacciones máximo por tarea: la jerarquía visual guía al ojo
+ *     hacia la acción correcta sin pensar.
+ *   · Amarillo solo para acción primaria: escasez semántica.
+ *     Si todo es amarillo, nada lo es.
+ *   · Targets ≥ 48px sin excepción: guantes de trabajo tipo A.
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   0. TIPOGRAFÍA — Google Fonts (Barlow + JetBrains Mono)
+   Barlow: diseñada para señalética, industrial, legible a distancia
+   JetBrains Mono: datos numéricos (gases, viento, coordenadas)
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ═══════════════════════════════════════════════════════════════
+   1. DESIGN TOKENS — Custom Properties
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+	/* ── Superficies (dark-first) ─────────────────────────────── */
+	--surface-base:        #0A0C0E;   /* Fondo absoluto — negro petróleo */
+	--surface-01:          #111418;   /* Pantallas principales */
+	--surface-02:          #181D23;   /* Cards, panels */
+	--surface-03:          #1F252D;   /* Cards elevadas, modales */
+	--surface-04:          #272E38;   /* Hover states */
+	--surface-05:          #2F3847;   /* Active states, seleccionados */
+
+	/* ── Bordes ───────────────────────────────────────────────── */
+	--border-subtle:       rgba(255, 255, 255, 0.06);
+	--border-default:      rgba(255, 255, 255, 0.10);
+	--border-strong:       rgba(255, 255, 255, 0.18);
+	--border-focus:        #FFC107;
+
+	/* ── Texto ────────────────────────────────────────────────── */
+	--text-primary:        #F0F4F8;   /* Texto principal — casi blanco */
+	--text-secondary:      #8B98A8;   /* Texto secundario */
+	--text-tertiary:       #556070;   /* Placeholders, labels deshabilitados */
+	--text-inverse:        #0A0C0E;   /* Texto sobre fondos claros (amarillo) */
+	--text-on-accent:      #0A0C0E;
+
+	/* ── Marca / Acento primario ──────────────────────────────── */
+	--accent:              #FFC107;   /* Amarillo seguridad — SOLO acción primaria */
+	--accent-hover:        #FFD54F;
+	--accent-active:       #FFB300;
+	--accent-subtle:       rgba(255, 193, 7, 0.10);
+	--accent-subtle-hover: rgba(255, 193, 7, 0.16);
+
+	/* ── Semántica de estado ──────────────────────────────────── */
+	--color-danger:        #EF4444;   /* Bloqueo crítico — rojo puro */
+	--color-danger-bg:     rgba(239, 68, 68, 0.10);
+	--color-danger-border: rgba(239, 68, 68, 0.30);
+
+	--color-warning:       #F97316;   /* Advertencia — naranja */
+	--color-warning-bg:    rgba(249, 115, 22, 0.10);
+	--color-warning-border:rgba(249, 115, 22, 0.30);
+
+	--color-success:       #22C55E;   /* OK, sincronizado, completado */
+	--color-success-bg:    rgba(34, 197, 94, 0.10);
+	--color-success-border:rgba(34, 197, 94, 0.30);
+
+	--color-info:          #38BDF8;   /* Información, pendiente */
+	--color-info-bg:       rgba(56, 189, 248, 0.10);
+	--color-info-border:   rgba(56, 189, 248, 0.30);
+
+	/* Alias para estado de sync */
+	--sync-ok:             var(--color-success);
+	--sync-pending:        var(--color-warning);
+	--sync-offline:        var(--color-danger);
+	--sync-error:          var(--color-danger);
+
+	/* ── Identidad verde ATSHEL ───────────────────────────────── */
+	--brand-green:         #4ADE80;
+	--brand-green-subtle:  rgba(74, 222, 128, 0.10);
+
+	/* ── Tipografía ───────────────────────────────────────────── */
+	--font-sans:       'Barlow', system-ui, -apple-system, sans-serif;
+	--font-condensed:  'Barlow Condensed', 'Barlow', sans-serif;
+	--font-mono:       'JetBrains Mono', 'Courier New', monospace;
+
+	/* Escala tipográfica — base 4px */
+	--text-xs:    0.6875rem;  /* 11px — labels, badges */
+	--text-sm:    0.8125rem;  /* 13px — metadata, captions */
+	--text-base:  0.9375rem;  /* 15px — cuerpo principal */
+	--text-md:    1.0625rem;  /* 17px — acciones, botones */
+	--text-lg:    1.1875rem;  /* 19px — subtítulos */
+	--text-xl:    1.375rem;   /* 22px — títulos de sección */
+	--text-2xl:   1.75rem;    /* 28px — títulos de pantalla */
+	--text-3xl:   2.25rem;    /* 36px — display, números grandes */
+	--text-4xl:   3rem;       /* 48px — KPIs, datos críticos */
+
+	--leading-tight:   1.2;
+	--leading-snug:    1.35;
+	--leading-normal:  1.5;
+	--leading-relaxed: 1.65;
+
+	--tracking-tight:  -0.02em;
+	--tracking-normal:  0;
+	--tracking-wide:    0.04em;
+	--tracking-widest:  0.1em;
+
+	/* ── Espaciado — escala 4px ───────────────────────────────── */
+	--space-1:   0.25rem;   /* 4px */
+	--space-2:   0.5rem;    /* 8px */
+	--space-3:   0.75rem;   /* 12px */
+	--space-4:   1rem;      /* 16px */
+	--space-5:   1.25rem;   /* 20px */
+	--space-6:   1.5rem;    /* 24px */
+	--space-8:   2rem;      /* 32px */
+	--space-10:  2.5rem;    /* 40px */
+	--space-12:  3rem;      /* 48px */
+	--space-16:  4rem;      /* 64px */
+	--space-20:  5rem;      /* 80px */
+
+	/* ── Radios ───────────────────────────────────────────────── */
+	--radius-sm:   4px;
+	--radius-md:   8px;
+	--radius-lg:   12px;
+	--radius-xl:   16px;
+	--radius-full: 9999px;
+
+	/* ── Sombras ──────────────────────────────────────────────── */
+	--shadow-sm:   0 1px 2px rgba(0,0,0,0.4);
+	--shadow-md:   0 4px 12px rgba(0,0,0,0.5);
+	--shadow-lg:   0 8px 24px rgba(0,0,0,0.6);
+	--shadow-xl:   0 16px 48px rgba(0,0,0,0.7);
+	--shadow-glow: 0 0 20px rgba(255, 193, 7, 0.2);
+	--shadow-danger-glow: 0 0 16px rgba(239, 68, 68, 0.3);
+
+	/* ── Transiciones ─────────────────────────────────────────── */
+	--transition-fast:   120ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-base:   200ms cubic-bezier(0.4, 0, 0.2, 1);
+	--transition-slow:   350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+	/* ── Layout ───────────────────────────────────────────────── */
+	--header-height:      56px;
+	--nav-height:         64px;  /* Barra inferior */
+	--max-content-width:  480px; /* Mobile-first, nunca más ancho */
+	--safe-area-bottom:   env(safe-area-inset-bottom, 0px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. RESET Y BASE
+   ═══════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+	box-sizing:  border-box;
+	margin:      0;
+	padding:     0;
+}
+
+html {
+	font-size:               100%;
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust:         100%;
+	/* Suavizado de fuentes — mejor en oscuro */
+	-webkit-font-smoothing:   antialiased;
+	-moz-osx-font-smoothing:  grayscale;
+}
+
+body {
+	font-family:       var(--font-sans);
+	font-size:         var(--text-base);
+	font-weight:       400;
+	line-height:       var(--leading-normal);
+	color:             var(--text-primary);
+	background-color:  var(--surface-01);
+	min-height:        100dvh;
+	/* Scroll completo del viewport en iOS */
+	overflow-x:        hidden;
+}
+
+img, video, svg {
+	display:    block;
+	max-width:  100%;
+}
+
+a {
+	color:           var(--accent);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+button, input, select, textarea {
+	font-family: inherit;
+	font-size:   inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. LAYOUT PRINCIPAL — Shell de cada pantalla
+   ═══════════════════════════════════════════════════════════════ */
+
+.app-shell {
+	display:        flex;
+	flex-direction: column;
+	min-height:     100dvh;
+	max-width:      var(--max-content-width);
+	margin:         0 auto;
+	position:       relative;
+}
+
+/* Header fijo */
+.app-header {
+	position:         sticky;
+	top:              0;
+	z-index:          100;
+	height:           var(--header-height);
+	display:          flex;
+	align-items:      center;
+	justify-content:  space-between;
+	padding:          0 var(--space-4);
+	background:       var(--surface-01);
+	border-bottom:    1px solid var(--border-subtle);
+	/* Efecto glassmorphism sutil */
+	backdrop-filter:  blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+}
+
+.app-header__logo {
+	display:     flex;
+	align-items: center;
+	gap:         var(--space-2);
+}
+
+.app-header__wordmark {
+	font-family:    var(--font-condensed);
+	font-size:      var(--text-xl);
+	font-weight:    800;
+	letter-spacing: var(--tracking-tight);
+	color:          var(--text-primary);
+	line-height:    1;
+}
+
+.app-header__wordmark span {
+	color: var(--accent);
+}
+
+.app-header__actions {
+	display:     flex;
+	align-items: center;
+	gap:         var(--space-2);
+}
+
+/* Contenido principal — espacio para header y nav */
+.app-content {
+	flex:       1;
+	padding:    var(--space-4);
+	padding-bottom: calc(var(--nav-height) + var(--space-4) + var(--safe-area-bottom));
+	overflow-y: auto;
+}
+
+/* Barra de navegación inferior */
+.app-nav {
+	position:        fixed;
+	bottom:          0;
+	left:            50%;
+	transform:       translateX(-50%);
+	width:           100%;
+	max-width:       var(--max-content-width);
+	height:          calc(var(--nav-height) + var(--safe-area-bottom));
+	padding-bottom:  var(--safe-area-bottom);
+	display:         flex;
+	align-items:     stretch;
+	background:      var(--surface-02);
+	border-top:      1px solid var(--border-default);
+	z-index:         100;
+}
+
+.nav-item {
+	flex:            1;
+	display:         flex;
+	flex-direction:  column;
+	align-items:     center;
+	justify-content: center;
+	gap:             var(--space-1);
+	padding:         var(--space-2) var(--space-1);
+	color:           var(--text-tertiary);
+	background:      none;
+	border:          none;
+	cursor:          pointer;
+	text-decoration: none;
+	min-height:      var(--nav-height); /* target táctil mínimo */
+	transition:      color var(--transition-fast);
+	-webkit-tap-highlight-color: transparent;
+}
+
+.nav-item:hover,
+.nav-item--active {
+	color: var(--accent);
+}
+
+.nav-item__icon {
+	width:  24px;
+	height: 24px;
+}
+
+.nav-item__label {
+	font-size:      var(--text-xs);
+	font-weight:    500;
+	letter-spacing: var(--tracking-wide);
+	text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. CARDS
+   ═══════════════════════════════════════════════════════════════ */
+
+.card {
+	background:    var(--surface-02);
+	border:        1px solid var(--border-subtle);
+	border-radius: var(--radius-lg);
+	overflow:      hidden;
+	transition:    border-color var(--transition-fast);
+}
+
+.card--interactive {
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.card--interactive:hover {
+	border-color: var(--border-default);
+	background:   var(--surface-03);
+}
+
+.card--interactive:active {
+	background: var(--surface-04);
+}
+
+.card__header {
+	display:         flex;
+	align-items:     center;
+	justify-content: space-between;
+	padding:         var(--space-4);
+	border-bottom:   1px solid var(--border-subtle);
+}
+
+.card__title {
+	font-size:      var(--text-md);
+	font-weight:    600;
+	letter-spacing: var(--tracking-tight);
+	color:          var(--text-primary);
+}
+
+.card__body {
+	padding: var(--space-4);
+}
+
+.card__footer {
+	padding:       var(--space-3) var(--space-4);
+	border-top:    1px solid var(--border-subtle);
+	background:    var(--surface-01);
+}
+
+/* Card de acción rápida — grid de 2x2 en dashboard */
+.action-card {
+	display:         flex;
+	flex-direction:  column;
+	align-items:     flex-start;
+	gap:             var(--space-3);
+	padding:         var(--space-5);
+	background:      var(--surface-02);
+	border:          1px solid var(--border-subtle);
+	border-radius:   var(--radius-xl);
+	cursor:          pointer;
+	text-decoration: none;
+	transition:      all var(--transition-fast);
+	min-height:      110px;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.action-card:hover {
+	border-color: var(--border-strong);
+	background:   var(--surface-03);
+	box-shadow:   var(--shadow-md);
+	transform:    translateY(-1px);
+}
+
+.action-card:active {
+	transform: translateY(0);
+	box-shadow: none;
+}
+
+.action-card__icon {
+	width:            44px;
+	height:           44px;
+	border-radius:    var(--radius-md);
+	display:          flex;
+	align-items:      center;
+	justify-content:  center;
+	background:       var(--accent-subtle);
+	color:            var(--accent);
+	font-size:        22px;
+	flex-shrink:      0;
+}
+
+.action-card__label {
+	font-size:      var(--text-base);
+	font-weight:    600;
+	color:          var(--text-primary);
+	line-height:    var(--leading-tight);
+}
+
+.action-card__desc {
+	font-size:  var(--text-sm);
+	color:      var(--text-secondary);
+	margin-top: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5. BOTONES
+   ═══════════════════════════════════════════════════════════════ */
+
+.btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	gap:             var(--space-2);
+	padding:         0 var(--space-5);
+	height:          52px;      /* Target táctil ≥ 48px */
+	min-width:       52px;
+	font-family:     var(--font-sans);
+	font-size:       var(--text-md);
+	font-weight:     600;
+	letter-spacing:  var(--tracking-normal);
+	border-radius:   var(--radius-md);
+	border:          1px solid transparent;
+	cursor:          pointer;
+	white-space:     nowrap;
+	text-decoration: none;
+	transition:      all var(--transition-fast);
+	-webkit-tap-highlight-color: transparent;
+	user-select:     none;
+}
+
+.btn:disabled {
+	opacity: 0.38;
+	cursor:  not-allowed;
+	pointer-events: none;
+}
+
+/* Primario — amarillo, solo UNA acción por pantalla */
+.btn--primary {
+	background: var(--accent);
+	color:      var(--text-inverse);
+	border-color: var(--accent);
+}
+
+.btn--primary:hover {
+	background:  var(--accent-hover);
+	border-color: var(--accent-hover);
+	box-shadow:  var(--shadow-glow);
+}
+
+.btn--primary:active {
+	background: var(--accent-active);
+}
+
+/* Secundario — contorno */
+.btn--secondary {
+	background:  transparent;
+	color:       var(--text-primary);
+	border-color: var(--border-strong);
+}
+
+.btn--secondary:hover {
+	background:   var(--surface-04);
+	border-color: var(--border-focus);
+}
+
+/* Ghost — sin borde */
+.btn--ghost {
+	background:  transparent;
+	color:       var(--text-secondary);
+	border-color: transparent;
+}
+
+.btn--ghost:hover {
+	background: var(--surface-03);
+	color:      var(--text-primary);
+}
+
+/* Danger — acciones destructivas */
+.btn--danger {
+	background:  var(--color-danger-bg);
+	color:       var(--color-danger);
+	border-color: var(--color-danger-border);
+}
+
+.btn--danger:hover {
+	background:  rgba(239, 68, 68, 0.20);
+	box-shadow:  var(--shadow-danger-glow);
+}
+
+/* Full width */
+.btn--full {
+	width: 100%;
+}
+
+/* Tamaño grande — login, acciones críticas */
+.btn--lg {
+	height:    60px;
+	font-size: var(--text-lg);
+	padding:   0 var(--space-6);
+}
+
+/* Tamaño pequeño — acciones secundarias en listas */
+.btn--sm {
+	height:    40px;
+	font-size: var(--text-sm);
+	padding:   0 var(--space-3);
+}
+
+/* Solo ícono */
+.btn--icon {
+	width:   52px;
+	padding: 0;
+}
+
+/* Estado de carga */
+.btn--loading {
+	position:        relative;
+	color:           transparent;
+	pointer-events:  none;
+}
+
+.btn--loading::after {
+	content:      '';
+	position:     absolute;
+	width:        20px;
+	height:       20px;
+	border:       2px solid rgba(0,0,0,0.3);
+	border-top-color: var(--text-inverse);
+	border-radius: 50%;
+	animation:    atshel-btn-spin 0.7s linear infinite;
+}
+
+@keyframes atshel-btn-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6. FORMULARIOS
+   ═══════════════════════════════════════════════════════════════ */
+
+.field {
+	display:        flex;
+	flex-direction: column;
+	gap:            var(--space-2);
+}
+
+.field__label {
+	font-size:      var(--text-sm);
+	font-weight:    500;
+	color:          var(--text-secondary);
+	letter-spacing: var(--tracking-wide);
+	text-transform: uppercase;
+}
+
+.field__label--required::after {
+	content: ' *';
+	color:   var(--color-danger);
+}
+
+.field__input {
+	width:            100%;
+	height:           52px;
+	padding:          0 var(--space-4);
+	background:       var(--surface-02);
+	color:            var(--text-primary);
+	border:           1px solid var(--border-default);
+	border-radius:    var(--radius-md);
+	font-family:      var(--font-sans);
+	font-size:        var(--text-base);
+	font-weight:      400;
+	transition:       all var(--transition-fast);
+	outline:          none;
+	-webkit-appearance: none;
+	appearance:       none;
+}
+
+.field__input::placeholder {
+	color: var(--text-tertiary);
+}
+
+.field__input:hover {
+	border-color: var(--border-strong);
+	background:   var(--surface-03);
+}
+
+.field__input:focus {
+	border-color: var(--accent);
+	background:   var(--surface-03);
+	box-shadow:   0 0 0 3px var(--accent-subtle);
+}
+
+/* Input de datos numéricos — JetBrains Mono */
+.field__input--numeric {
+	font-family:   var(--font-mono);
+	font-size:     var(--text-lg);
+	font-weight:   500;
+	letter-spacing: var(--tracking-tight);
+}
+
+/* Textarea */
+.field__textarea {
+	min-height:  120px;
+	padding:     var(--space-4);
+	resize:      vertical;
+	line-height: var(--leading-relaxed);
+}
+
+/* Select */
+.field__select {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238B98A8' viewBox='0 0 256 256'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'/%3E%3C/svg%3E");
+	background-repeat:   no-repeat;
+	background-position: right var(--space-4) center;
+	padding-right:       var(--space-10);
+	cursor:              pointer;
+}
+
+/* Helper text */
+.field__hint {
+	font-size: var(--text-sm);
+	color:     var(--text-tertiary);
+}
+
+.field__error {
+	font-size:  var(--text-sm);
+	color:      var(--color-danger);
+	font-weight: 500;
+	display:    flex;
+	align-items: center;
+	gap:        var(--space-1);
+}
+
+/* Estado de error en campo */
+.field--error .field__input {
+	border-color: var(--color-danger);
+	background:   var(--color-danger-bg);
+}
+
+.field--error .field__input:focus {
+	box-shadow: 0 0 0 3px var(--color-danger-bg);
+}
+
+/* ── Teclado PIN ─────────────────────────────────────────────── */
+.pin-display {
+	display:         flex;
+	justify-content: center;
+	gap:             var(--space-3);
+	padding:         var(--space-6) 0;
+}
+
+.pin-dot {
+	width:         18px;
+	height:        18px;
+	border-radius: var(--radius-full);
+	border:        2px solid var(--border-strong);
+	background:    transparent;
+	transition:    all var(--transition-fast);
+}
+
+.pin-dot--filled {
+	background:   var(--accent);
+	border-color: var(--accent);
+	transform:    scale(1.1);
+	box-shadow:   0 0 8px rgba(255, 193, 7, 0.5);
+}
+
+.pin-dot--error {
+	background:   var(--color-danger);
+	border-color: var(--color-danger);
+	animation:    pin-shake 0.4s ease;
+}
+
+@keyframes pin-shake {
+	0%, 100% { transform: translateX(0); }
+	20%       { transform: translateX(-6px); }
+	40%       { transform: translateX(6px); }
+	60%       { transform: translateX(-4px); }
+	80%       { transform: translateX(4px); }
+}
+
+.pin-keypad {
+	display:               grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap:                   var(--space-3);
+	max-width:             300px;
+	margin:                0 auto;
+}
+
+.pin-key {
+	height:           80px;
+	display:          flex;
+	flex-direction:   column;
+	align-items:      center;
+	justify-content:  center;
+	gap:              2px;
+	background:       var(--surface-02);
+	border:           1px solid var(--border-subtle);
+	border-radius:    var(--radius-xl);
+	font-family:      var(--font-mono);
+	font-size:        var(--text-2xl);
+	font-weight:      500;
+	color:            var(--text-primary);
+	cursor:           pointer;
+	transition:       all var(--transition-fast);
+	-webkit-tap-highl
