@@ -1,0 +1,78 @@
+{
+	"name": "ATSHEL HSE Manager",
+	"short_name": "ATSHEL",
+	"description": "Gestión de seguridad industrial offline-first para Vaca Muerta",
+	"start_url": "/login.html",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "portrait-primary",
+	"theme_color": "#373737",
+	"background_color": "#0A0C0E",
+	"lang": "es-AR",
+	"dir": "ltr",
+	"categories": ["business", "productivity", "utilities"],
+	"icons": [
+		{
+			"src": "/icons/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/icons/icon-maskable-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "maskable"
+		},
+		{
+			"src": "/icons/icon-maskable-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	],
+	"screenshots": [
+		{
+			"src": "/screenshots/login.png",
+			"sizes": "390x844",
+			"type": "image/png",
+			"form_factor": "narrow",
+			"label": "Pantalla de inicio de sesión"
+		}
+	],
+	"prefer_related_applications": false,
+	"shortcuts": [
+		{
+			"name": "Nuevo Incidente",
+			"short_name": "Incidente",
+			"description": "Reportar un incidente nuevo",
+			"url": "/incidente-nuevo.html",
+			"icons": [
+				{
+					"src": "/icons/shortcut-incidente.png",
+					"sizes": "96x96",
+					"type": "image/png"
+				}
+			]
+		},
+		{
+			"name": "Nuevo ATS",
+			"short_name": "ATS",
+			"description": "Iniciar análisis de trabajo seguro",
+			"url": "/ats-nuevo.html",
+			"icons": [
+				{
+					"src": "/icons/shortcut-ats.png",
+					"sizes": "96x96",
+					"type": "image/png"
+				}
+			]
+		}
+	]
+}
