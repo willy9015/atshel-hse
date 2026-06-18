@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#373737">
+	<meta name="description" content="ATSHEL HSE Manager — Sin conexión">
+
+	<!-- Sin dependencias externas — esta página debe funcionar sin red ni caché -->
+	<title>Sin conexión — ATSHEL</title>
+
+	<style>
+		/* ── Reset mínimo ──────────────────────────────────────── */
+		*, *::before, *::after {
+			box-sizing: border-box;
+			margin:     0;
+			padding:    0;
+		}
+
+		/* ── Tokens del sistema de diseño — inline porque no hay caché ── */
+		:root {
+			--surface-base:   #0A0C0E;
+			--surface-02:     #181D23;
+			--surface-03:     #1F252D;
+			--border-subtle:  rgba(255,255,255,0.06);
+			--border-default: rgba(255,255,255,0.10);
+			--text-primary:   #F0F4F8;
+			--text-secondary: #8B98A8;
+			--text-tertiary:  #556070;
+			--accent:         #FFC107;
+			--accent-subtle:  rgba(255,193,7,0.10);
+			--color-danger:   #EF4444;
+			--color-warning:  #F97316;
+			--color-success:  #22C55E;
+			--font-sans:      'Barlow', system-ui, -apple-system, sans-serif;
+			--font-condensed: 'Barlow Condensed', 'Barlow', sans-serif;
+			--font-mono:      'JetBrains Mono', 'Courier New', monospace;
+			--radius-md:      8px;
+			--radius-lg:      12px;
+			--radius-xl:      16px;
+			--radius-full:    9999px;
+			--shadow-lg:      0 8px 24px rgba(0,0,0,0.6);
+			--safe-bottom:    env(safe-area-inset-bottom, 0px);
+		}
+
+		html {
+			-webkit-text-size-adjust: 100%;
+			-webkit-font-smoothing:   antialiased;
+		}
+
+		body {
+			font-family:      var(--font-sans);
+			background-color: var(--surface-base);
+			color:            var(--text-primary);
+			min-height:       100dvh;
+			display:          flex;
+			flex-direction:   column;
+			align-items:      center;
+			justify-content:  center;
+			padding:          24px 24px calc(24px + var(--safe-bottom));
+			overflow:         hidden;
+			position:         relative;
+		}
+
+		/* ── Fondo con grilla técnica ──────────────────────────── */
+		body::before {
+			content:    '';
+			position:   fixed;
+			inset:      0;
+			background-image:
+				linear-gradient(var(--border-subtle) 1px, transparent 1px),
+				linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+			background-size: 48px 48px;
+			mask-image:  radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+			pointer-events: none;
+			z-index: 0;
+		}
+
+		/* ── Contenedor principal ──────────────────────────────── */
+		.offline-card {
+			position:       relative;
+			z-index:        1;
+			width:          100%;
+			max-width:      360px;
+			background:     var(--surface-02);
+			border:         1px solid var(--border-default);
+			border-radius:  var(--radius-xl);
+			padding:        40px 32px;
+			text-align:     center;
+			box-shadow:     var(--shadow-lg);
+		}
+
+		/* ── Ícono animado ─────────────────────────────────────── */
+		.offline-icon {
+			width:            72px;
+			height:           72px;
+			margin:           0 auto 28px;
+			background:       var(--accent-subtle);
+			border-radius:    var(--radius-full);
+			display:          flex;
+			align-items:      center;
+			justify-content:  center;
+			font-size:        36px;
+			animation:        pulse-icon 2.5s ease-in-out infinite;
+		}
+
+		@keyframes pulse-icon {
+			0%, 100% {
+				transform:  scale(1);
+				box-shadow: 0 0 0 0 rgba(255,193,7,0.3);
+			}
+			50% {
+				transform:  scale(1.05);
+				box-shadow: 0 0 0 12px rgba(255,193,7,0);
+			}
+		}
+
+		/* ── Logo ──────────────────────────────────────────────── */
+		.offline-logo {
+			font-family:    var(--font-condensed);
+			font-size:      28px;
+			font-weight:    800;
+			letter-spacing: -0.02em;
+			color:          var(--text-primary);
+			margin-bottom:  4px;
+			line-height:    1;
+		}
+
+		.offline-logo span {
+			color: var(--accent);
+		}
+
+		/* ── Título ────────────────────────────────────────────── */
+		.offline-title {
+			font-family:    var(--font-condensed);
+			font-size:      22px;
+			font-weight:    700;
+			color:          var(--text-primary);
+			margin-bottom:  12px;
+			letter-spacing: -0.01em;
+		}
+
+		/* ── Descripción ───────────────────────────────────────── */
+		.offline-desc {
+			font-size:   15px;
+			color:       var(--text-secondary);
+			line-height: 1.6;
+			margin-bottom: 32px;
+		}
+
+		/* ── Estado de señal ───────────────────────────────────── */
+		.signal-status {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             8px;
+			padding:         10px 16px;
+			background:      var(--surface-03);
+			border:          1px solid var(--border-subtle);
+			border-radius:   var(--radius-md);
+			margin-bottom:   24px;
+			font-size:       13px;
+			color:           var(--text-tertiary);
+			font-family:     var(--font-mono);
+		}
+
+		.signal-dot {
+			width:         8px;
+			height:        8px;
+			border-radius: var(--radius-full);
+			background:    var(--color-danger);
+			flex-shrink:   0;
+			animation:     blink 1.5s ease-in-out infinite;
+		}
+
+		.signal-dot--online {
+			background: var(--color-success);
+			animation:  none;
+		}
+
+		@keyframes blink {
+			0%, 100% { opacity: 1; }
+			50%       { opacity: 0.2; }
+		}
+
+		/* ── Botón reintentar ──────────────────────────────────── */
+		.btn-reintentar {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             8px;
+			width:           100%;
+			height:          52px;
+			background:      var(--accent);
+			color:           #0A0C0E;
+			border:          none;
+			border-radius:   var(--radius-md);
+			font-family:     var(--font-sans);
+			font-size:       16px;
+			font-weight:     700;
+			cursor:          pointer;
+			transition:      all 120ms ease;
+			-webkit-tap-highlight-color: transparent;
+			margin-bottom:   12px;
+		}
+
+		.btn-reintentar:hover {
+			background:  #FFD54F;
+		}
+
+		.btn-reintentar:active {
+			background:  #FFB300;
+			transform:   scale(0.98);
+		}
+
+		.btn-reintentar:disabled {
+			opacity: 0.5;
+			cursor:  not-allowed;
+		}
+
+		/* Spinner dentro del botón */
+		.btn-reintentar .spinner {
+			display:       none;
+			width:         18px;
+			height:        18px;
+			border:        2px solid rgba(0,0,0,0.2);
+			border-top:    2px solid #0A0C0E;
+			border-radius: var(--radius-full);
+			animation:     spin 0.7s linear infinite;
+		}
+
+		.btn-reintentar.checking .spinner {
+			display: block;
+		}
+
+		.btn-reintentar.checking .btn-text {
+			opacity: 0.6;
+		}
+
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+
+		/* ── Link volver al login ──────────────────────────────── */
+		.btn-volver {
+			display:         block;
+			width:           100%;
+			height:          48px;
+			line-height:     48px;
+			background:      transparent;
+			color:           var(--text-secondary);
+			border:          1px solid var(--border-default);
+			border-radius:   var(--radius-md);
+			font-family:     var(--font-sans);
+			font-size:       14px;
+			font-weight:     500;
+			text-decoration: none;
+			text-align:      center;
+			cursor:          pointer;
+			transition:      all 120ms ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		.btn-volver:hover {
+			background:   var(--surface-03);
+			border-color: var(--border-default);
+			color:        var(--text-primary);
+		}
+
+		/* ── Pie de pantalla ───────────────────────────────────── */
+		.offline-footer {
+			position:   fixed;
+			bottom:     calc(20px + var(--safe-bottom));
+			left:       0;
+			right:      0;
+			text-align: center;
+			font-size:  12px;
+			color:      var(--text-tertiary);
+			z-index:    1;
+			font-family: var(--font-mono);
+			letter-spacing: 0.04em;
+		}
+
+		/* ── Toast de éxito ────────────────────────────────────── */
+		.toast-online {
+			display:       none;
+			position:      fixed;
+			bottom:        calc(80px + var(--safe-bottom));
+			left:          50%;
+			transform:     translateX(-50%);
+			background:    #1A3D2B;
+			border:        1px solid rgba(34,197,94,0.3);
+			color:         var(--color-success);
+			padding:       12px 20px;
+			border-radius: var(--radius-lg);
+			font-size:     14px;
+			font-weight:   600;
+			white-space:   nowrap;
+			z-index:       9999;
+			box-shadow:    var(--shadow-lg);
+			animation:     slide-up 300ms ease;
+		}
+
+		.toast-online.visible {
+			display: block;
+		}
+
+		@keyframes slide-up {
+			from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+			to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- Toast de conexión recuperada -->
+	<div id="toast-online" class="toast-online" role="status" aria-live="polite">
+		✓ Conexión restaurada — redirigiendo...
+	</div>
+
+	<!-- Tarjeta principal -->
+	<div class="offline-card" role="main">
+
+		<!-- Ícono -->
+		<div class="offline-icon" aria-hidden="true">📡</div>
+
+		<!-- Logo -->
+		<div class="offline-logo">AT<span>SH</span>EL</div>
+
+		<!-- Separador visual -->
+		<div style="height:20px;"></div>
+
+		<!-- Título -->
+		<h1 class="offline-title">Sin señal en este momento</h1>
+
+		<!-- Descripción -->
+		<p class="offline-desc">
+			Los datos que ya capturaste están guardados y se sincronizarán
+			automáticamente cuando vuelva la conexión.
+		</p>
+
+		<!-- Estado de señal en tiempo real -->
+		<div class="signal-status" id="signal-status" aria-live="polite">
+			<span class="signal-dot" id="signal-dot"></span>
+			<span id="signal-text">Sin conexión</span>
+		</div>
+
+		<!-- Botón reintentar -->
+		<button
+			id="btn-reintentar"
+			class="btn-reintentar"
+			type="button"
+			aria-label="Verificar conexión"
+		>
+			<span class="spinner" aria-hidden="true"></span>
+			<span class="btn-text">Verificar conexión</span>
+		</button>
+
+		<!-- Volver al login -->
+		<a href="/login.html" class="btn-volver">
+			Volver al inicio de sesión
+		</a>
+
+	</div>
+
+	<!-- Pie de pantalla -->
+	<footer class="offline-footer" aria-label="Versión">
+		ATSHEL HSE · offline
+	</footer>
+
+	<script>
+		/**
+		 * offline.html — Script inline.
+		 * Sin dependencias externas — debe funcionar sin ningún archivo cacheado.
+		 * Sin DOMPurify — no hay input de usuario, todo el contenido es estático.
+		 */
+
+		'use strict';
+
+		// ── Elementos ──────────────────────────────────────────────
+		const btnReintentar = document.getElementById('btn-reintentar');
+		const signalDot     = document.getElementById('signal-dot');
+		const signalText    = document.getElementById('signal-text');
+		const toastOnline   = document.getElementById('toast-online');
+
+		// ── URL de destino tras recuperar conexión ─────────────────
+		// Intentar redirigir a la última página visitada antes de quedar offline
+		const DESTINO_POST_ONLINE = sessionStorage.getItem('atshel_ultima_pagina') || '/index.html';
+
+		// ── Actualizar indicador de señal ──────────────────────────
+		function actualizarEstadoSenal(online) {
+			if (online) {
+				signalDot.classList.add('signal-dot--online');
+				signalText.textContent = 'Conexión detectada';
+			} else {
+				signalDot.classList.remove('signal-dot--online');
+				signalText.textContent = 'Sin conexión';
+			}
+		}
+
+		// ── Verificar conexión activa ──────────────────────────────
+		// navigator.onLine puede ser optimista — verificar con fetch real
+		async function verificarConexion() {
+			if (!navigator.onLine) return false;
+
+			try {
+				// Usar el favicon de Supabase como probe — pequeño y sin CORS
+				const controller = new AbortController();
+				const timeout    = setTimeout(() => controller.abort(), 3000);
+
+				const resp = await fetch(
+					'https://elhweuwczmcatypphnco.supabase.co/health',
+					{
+						method:  'HEAD',
+						cache:   'no-store',
+						signal:  controller.signal,
+					}
+				);
+
+				clearTimeout(timeout);
+				return resp.ok || resp.status === 401; // 401 = servidor alcanzable pero requiere auth
+
+			} catch {
+				return false;
+			}
+		}
+
+		// ── Handler del botón reintentar ───────────────────────────
+		async function handleReintentar() {
+			btnReintentar.disabled = true;
+			btnReintentar.classList.add('checking');
+
+			const conectado = await verificarConexion();
+
+			btnReintentar.classList.remove('checking');
+			btnReintentar.disabled = false;
+
+			actualizarEstadoSenal(conectado);
+
+			if (conectado) {
+				_mostrarToastOnline();
+				setTimeout(() => {
+					window.location.replace(DESTINO_POST_ONLINE);
+				}, 1200);
+			}
+		}
+
+		// ── Toast de conexión restaurada ───────────────────────────
+		function _mostrarToastOnline() {
+			toastOnline.classList.add('visible');
+		}
+
+		// ── Event listeners — solo en init ─────────────────────────
+		function init() {
+			// Botón reintentar
+			btnReintentar.addEventListener('click', handleReintentar);
+
+			// Escuchar evento de red del browser
+			window.addEventListener('online', async () => {
+				const conectado = await verificarConexion();
+				actualizarEstadoSenal(conectado);
+
+				if (conectado) {
+					_mostrarToastOnline();
+					setTimeout(() => {
+						window.location.replace(DESTINO_POST_ONLINE);
+					}, 1200);
+				}
+			});
+
+			window.addEventListener('offline', () => {
+				actualizarEstadoSenal(false);
+			});
+
+			// Estado inicial
+			actualizarEstadoSenal(navigator.onLine);
+
+			// Verificar automáticamente cada 15 segundos
+			setInterval(async () => {
+				if (navigator.onLine) {
+					const conectado = await verificarConexion();
+					if (conectado) {
+						_mostrarToastOnline();
+						setTimeout(() => {
+							window.location.replace(DESTINO_POST_ONLINE);
+						}, 1200);
+					}
+				}
+			}, 15_000);
+		}
+
+		// Arrancar
+		document.addEventListener('DOMContentLoaded', init);
+	</script>
+
+</body>
+</html>
