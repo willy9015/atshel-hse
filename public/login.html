@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE Manager — Ingresá a tu cuenta">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="ATSHEL">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Ingresar — ATSHEL HSE</title>
+
+	<!-- Fuentes -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<!-- CSS del sistema de diseño -->
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout de login ───────────────────────────────────── */
+		.login-page {
+			display:         flex;
+			flex-direction:  column;
+			min-height:      100dvh;
+			background:      var(--surface-base);
+			position:        relative;
+			overflow:        hidden;
+		}
+
+		/* Grilla técnica de fondo */
+		.login-page::before {
+			content:    '';
+			position:   fixed;
+			inset:      0;
+			background-image:
+				linear-gradient(var(--border-subtle) 1px, transparent 1px),
+				linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+			background-size: 48px 48px;
+			mask-image:  radial-gradient(ellipse 100% 100% at 50% 0%, black 30%, transparent 100%);
+			pointer-events: none;
+			z-index: 0;
+		}
+
+		/* Glow de marca en la parte superior */
+		.login-page::after {
+			content:    '';
+			position:   fixed;
+			top:        -100px;
+			left:       50%;
+			transform:  translateX(-50%);
+			width:      500px;
+			height:     500px;
+			background: radial-gradient(circle, rgba(255,193,7,0.07) 0%, transparent 65%);
+			pointer-events: none;
+			z-index: 0;
+		}
+
+		/* ── Hero superior ─────────────────────────────────────── */
+		.login-hero {
+			position:        relative;
+			z-index:         1;
+			flex:            1;
+			display:         flex;
+			flex-direction:  column;
+			align-items:     center;
+			justify-content: flex-end;
+			padding:         env(safe-area-inset-top, 24px) 24px 40px;
+			min-height:      220px;
+		}
+
+		.login-brand {
+			text-align: center;
+		}
+
+		/* Escudo / marca geométrica */
+		.brand-shield {
+			width:            72px;
+			height:           72px;
+			margin:           0 auto 16px;
+			background:       linear-gradient(145deg, #1F252D, #272E38);
+			border:           1px solid var(--border-default);
+			border-radius:    var(--radius-xl);
+			display:          flex;
+			align-items:      center;
+			justify-content:  center;
+			box-shadow:       0 0 32px rgba(255,193,7,0.12), var(--shadow-lg);
+			position:         relative;
+		}
+
+		.brand-shield::before {
+			content:       '';
+			position:      absolute;
+			inset:         -1px;
+			border-radius: var(--radius-xl);
+			background:    linear-gradient(145deg, rgba(255,193,7,0.3), transparent 60%);
+			z-index:       0;
+		}
+
+		.brand-shield__inner {
+			position:         relative;
+			z-index:          1;
+			display:          flex;
+			align-items:      center;
+			justify-content:  center;
+		}
+
+		/* Ícono SVG inline del escudo — sin dependencia de Phosphor */
+		.brand-shield__svg {
+			width:  36px;
+			height: 36px;
+		}
+
+		.brand-wordmark {
+			font-family:    var(--font-condensed);
+			font-size:      2.5rem;
+			font-weight:    800;
+			letter-spacing: -0.03em;
+			line-height:    1;
+			color:          var(--text-primary);
+			margin-bottom:  6px;
+		}
+
+		.brand-wordmark__accent {
+			color: var(--accent);
+		}
+
+		.brand-tagline {
+			font-size:      0.75rem;
+			font-weight:    500;
+			color:          var(--text-tertiary);
+			letter-spacing: 0.15em;
+			text-transform: uppercase;
+		}
+
+		/* ── Panel de formulario ───────────────────────────────── */
+		.login-panel {
+			position:         relative;
+			z-index:          1;
+			background:       var(--surface-01);
+			border-top:       1px solid var(--border-subtle);
+			border-radius:    var(--radius-xl) var(--radius-xl) 0 0;
+			padding:          32px 24px calc(32px + env(safe-area-inset-bottom, 0px));
+		}
+
+		.login-panel__title {
+			font-family:    var(--font-condensed);
+			font-size:      1.375rem;
+			font-weight:    700;
+			color:          var(--text-primary);
+			margin-bottom:  4px;
+			letter-spacing: -0.01em;
+		}
+
+		.login-panel__subtitle {
+			font-size:     0.8125rem;
+			color:         var(--text-tertiary);
+			margin-bottom: 28px;
+		}
+
+		/* ── Formulario ────────────────────────────────────────── */
+		.login-form {
+			display:        flex;
+			flex-direction: column;
+			gap:            16px;
+		}
+
+		/* Override del field__input para login */
+		.login-form .field__input {
+			background: var(--surface-02);
+			height:     56px;
+			font-size:  1rem;
+		}
+
+		.login-form .field__input:focus {
+			background: var(--surface-03);
+		}
+
+		/* Wrapper para el ojo del password */
+		.input-password-wrapper {
+			position: relative;
+		}
+
+		.input-password-wrapper .field__input {
+			padding-right: 52px;
+		}
+
+		.btn-toggle-password {
+			position:         absolute;
+			right:            0;
+			top:              0;
+			bottom:           0;
+			width:            52px;
+			display:          flex;
+			align-items:      center;
+			justify-content:  center;
+			background:       none;
+			border:           none;
+			cursor:           pointer;
+			color:            var(--text-tertiary);
+			font-size:        20px;
+			transition:       color var(--transition-fast);
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		.btn-toggle-password:hover {
+			color: var(--text-secondary);
+		}
+
+		/* ── Error general del form ────────────────────────────── */
+		.form-error {
+			display:        none;
+			align-items:    flex-start;
+			gap:            10px;
+			padding:        14px 16px;
+			background:     var(--color-danger-bg);
+			border:         1px solid var(--color-danger-border);
+			border-radius:  var(--radius-md);
+			font-size:      0.875rem;
+			color:          var(--color-danger);
+			line-height:    1.5;
+			font-weight:    500;
+		}
+
+		.form-error.visible {
+			display: flex;
+		}
+
+		.form-error__icon {
+			font-size:   18px;
+			flex-shrink: 0;
+			margin-top:  1px;
+		}
+
+		/* ── Link olvidé contraseña ────────────────────────────── */
+		.forgot-link {
+			font-size:       0.8125rem;
+			color:           var(--text-secondary);
+			text-decoration: none;
+			text-align:      right;
+			display:         block;
+			margin-top:      -8px;
+			padding:         4px 0; /* área táctil mínima */
+			transition:      color var(--transition-fast);
+		}
+
+		.forgot-link:hover {
+			color:           var(--accent);
+			text-decoration: none;
+		}
+
+		/* ── Separador ─────────────────────────────────────────── */
+		.login-divider {
+			display:     flex;
+			align-items: center;
+			gap:         12px;
+			color:       var(--text-tertiary);
+			font-size:   0.75rem;
+			margin:      4px 0;
+		}
+
+		.login-divider::before,
+		.login-divider::after {
+			content:    '';
+			flex:       1;
+			height:     1px;
+			background: var(--border-subtle);
+		}
+
+		/* ── Estado de conexión en login ───────────────────────── */
+		.connection-status {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             6px;
+			font-size:       0.75rem;
+			color:           var(--text-tertiary);
+			margin-top:      20px;
+			font-family:     var(--font-mono);
+		}
+
+		.connection-status__dot {
+			width:         6px;
+			height:        6px;
+			border-radius: var(--radius-full);
+			background:    var(--color-danger);
+			flex-shrink:   0;
+		}
+
+		.connection-status--online .connection-status__dot {
+			background: var(--color-success);
+		}
+
+		.connection-status--online .connection-status__text {
+			color: var(--color-success);
+		}
+
+		/* ── Modal recuperar contraseña ────────────────────────── */
+		.modal-overlay {
+			display:         none;
+			position:        fixed;
+			inset:           0;
+			background:      rgba(0,0,0,0.7);
+			backdrop-filter: blur(4px);
+			z-index:         1000;
+			align-items:     flex-end;
+			justify-content: center;
+			padding:         0;
+		}
+
+		.modal-overlay.visible {
+			display: flex;
+		}
+
+		.modal-sheet {
+			width:           100%;
+			max-width:       480px;
+			background:      var(--surface-02);
+			border-top:      1px solid var(--border-default);
+			border-radius:   var(--radius-xl) var(--radius-xl) 0 0;
+			padding:         24px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+			animation:       sheet-up 250ms cubic-bezier(0.4,0,0.2,1);
+		}
+
+		@keyframes sheet-up {
+			from { transform: translateY(100%); }
+			to   { transform: translateY(0); }
+		}
+
+		.modal-sheet__handle {
+			width:         40px;
+			height:        4px;
+			background:    var(--border-strong);
+			border-radius: var(--radius-full);
+			margin:        0 auto 20px;
+		}
+
+		.modal-sheet__title {
+			font-family:    var(--font-condensed);
+			font-size:      1.25rem;
+			font-weight:    700;
+			color:          var(--text-primary);
+			margin-bottom:  8px;
+		}
+
+		.modal-sheet__desc {
+			font-size:     0.875rem;
+			color:         var(--text-secondary);
+			line-height:   1.6;
+			margin-bottom: 20px;
+		}
+
+		.modal-sheet__success {
+			display:       none;
+			text-align:    center;
+			padding:       20px 0;
+		}
+
+		.modal-sheet__success.visible {
+			display: block;
+		}
+
+		.modal-sheet__success-icon {
+			font-size:     48px;
+			margin-bottom: 12px;
+		}
+
+		.modal-sheet__success-title {
+			font-size:     1.125rem;
+			font-weight:   700;
+			color:         var(--color-success);
+			margin-bottom: 8px;
+		}
+
+		.modal-sheet__success-desc {
+			font-size:  0.875rem;
+			color:      var(--text-secondary);
+			line-height: 1.6;
+		}
+
+		/* ── Versión de la app ─────────────────────────────────── */
+		.app-version {
+			text-align:     center;
+			font-size:      0.6875rem;
+			color:          var(--text-tertiary);
+			font-family:    var(--font-mono);
+			letter-spacing: 0.08em;
+			margin-top:     16px;
+			opacity:        0.6;
+		}
+
+		/* ── Animación de entrada del panel ────────────────────── */
+		@keyframes panel-up {
+			from {
+				transform: translateY(30px);
+				opacity:   0;
+			}
+			to {
+				transform: translateY(0);
+				opacity:   1;
+			}
+		}
+
+		.login-panel {
+			animation: panel-up 400ms cubic-bezier(0.4,0,0.2,1) both;
+		}
+
+		@keyframes hero-in {
+			from {
+				transform: translateY(-20px);
+				opacity:   0;
+			}
+			to {
+				transform: translateY(0);
+				opacity:   1;
+			}
+		}
+
+		.login-hero {
+			animation: hero-in 500ms cubic-bezier(0.4,0,0.2,1) 100ms both;
+		}
+	</style>
+</head>
+
+<body class="login-page">
+
+	<!-- ── HERO ──────────────────────────────────────────────── -->
+	<div class="login-hero" role="banner">
+		<div class="login-brand">
+
+			<!-- Escudo ATSHEL -->
+			<div class="brand-shield" aria-hidden="true">
+				<div class="brand-shield__inner">
+					<svg class="brand-shield__svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<!-- Hoja / nature green -->
+						<path d="M18 6C18 6 8 11 8 20C8 25.5 12.5 30 18 30C23.5 30 28 25.5 28 20C28 11 18 6 18 6Z" fill="#4ADE80" opacity="0.15"/>
+						<!-- Casco de seguridad -->
+						<path d="M10 20H26M12 20C12 16 14.7 12.5 18 11.5C21.3 12.5 24 16 24 20" stroke="#FFC107" stroke-width="2" stroke-linecap="round"/>
+						<!-- Tilde / check mark -->
+						<path d="M13 20L16 23L23 16" stroke="#FFC107" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</div>
+			</div>
+
+			<!-- Logotipo textual -->
+			<div class="brand-wordmark">
+				AT<span class="brand-wordmark__accent">SH</span>EL
+			</div>
+			<div class="brand-tagline">Seguridad Industrial HSE</div>
+
+		</div>
+	</div>
+
+	<!-- ── PANEL DE LOGIN ────────────────────────────────────── -->
+	<div class="login-panel" role="main">
+
+		<h1 class="login-panel__title">Ingresá a tu cuenta</h1>
+		<p class="login-panel__subtitle">Vaca Muerta · Sistema HSE</p>
+
+		<!-- Error general del formulario -->
+		<div
+			id="form-error"
+			class="form-error"
+			role="alert"
+			aria-live="assertive"
+			aria-atomic="true"
+		>
+			<span class="form-error__icon" aria-hidden="true">⚠</span>
+			<span id="form-error-text"></span>
+		</div>
+
+		<!-- Formulario -->
+		<form
+			id="login-form"
+			class="login-form"
+			novalidate
+			autocomplete="on"
+		>
+
+			<!-- Email -->
+			<div class="field" id="field-email">
+				<label class="field__label field__label--required" for="input-email">
+					Correo electrónico
+				</label>
+				<input
+					id="input-email"
+					name="email"
+					type="email"
+					class="field__input"
+					placeholder="operador@empresa.com"
+					autocomplete="username"
+					autocapitalize="none"
+					autocorrect="off"
+					spellcheck="false"
+					inputmode="email"
+					required
+					aria-required="true"
+					aria-describedby="error-email"
+				>
+				<span id="error-email" class="field__error" role="alert" aria-live="polite"></span>
+			</div>
+
+			<!-- Contraseña -->
+			<div class="field" id="field-password">
+				<label class="field__label field__label--required" for="input-password">
+					Contraseña
+				</label>
+				<div class="input-password-wrapper">
+					<input
+						id="input-password"
+						name="password"
+						type="password"
+						class="field__input"
+						placeholder="••••••••"
+						autocomplete="current-password"
+						required
+						aria-required="true"
+						aria-describedby="error-password"
+						minlength="6"
+					>
+					<button
+						type="button"
+						id="btn-toggle-password"
+						class="btn-toggle-password"
+						aria-label="Mostrar contraseña"
+						aria-pressed="false"
+					>
+						<!-- Ícono SVG ojo — sin dependencia Phosphor en login -->
+						<svg id="icon-eye" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+							<path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/>
+						</svg>
+						<svg id="icon-eye-slash" width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" style="display:none">
+							<path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a123.09,123.09,0,0,0,52.07-11.15l22,24.53A8,8,0,1,0,213.92,210.62Zm47.33,75.84,41.67,46.39a32,32,0,0,1-41.67-46.39ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,20.09A48,48,0,0,0,176,172.18l14.91,16.57A107,107,0,0,1,128,192Zm6-95.89A48.13,48.13,0,0,0,96.1,140.88L80,122.44A63.49,63.49,0,0,1,128,80a62.65,62.65,0,0,1,12,.59ZM247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41a145.46,145.46,0,0,0-21.47-17.53L213.92,52.5a8,8,0,0,0-11.84-10.76l-21,23.37a123.6,123.6,0,0,0-53.07-11.11c-31.14,0-58.85,10.79-82.56,32.06L36.08,45.38A8,8,0,0,0,24.92,56.14l16.85,18.76C13,95.12.66,124.28.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C53.43,194.74,85.12,208,120,208a129.38,129.38,0,0,0,42-7"/>
+						</svg>
+					</button>
+				</div>
+				<span id="error-password" class="field__error" role="alert" aria-live="polite"></span>
+			</div>
+
+			<!-- Link olvidé contraseña -->
+			<button
+				type="button"
+				id="btn-forgot"
+				class="forgot-link"
+				style="background:none;border:none;text-align:right;cursor:pointer;"
+			>
+				¿Olvidaste tu contraseña?
+			</button>
+
+			<!-- Botón submit -->
+			<button
+				type="submit"
+				id="btn-submit"
+				class="btn btn--primary btn--full btn--lg"
+				style="margin-top: 4px;"
+			>
+				<span class="btn-text">Ingresar</span>
+			</button>
+
+		</form>
+
+		<!-- Estado de conexión -->
+		<div id="connection-status" class="connection-status" aria-live="polite">
+			<span class="connection-status__dot" id="conn-dot"></span>
+			<span class="connection-status__text" id="conn-text">Verificando conexión...</span>
+		</div>
+
+		<!-- Versión -->
+		<div class="app-version">ATSHEL HSE · v1.0.0</div>
+
+	</div>
+
+	<!-- ── MODAL RECUPERAR CONTRASEÑA (bottom sheet) ──────────── -->
+	<div
+		id="modal-forgot"
+		class="modal-overlay"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="modal-forgot-title"
+	>
+		<div class="modal-sheet" role="document">
+
+			<div class="modal-sheet__handle" aria-hidden="true"></div>
+
+			<!-- Formulario de recuperación -->
+			<div id="forgot-form-container">
+				<h2 id="modal-forgot-title" class="modal-sheet__title">Recuperar contraseña</h2>
+				<p class="modal-sheet__desc">
+					Ingresá tu email y te enviamos un link para restablecer tu contraseña.
+				</p>
+
+				<div class="field" id="field-forgot-email">
+					<label class="field__label field__label--required" for="input-forgot-email">
+						Correo electrónico
+					</label>
+					<input
+						id="input-forgot-email"
+						type="email"
+						class="field__input"
+						placeholder="operador@empresa.com"
+						autocomplete="email"
+						autocapitalize="none"
+						autocorrect="off"
+						inputmode="email"
+						aria-describedby="error-forgot-email"
+					>
+					<span id="error-forgot-email" class="field__error" role="alert" aria-live="polite"></span>
+				</div>
+
+				<div style="display:flex; gap:12px; margin-top:20px;">
+					<button
+						type="button"
+						id="btn-forgot-cancel"
+						class="btn btn--secondary"
+						style="flex:1;"
+					>
+						Cancelar
+					</button>
+					<button
+						type="button"
+						id="btn-forgot-submit"
+						class="btn btn--primary"
+						style="flex:2;"
+					>
+						<span class="btn-text">Enviar link</span>
+					</button>
+				</div>
+			</div>
+
+			<!-- Estado de éxito -->
+			<div id="forgot-success" class="modal-sheet__success">
+				<div class="modal-sheet__success-icon">✉️</div>
+				<div class="modal-sheet__success-title">Email enviado</div>
+				<p class="modal-sheet__success-desc">
+					Revisá tu bandeja de entrada y spam. El link expira en 1 hora.
+				</p>
+				<button
+					type="button"
+					id="btn-forgot-close"
+					class="btn btn--ghost btn--full"
+					style="margin-top:16px;"
+				>
+					Cerrar
+				</button>
+			</div>
+
+		</div>
+	</div>
+
+	<!-- ── VENDOR (síncronos, sin defer ni async) ─────────────── -->
+	<script src="/vendor/dompurify.min.js"></script>
+	<script src="/vendor/phosphor-icons.min.js"></script>
+
+	<!-- ── MÓDULOS PROPIOS ────────────────────────────────────── -->
+	<script type="module">
+		/**
+		 * login.html — módulo de inicialización.
+		 *
+		 * Flujo post-login:
+		 *   1. Login OK → obtener usuario de public.usuarios
+		 *   2. Si !activo → cerrar sesión + error
+		 *   3. Si !terminos_aceptado_en → /setup.html?paso=terminos
+		 *   4. PIN: /setup.html?paso=pin (setup.html lo maneja)
+		 *   5. Todo OK → /index.html
+		 *
+		 * Columnas verificadas MCP:
+		 *   usuarios.activo (bool), usuarios.terminos_aceptado_en (timestamptz),
+		 *   usuarios.rol ('administrador'|'supervisor'|'hse')
+		 */
+
+		import { login, logout, getSession, supabase } from '/js/atshel-supabase.js';
+
+		// ── Elementos ───────────────────────────────────────────
+		const formEl          = document.getElementById('login-form');
+		const emailEl         = document.getElementById('input-email');
+		const passwordEl      = document.getElementById('input-password');
+		const btnSubmit       = document.getElementById('btn-submit');
+		const btnTogglePwd    = document.getElementById('btn-toggle-password');
+		const iconEye         = document.getElementById('icon-eye');
+		const iconEyeSlash    = doc
