@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="ATSHEL">
+	<link rel="manifest" href="/manifest.json">
+	<title>Configuración inicial — ATSHEL HSE</title>
+
+	<!-- Fuentes -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+	<!-- CSS sistema de diseño -->
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ────────────────────────────────────────────── */
+		body {
+			background:     var(--surface-base);
+			min-height:     100dvh;
+			display:        flex;
+			flex-direction: column;
+			overflow-x:     hidden;
+		}
+
+		/* Fondo con grilla técnica */
+		body::before {
+			content:    '';
+			position:   fixed;
+			inset:      0;
+			background-image:
+				linear-gradient(var(--border-subtle) 1px, transparent 1px),
+				linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+			background-size: 48px 48px;
+			mask-image:  radial-gradient(ellipse 100% 60% at 50% 0%, black 20%, transparent 100%);
+			pointer-events: none;
+			z-index: 0;
+		}
+
+		/* ── Header ────────────────────────────────────────────── */
+		.setup-header {
+			position:       relative;
+			z-index:        1;
+			display:        flex;
+			align-items:    center;
+			justify-content: space-between;
+			padding:        calc(env(safe-area-inset-top, 16px) + 8px) 20px 12px;
+			gap:            12px;
+		}
+
+		.setup-logo {
+			font-family:    var(--font-condensed);
+			font-size:      1.375rem;
+			font-weight:    800;
+			letter-spacing: -0.02em;
+			color:          var(--text-primary);
+		}
+
+		.setup-logo span { color: var(--accent); }
+
+		/* ── Stepper ────────────────────────────────────────────── */
+		.stepper {
+			display:    flex;
+			align-items: center;
+			gap:        6px;
+		}
+
+		.step-dot {
+			width:         8px;
+			height:        8px;
+			border-radius: var(--radius-full);
+			background:    var(--surface-04);
+			transition:    all var(--transition-base);
+		}
+
+		.step-dot--active {
+			background: var(--accent);
+			width:      20px;
+		}
+
+		.step-dot--done {
+			background: var(--color-success);
+		}
+
+		/* ── Contenido principal ───────────────────────────────── */
+		.setup-content {
+			position:   relative;
+			z-index:    1;
+			flex:       1;
+			display:    flex;
+			flex-direction: column;
+			padding:    0 20px calc(32px + env(safe-area-inset-bottom, 0px));
+		}
+
+		/* ── Paso header ───────────────────────────────────────── */
+		.paso-header {
+			padding:       20px 0 24px;
+		}
+
+		.paso-badge {
+			display:        inline-flex;
+			align-items:    center;
+			gap:            6px;
+			padding:        4px 10px;
+			background:     var(--accent-subtle);
+			border:         1px solid rgba(255,193,7,0.2);
+			border-radius:  var(--radius-full);
+			font-size:      var(--text-xs);
+			font-weight:    600;
+			color:          var(--accent);
+			letter-spacing: var(--tracking-wide);
+			text-transform: uppercase;
+			margin-bottom:  12px;
+		}
+
+		.paso-titulo {
+			font-family:    var(--font-condensed);
+			font-size:      var(--text-2xl);
+			font-weight:    800;
+			color:          var(--text-primary);
+			letter-spacing: var(--tracking-tight);
+			line-height:    var(--leading-tight);
+			margin-bottom:  8px;
+		}
+
+		.paso-desc {
+			font-size:   var(--text-base);
+			color:       var(--text-secondary);
+			line-height: var(--leading-relaxed);
+		}
+
+		/* ═══════════════════════════════════════════════════════
+		   PASO 1 — TÉRMINOS Y CONDICIONES
+		   ═══════════════════════════════════════════════════════ */
+
+		#paso-terminos {
+			display: flex;
+			flex-direction: column;
+			flex: 1;
+		}
+
+		.terminos-card {
+			flex:          1;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: var(--radius-xl);
+			overflow:      hidden;
+			display:       flex;
+			flex-direction: column;
+			margin-bottom: 20px;
+			max-height:    calc(100dvh - 320px);
+			min-height:    200px;
+		}
+
+		.terminos-card__header {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         14px 16px;
+			border-bottom:   1px solid var(--border-subtle);
+			background:      var(--surface-03);
+			flex-shrink:     0;
+		}
+
+		.terminos-card__version {
+			font-family:  var(--font-mono);
+			font-size:    var(--text-xs);
+			color:        var(--text-tertiary);
+			font-weight:  500;
+		}
+
+		.terminos-card__hash {
+			font-family:   var(--font-mono);
+			font-size:     0.625rem;
+			color:         var(--text-tertiary);
+			letter-spacing: 0.02em;
+			max-width:     140px;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+			white-space:   nowrap;
+		}
+
+		.terminos-card__body {
+			flex:        1;
+			overflow-y:  auto;
+			padding:     16px;
+			-webkit-overflow-scrolling: touch;
+		}
+
+		.terminos-card__body::-webkit-scrollbar {
+			width: 3px;
+		}
+
+		.terminos-card__body::-webkit-scrollbar-thumb {
+			background:    var(--border-default);
+			border-radius: var(--radius-full);
+		}
+
+		/* Skeleton de carga */
+		.terminos-skeleton {
+			display:        flex;
+			flex-direction: column;
+			gap:            10px;
+			padding:        4px 0;
+		}
+
+		.terminos-texto {
+			font-size:   var(--text-sm);
+			color:       var(--text-secondary);
+			line-height: var(--leading-relaxed);
+			white-space: pre-wrap;
+		}
+
+		/* Indicador de scroll */
+		.terminos-scroll-hint {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             6px;
+			font-size:       var(--text-xs);
+			color:           var(--text-tertiary);
+			padding:         10px;
+			border-top:      1px solid var(--border-subtle);
+			background:      var(--surface-03);
+			flex-shrink:     0;
+			transition:      opacity var(--transition-base);
+		}
+
+		.terminos-scroll-hint.oculto {
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		/* Checkbox de aceptación */
+		.checkbox-aceptar {
+			display:      flex;
+			align-items:  flex-start;
+			gap:          12px;
+			padding:      16px;
+			background:   var(--surface-02);
+			border:       1px solid var(--border-subtle);
+			border-radius: var(--radius-lg);
+			cursor:       pointer;
+			transition:   all var(--transition-fast);
+			margin-bottom: 16px;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		.checkbox-aceptar:hover {
+			border-color: var(--border-default);
+			background:   var(--surface-03);
+		}
+
+		.checkbox-aceptar.marcado {
+			border-color: rgba(255,193,7,0.4);
+			background:   var(--accent-subtle);
+		}
+
+		.checkbox-aceptar__box {
+			width:            24px;
+			height:           24px;
+			border:           2px solid var(--border-strong);
+			border-radius:    6px;
+			flex-shrink:      0;
+			display:          flex;
+			align-items:      center;
+			justify-content:  center;
+			transition:       all var(--transition-fast);
+			margin-top:       1px;
+		}
+
+		.checkbox-aceptar.marcado .checkbox-aceptar__box {
+			background:   var(--accent);
+			border-color: var(--accent);
+		}
+
+		.checkbox-aceptar__check {
+			display:     none;
+			color:       #0A0C0E;
+			font-size:   14px;
+			font-weight: 800;
+			line-height: 1;
+		}
+
+		.checkbox-aceptar.marcado .checkbox-aceptar__check {
+			display: block;
+		}
+
+		.checkbox-aceptar__texto {
+			font-size:   var(--text-sm);
+			color:       var(--text-secondary);
+			line-height: var(--leading-relaxed);
+		}
+
+		.checkbox-aceptar__texto strong {
+			color:       var(--text-primary);
+			font-weight: 600;
+		}
+
+		/* ═══════════════════════════════════════════════════════
+		   PASO 2 — CONFIGURAR PIN
+		   ═══════════════════════════════════════════════════════ */
+
+		#paso-pin {
+			display: none;
+			flex-direction: column;
+			flex: 1;
+		}
+
+		#paso-pin.activo {
+			display: flex;
+		}
+
+		/* Indicador de estado del PIN */
+		.pin-estado {
+			text-align:  center;
+			min-height:  24px;
+			margin-bottom: 8px;
+		}
+
+		.pin-estado__texto {
+			font-size:   var(--text-sm);
+			font-weight: 500;
+			color:       var(--text-tertiary);
+			transition:  color var(--transition-fast);
+		}
+
+		.pin-estado__texto--confirmando {
+			color: var(--accent);
+		}
+
+		.pin-estado__texto--error {
+			color: var(--color-danger);
+		}
+
+		.pin-estado__texto--ok {
+			color: var(--color-success);
+		}
+
+		/* Display de dígitos */
+		.pin-display {
+			display:         flex;
+			justify-content: center;
+			gap:             14px;
+			padding:         16px 0 32px;
+		}
+
+		.pin-dot {
+			width:         16px;
+			height:        16px;
+			border-radius: var(--radius-full);
+			border:        2px solid var(--border-strong);
+			background:    transparent;
+			transition:    all var(--transition-fast);
+		}
+
+		.pin-dot--filled {
+			background:  var(--accent);
+			border-color: var(--accent);
+			transform:   scale(1.15);
+			box-shadow:  0 0 10px rgba(255,193,7,0.5);
+		}
+
+		.pin-dot--confirmando {
+			border-color: var(--color-info);
+		}
+
+		.pin-dot--confirmando.pin-dot--filled {
+			background:  var(--color-info);
+			border-color: var(--color-info);
+			box-shadow:  0 0 10px rgba(56,189,248,0.5);
+		}
+
+		.pin-dot--error {
+			background:  var(--color-danger);
+			border-color: var(--color-danger);
+			animation:   pin-shake 0.4s ease;
+		}
+
+		.pin-dot--ok {
+			background:  var(--color-success);
+			border-color: var(--color-success);
+			box-shadow:  0 0 10px rgba(34,197,94,0.5);
+		}
+
+		@keyframes pin-shake {
+			0%, 100% { transform: translateX(0) scale(1); }
+			20%       { transform: translateX(-5px) scale(1); }
+			40%       { transform: translateX(5px) scale(1); }
+			60%       { transform: translateX(-3px) scale(1); }
+			80%       { transform: translateX(3px) scale(1); }
+		}
+
+		/* Teclado numérico */
+		.pin-keypad {
+			display:               grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap:                   10px;
+			max-width:             320px;
+			margin:                0 auto 24px;
+			width:                 100%;
+		}
+
+		.pin-key {
+			height:          80px;
+			display:         flex;
+			flex-direction:  column;
+			align-items:     center;
+			justify-content: center;
+			gap:             2px;
+			background:      var(--surface-02);
+			border:          1px solid var(--border-subtle);
+			border-radius:   var(--radius-xl);
+			font-family:     var(--font-mono);
+			font-size:       var(--text-3xl);
+			font-weight:     500;
+			color:           var(--text-primary);
+			cursor:          pointer;
+			transition:      all var(--transition-fast);
+			-webkit-tap-highlight-color: transparent;
+			user-select:     none;
+			letter-spacing:  -0.02em;
+		}
+
+		.pin-key:hover {
+			background:   var(--surface-04);
+			border-color: var(--border-strong);
+		}
+
+		.pin-key:active,
+		.pin-key--pressed {
+			background:  var(--surface-05);
+			transform:   scale(0.93);
+			border-color: var(--accent);
+		}
+
+		.pin-key__sub {
+			font-family:    var(--font-sans);
+			font-size:      var(--text-xs);
+			color:          var(--text-tertiary);
+			letter-spacing: var(--tracking-widest);
+			font-weight:    500;
+			text-transform: uppercase;
+			line-height:    1;
+		}
+
+		/* Tecla borrar */
+		.pin-key--borrar {
+			font-family: var(--font-sans);
+			font-size:   var(--text-base);
+			font-weight: 600;
+			color:       var(--text-secondary);
+		}
+
+		.pin-key--borrar:hover {
+			color: var(--color-danger);
+		}
+
+		/* Tecla vacía (espacio en grilla) */
+		.pin-key--vacio {
+			background:    transparent;
+			border:        none;
+			cursor:        default;
+			pointer-events: none;
+		}
+
+		.pin-key--vacio:hover,
+		.pin-key--vacio:active {
+			background:  transparent;
+			transform:   none;
+			border:      none;
+		}
+
+		/* Reglas de seguridad del PIN */
+		.pin-reglas {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: var(--radius-lg);
+			padding:       14px 16px;
+			margin-bottom: 20px;
+		}
+
+		.pin-reglas__titulo {
+			font-size:      var(--text-xs);
+			font-weight:    600;
+			color:          var(--text-tertiary);
+			letter-spacing: var(--tracking-widest);
+			text-transform: uppercase;
+			margin-bottom:  10px;
+		}
+
+		.pin-regla {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			font-size:   var(--text-sm);
+			color:       var(--text-secondary);
+			padding:     3px 0;
+		}
+
+		.pin-regla__icon {
+			width:            16px;
+			height:           16px;
+			border-radius:    var(--radius-full);
+			background:       var(--surface-04);
+			display:          flex;
+			align-items:      center;
+			justify-content:  center;
+			font-size:        10px;
+			flex-shrink:      0;
+			transition:       all var(--transition-fast);
+		}
+
+		.pin-regla.cumplida .pin-regla__icon {
+			background: var(--color-success-bg);
+			border:     1px solid var(--color-success-border);
+			color:      var(--color-success);
+		}
+
+		.pin-regla.cumplida {
+			color: var(--text-primary);
+		}
+
+		/* ── Alerta de error general ────────────────────────────── */
+		.setup-error {
+			display:        none;
+			align-items:    flex-start;
+			gap:            10px;
+			padding:        14px 16px;
+			background:     var(--color-danger-bg);
+			border:         1px solid var(--color-danger-border);
+			border-radius:  var(--radius-md);
+			font-size:      var(--text-sm);
+			color:          var(--color-danger);
+			line-height:    var(--leading-relaxed);
+			font-weight:    500;
+			margin-bottom:  16px;
+		}
+
+		.setup-error.visible {
+			display: flex;
+		}
+
+		/* ── Spinner de carga ───────────────────────────────────── */
+		.setup-loading {
+			display:         none;
+			flex-direction:  column;
+			align-items:     center;
+			justify-content: center;
+			gap:             16px;
+			padding:         40px 0;
+			color:           var(--text-secondary);
+			font-size:       var(--text-base);
+		}
+
+		.setup-loading.visible {
+			display: flex;
+		}
+
+		.setup-loading__spinner {
+			width:        40px;
+			height:       40px;
+			border:       3px solid var(--surface-04);
+			border-top:   3px solid var(--accent);
+			border-radius: var(--radius-full);
+			animation:    spin 0.8s linear infinite;
+		}
+
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+
+		/* ── Pantalla de éxito ──────────────────────────────────── */
+		#paso-exito {
+			display:         none;
+			flex-direction:  column;
+			align-items:     center;
+			justify-content: center;
+			flex:            1;
+			text-align:      center;
+			padding:         40px 0;
+			gap:             16px;
+		}
+
+		#paso-exito.activo {
+			display: flex;
+		}
+
+		.exito-icon {
+			width:            88px;
+			height:           88px;
+			border-radius:    var(--radius-full);
+			background:       var(--color-success-bg);
+			border:           2px solid var(--color-success-border);
+			display:          flex;
+			align-items:      center;
+			justify-content:  center;
+			font-size:        44px;
+			margin-bottom:    8px;
+			animation:        exito-pop 500ms cubic-bezier(0.34,1.56,0.64,1);
+			box-shadow:       0 0 32px rgba(34,197,94,0.2);
+		}
+
+		@keyframes exito-pop {
+			from { transform: scale(0); opacity: 0; }
+			to   { transform: scale(1); opacity: 1; }
+		}
+
+		.exito-titulo {
+			font-family:    var(--font-condensed);
+			font-size:      var(--text-2xl);
+			font-weight:    800;
+			color:          var(--text-primary);
+			letter-spacing: var(--tracking-tight);
+		}
+
+		.exito-desc {
+			font-size:   var(--text-base);
+			color:       var(--text-secondary);
+			line-height: var(--leading-relaxed);
+			max-width:   280px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<!-- ── HEADER ─────────────────────────────────────────────── -->
+	<header class="setup-header">
+		<div class="setup-logo">AT<span>SH</span>EL</div>
+		<div class="stepper" id="stepper" aria-label="Progreso de configuración">
+			<div class="step-dot step-dot--active" id="dot-1" title="Paso 1: Términos"></div>
+			<div class="step-dot" id="dot-2" title="Paso 2: PIN"></div>
+		</div>
+	</header>
+
+	<!-- ── CONTENIDO ──────────────────────────────────────────── -->
+	<main class="setup-content">
+
+		<!-- ════════════════════════════════════════════════════
+		     PASO 1 — TÉRMINOS Y CONDICIONES
+		     ════════════════════════════════════════════════════ -->
+		<section id="paso-terminos" aria-labelledby="titulo-terminos">
+
+			<div class="paso-header">
+				<div class="paso-badge">Paso 1 de 2</div>
+				<h1 id="titulo-terminos" class="paso-titulo">Términos y condiciones</h1>
+				<p class="paso-desc">
+					Leé atentamente antes de continuar. Tu PIN es tu firma legal.
+				</p>
+			</div>
+
+			<!-- Error -->
+			<div id="error-terminos" class="setup-error" role="alert" aria-live="assertive">
+				<span aria-hidden="true">⚠</span>
+				<span id="error-terminos-texto"></span>
+			</div>
+
+			<!-- Cargando -->
+			<div id="loading-terminos" class="setup-loading visible" aria-live="polite">
+				<div class="setup-loading__spinner" aria-hidden="true"></div>
+				<span>Cargando términos...</span>
+			</div>
+
+			<!-- Card de términos -->
+			<div
+				id="terminos-card"
+				class="terminos-card"
+				style="display:none;"
+				role="region"
+				aria-label="Texto de términos y condiciones"
+			>
+				<div class="terminos-card__header">
+					<span class="terminos-card__version" id="terminos-version">v1.0</span>
+					<span class="terminos-card__hash" id="terminos-hash" title="Hash SHA-256 de integridad"></span>
+				</div>
+				<div
+					class="terminos-card__body"
+					id="terminos-body"
+					tabindex="0"
+					aria-label="Desplazá para leer los términos completos"
+				></div>
+				<div class="terminos-scroll-hint" id="scroll-hint" aria-hidden="true">
+					↓ Desplazá para leer todo
+				</div>
+			</div>
+
+			<!-- Checkbox de aceptación -->
+			<div
+				id="checkbox-aceptar"
+				class="checkbox-aceptar"
+				role="checkbox"
+				aria-checked="false"
+				aria-label="Acepto los términos y condiciones"
+				tabindex="0"
+				style="display:none;"
+			>
+				<div class="checkbox-aceptar__box" aria-hidden="true">
+					<span class="checkbox-aceptar__check">✓</span>
+				</div>
+				<div class="checkbox-aceptar__texto">
+					<strong>Acepto los términos y condiciones.</strong>
+					Entiendo que mi PIN es mi firma digital con validez legal conforme a la Ley 19.587
+					y la Resolución SRT 905/2015.
+				</div>
+			</div>
+
+			<!-- Botón continuar -->
+			<button
+				id="btn-continuar-terminos"
+				class="btn btn--primary btn--full btn--lg"
+				disabled
+				aria-disabled="true"
+				style="display:none;"
+			>
+				Continuar
+			</button>
+
+		</section>
+
+		<!-- ════════════════════════════════════════════════════
+		     PASO 2 — CONFIGURAR PIN
+		     ════════════════════════════════════════════════════ -->
+		<section id="paso-pin" aria-labelledby="titulo-pin">
+
+			<div class="paso-header">
+				<div class="paso-badge">Paso 2 de 2</div>
+				<h2 id="titulo-pin" class="paso-titulo">Creá tu PIN</h2>
+				<p class="paso-desc" id="pin-subtitulo">
+					6 dígitos. Este PIN es tu firma digital personal.
+				</p>
+			</div>
+
+			<!-- Error -->
+			<div id="error-pin" class="setup-error" role="alert" aria-live="assertive">
+				<span aria-hidden="true">⚠</span>
+				<span id="error-pin-texto"></span>
+			</div>
+
+			<!-- Estado del PIN -->
+			<div class="pin-estado" aria-live="polite">
+				<span class="pin-estado__texto" id="pin-estado-texto">Ingresá 6 dígitos</span>
+			</div>
+
+			<!-- Display de puntos -->
+			<div class="pin-display" id="pin-display" aria-hidden="true">
+				<div class="pin-dot" id="pd-0"></div>
+				<div class="pin-dot" id="pd-1"></div>
+				<div class="pin-dot" id="pd-2"></div>
+				<div class="pin-dot" id="pd-3"></div>
+				<div class="pin-dot" id="pd-4"></div>
+				<div class="pin-dot" id="pd-5"></div>
+			</div>
+
+			<!-- Reglas de seguridad -->
+			<div class="pin-reglas" id="pin-reglas">
+				<div class="pin-reglas__titulo">Requisitos del PIN</div>
+				<div class="pin-regla" id="regla-longitud">
+					<div class="pin-regla__icon" aria-hidden="true">—</div>
+					<span>6 dígitos exactos</span>
+				</div>
+				<div class="pin-regla" id="regla-numeros">
+					<div class="pin-regla__icon" aria-hidden="true">—</div>
+					<span>Solo números (0-9)</span>
+				</div>
+				<div class="pin-regla" id="regla-no-secuencia">
+					<div class="pin-regla__icon" aria-hidden="true">—</div>
+					<span>Sin secuencias simples (123456, 000000)</span>
+				</div>
+			</div>
+
+			<!-- Teclado numérico — target ≥48px, sin teclado QWERTY -->
+			<div
+				class="pin-keypad"
+				id="pin-keypad"
+				role="group"
+				aria-label="Teclado numérico PIN"
+			>
+				<!-- Fila 1 -->
+				<button type="button" class="pin-key" data-digit="1" aria-label="1">
+					1
+					<span class="pin-key__sub"></span>
+				</button>
+				<button type="button" class="pin-key" data-digit="2" aria-label="2 ABC">
+					2
+					<span class="pin-key__sub">ABC</span>
+				</button>
+				<button type="button" class="pin-key" data-digit="3" aria-label="3 DEF">
+					3
+					<span class="pin-key__sub">DEF</span>
+				</button>
+				<!-- Fila 2 -->
+				<button type="button" class="pin-key" data-digit="4" aria-label="4 GHI">
+					4
+					<span class="pin-key__sub">GHI</span>
+				</button>
+				<button type="button" class="pin-key" data-digit="5" aria-label="5 JKL">
+					5
+					<span class="pin-key__sub">JKL</span>
+				</button>
+				<button type="button" class="pin-key" data-digit="6" aria-label="6 MNO">
+					6
+					<span class="pin-key__sub">MNO</span>
+				</button>
+				<!-- Fila 3 -->
+				<button type="button" class="pin-key" data-digit="7" aria-label="7 PQRS">
+					7
+					<span class="pin-key__sub">PQRS</span>
+				</button>
+				<button type="button" class="pin-key" data-digit="8" aria-label="8 TUV">
+					8
+					<span class="pin-key__sub">TUV</span>
+				</button>
+				<button type="button" class="pin-key" data-digit="9" aria-label="9 WXYZ">
+					9
+					<span class="pin-key__sub">WXYZ</span>
+				</button>
+				<!-- Fila 4 -->
+				<button type="button" class="pin-key pin-key--vacio" tabindex="-1" aria-hidden="true"></button>
+				<button type="button" class="pin-key" data-digit="0" aria-label="0">
+					0
+					<span class="pin-key__sub"></span>
+				</button>
+				<button type="button" class="pin-key pin-key--borrar" id="btn-borrar" aria-label="Borrar último dígito">
+					⌫
+				</button>
+			</div>
+
+			<!-- Cargando (guardando PIN) -->
+			<div id="loading-pin" class="setup-loading" aria-live="polite">
+				<div class="setup-loading__spinner" aria-hidden="true"></div>
+				<span>Guardando tu PIN...</span>
+			</div>
+
+		</section>
+
+		<!-- ════════════════════════════════════════════════════
+		     PANTALLA DE ÉXITO
+		     ════════════════════════════════════════════════════ -->
+		<section id="paso-exito" aria-labelledby="titulo-exito">
+			<div class="exito-icon" aria-hidden="true">✓</div>
+			<h2 id="titulo-exito" class="exito-titulo">¡Todo listo!</h2>
+			<p class="exito-desc">
+				Tu PIN está configurado. Podés ingresar a ATSHEL.
+			</p>
+			<button
+				id="btn-ir-app"
+				class="btn btn--primary btn--full btn--lg"
+				style="max-width:320px; margin-top:8px;"
+			>
+				Ingresar a ATSHEL
+			</button>
+		</section>
+
+	</main>
+
+	<!-- ── VENDOR ─────────────────────────────────────────────── -->
+	<script src="/vendor/dompurify.min.js"></script>
+	<script src="/vendor/phosphor-icons.min.js"></script>
+
+	<!-- ── MÓDULO DE SETUP ────────────────────────────────────── -->
+	<script type="module">
+		/**
+		 * setup.html — módulo de inicialización.
+		 *
+		 * Flujo:
+		 *   URL ?paso=terminos → mostrar paso 1 (default si no hay parámetro)
+		 *   URL ?paso=pin      → mostrar paso 2 directamente (si términos ya aceptados)
+		 *
+		 * Datos verificados MCP:
+		 *   terminos_versiones: id, version, contenido, hash_sha256, activa
+		 *   terminos_aceptaciones: usuario_id, empresa_id, terminos_version_id,
+		 *                          aceptado_en, user_agent
+		 *   fn_establecer_pin(p_usuario_id uuid, p_pin text)
+		 */
+
+		import { supabase, getSession, getEmpresaId, establecerPin } from '/js/atshel-supabase.js';
+		import { sanitizeHTML } from '/js/atshel-core.js';
+
+		// ── Estado ──────────────────────────────────────────────
+		const estado = {
+			session:          null,
+			usuarioId:        null,
+			empresaId:        null,
+			terminosId:       null,       // UUID de la versión vigente
+			terminosVersion:  null,
+			terminosHash:     null,
+			terminosLeidos:   false,      // True cuando el usuario scrolleó al final
+			terminosAceptados: false,
+			pinActual:        [],          // Dígitos ingresados (primera vez)
+			pinConfirmacion:  [],          // Dígitos de confirmación
+			fasePin:          'ingresar',  // 'ingresar' | 'confirmar'
+			guardandoPin:     false,
+		};
+
+		// ── Elementos DOM ────────────────────────────────────────
+		const pasoTerminos      = document.getElementById('paso-terminos');
+		const pasoPIN           = document.getElementById('paso-pin');
+		const pasoExito         = document.getElementById('paso-exito');
+
+		const loadingTerminos   = document.getElementById('loading-terminos');
+		const errorTerminos     = document.getElementById('error-terminos');
+		const errorTerminosTexto = document.getElementById('error-terminos-texto');
+		const terminosCard      = document.getElementById('terminos-card');
+		const terminosBody      = document.getElementById('terminos-body');
+		const terminosVersion   = document.getElementById('terminos-version');
+		const terminosHash      = document.getElementById('terminos-hash');
+		const scrollHint        = document.getElementById('scroll-hint');
+		const checkboxAceptar   = document.getElementById('checkbox-aceptar');
+		const btnContinuarTerminos = document.getElementById('btn-continuar-terminos');
+
+		const dot1              = document.getElementById('dot-1');
+		const dot2              = document.getElementById('dot-2');
+
+		const pinEstadoTexto    = document.getElementById('pin-estado-texto');
+		const pinDisplay        = document.getElementById('pin-display');
+		const pinDots           = Array.from({ length: 6 }, (_, i) => document.getElementById(`pd-${i}`));
+		const btnBorrar         = document.getElementById('btn-borrar');
+		const loadingPIN        = document.getElementById('loading-pin');
+		const errorPIN          = document.getElementById('error-pin');
+		const errorPINTexto     = document.getElementById('error-pin-texto');
+		const pinReglas         = document.getElementById('pin-reglas');
+		const reglaLongitud     = document.getElementById('regla-longitud');
+		const reglaNumerosEl    = document.getElementById('regla-numeros');
+		const reglaNoSecuencia  = document.getElementById('regla-no-secuencia');
+		const btnIrApp          = document.getElementById('btn-ir-app');
+
+		// ── INICIALIZACIÓN ───────────────────────────────────────
+		async function init() {
+			sessionStorage.setItem('atshel_ultima_pagina', '/setup.html');
+
+			// Verificar sesión
+			const session = await getSession();
+			if (!session) {
+				window.location.replace('/login.html');
+				return;
+			}
+
+			estado.session   = session;
+			estado.usuarioId = session.user.id;
+			estado.empresaId = await getEmpresaId();
+
+			// Determinar paso inicial desde URL
+			const params = new URLSearchParams(window.location.search);
+			const paso   = params.get('paso') ?? 'terminos';
+
+			if (paso === 'pin') {
+				_mostrarPasoPIN();
+			} else {
+				await _cargarTerminos();
+			}
+
+			// Registrar todos los event listeners en init() — nunca en render
+			_registrarListeners();
+		}
+
+		// ── PASO 1: TÉRMINOS ─────────────────────────────────────
+
+		async function _cargarTerminos() {
+			try {
+				// Cargar versión vigente desde Supabase
+				// terminos_versiones NO está en PowerSync — siempre online
+				const { data, error } = await supabase
+					.from('terminos_versiones')
+					.select('id, version, contenido, hash_sha256')
+					.eq('activa', true)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.single();
+
+				if (error || !data) {
+					_mostrarErrorTerminos('No se pudieron cargar los términos. Verificá tu conexión.');
+					return;
+				}
+
+				estado.terminosId      = data.id;
+				estado.terminosVersion = data.version;
+				estado.terminosHash    = data.hash_sha256;
+
+				// Renderizar
+				terminosVersion.textContent = `v${data.version}`;
+				terminosHash.textContent    = data.hash_sha256.slice(0, 16) + '...';
+				terminosHash.title          = `SHA-256: ${data.hash_sha256}`;
+
+				// Sanitizar el contenido antes de renderizar
+				// El contenido viene de la DB pero DOMPurify protege ante cualquier
+				// dato inyectado malicioso en la tabla
+				const contenidoSeguro = typeof DOMPurify !== 'undefined'
+					? DOMPurify.sanitize(data.contenido, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+					: data.contenido;
+
+				terminosBody.textContent = contenidoSeguro;
+
+				// Mostrar card
+				loadingTerminos.classList.remove('visible');
+				terminosCard.style.display = 'flex';
+				checkboxAceptar.style.display = 'flex';
+				btnContinuarTerminos.style.display = 'block';
+
+			} catch (err) {
+				console.error('[ATSHEL] Error cargando términos:', err);
+				_mostrarErrorTerminos('ERR_SYS_03: Error de conexión al cargar términos.');
+			}
+		}
+
+		function _mostrarErrorTerminos(msg) {
+			loadingTerminos.classList.remove('visible');
+			errorTerminosTexto.textContent = msg;
+			errorTerminos.classList.add('visible');
+		}
+
+		async function _aceptarTerminos() {
+			if (!estado.terminosAceptados) return;
+			if (!navigator.onLine) {
+				_mostrarErrorTerminos('Necesitás conexión para aceptar los términos.');
+				return;
+			}
+
+			btnContinuarTerminos.disabled = true;
+			btnContinuarTerminos.textContent = 'Guardando...';
+
+			try {
+				// 1. Insertar en terminos_aceptaciones
+				// Columnas verificadas MCP: usuario_id, empresa_id, terminos_version_id,
+				//                           aceptado_en, user_agent
+				const { error: errAcep } = await supabase
+					.from('terminos_aceptaciones')
+					.insert({
+						usuario_id:          estado.usuarioId,
+						empresa_id:          estado.empresaId,
+						terminos_version_id: estado.terminosId,
+						aceptado_en:         new Date().toISOString(),
+						user_agent:          navigator.userAgent.slice(0, 255),
+					});
+
+				if (errAcep) {
+					// Si ya aceptó (duplicate key), continuar igual
+					if (!errAcep.message?.includes('duplicate') && !errAcep.message?.includes('unique')) {
+						throw errAcep;
+					}
+				}
+
+				// 2. Actualizar terminos_aceptado_en en usuarios
+				// Columna verificada MCP: usuarios.terminos_aceptado_en (timestamptz)
+				await supabase
+					.from('usuarios')
+					.update({ terminos_aceptado_en: new Date().toISOString() })
+					.eq('id', estado.usuarioId);
+
+				// Avanzar al paso 2
+				_mostrarPasoPIN();
+
+			} catch (err) {
+				console.error('[ATSHEL] Error al aceptar términos:', err);
+				btnContinuarTerminos.disabled = false;
+				btnContinuarTerminos.textContent = 'Continuar';
+				_mostrarErrorTerminos(`ERR_SYS_10: No se pudo registrar la aceptación. ${err.message}`);
+			}
+		}
+
+		// ── PASO 2: PIN ──────────────────────────────────────────
+
+		function _mostrarPasoPIN() {
+			pasoTerminos.style.display = 'none';
+			pasoPIN.classList.add('activo');
+
+			// Actualizar stepper
+			dot1.classList.remove('step-dot--active');
+			dot1.classList.add('step-dot--done');
+			dot2.classList.add('step-dot--active');
+
+			_resetearPIN();
+		}
+
+		function _resetearPIN() {
+			estado.pinActual      = [];
+			estado.pinConfirmacion = [];
+			estado.fasePin        = 'ingresar';
+
+			_actualizarDisplayPIN();
+			_actualizarEstadoPIN();
+			_actualizarReglasVisuales();
+
+			errorPIN.classList.remove('visible');
+			pinReglas.style.display = 'block';
+		}
+
+		function _agregarDigito(digito) {
+			if (estado.guardandoPin) return;
+
+			const arr = estado.fasePin === 'ingresar'
+				? estado.pinActual
+				: estado.pinConfirmacion;
+
+			if (arr.length >= 6) return;
+
+			arr.push(digito);
+
+			// Feedback háptico
+			if (navigator.vibrate) navigator.vibrate(8);
+
+			_actualizarDisplayPIN();
+			_actualizarReglasVisuales();
+
+			// Al llegar a 6 dígitos
+			if (arr.length === 6) {
+				setTimeout(_verificarFase, 200);
+			}
+		}
+
+		function _borrarDigito() {
+			if (estado.guardandoPin) return;
+
+			const arr = estado.fasePin === 'ingresar'
+				? estado.pinActual
+				: estado.pinConfirmacion;
+
+			if (arr.length > 0) {
+				arr.pop();
+				_actualizarDisplayPIN();
+				_actualizarReglasVisuales();
+			}
+		}
+
+		function _verificarFase() {
+			if (estado.fasePin === 'ingresar') {
+				// Validar el PIN ingresado
+				const pin = estado.pinActual.join('');
+				const validacion = _validarPin(pin);
+
+				if (!validacion.ok) {
+					_mostrarErrorPIN(validacion.error);
+					_animarError();
+					setTimeout(() => {
+						estado.pinActual = [];
+						_actualizarDisplayPIN();
+						_actualizarEstadoPIN();
+						_actualizarReglasVisuales();
+						errorPIN.classList.remove('visible');
+					}, 1200);
+					return;
+				}
+
+				// Pasar a fase de confirmación
+				estado.fasePin = 'confirmar';
+				_actualizarEstadoPIN();
+				_actualizarDisplayPIN();
+				pinReglas.style.display = 'none';
+
+			} else {
+				// Confirmar
+				const pin1 = estado.pinActual.join('');
+				const pin2 = estado.pinConfirmacion.join('');
+
+				if (pin1 !== pin2) {
+					_mostrarErrorPIN('Los PINs no coinciden. Intentá de nuevo.');
+					_animarError();
+					setTimeout(() => {
+						_resetearPIN();
+						errorPIN.classList.remove('visible');
+					}, 1200);
+					return;
+				}
+
+				// PINs coinciden → guardar
+				_guardarPIN(pin1);
+			}
+		}
+
+		async function _guardarPIN(pin) {
+			estado.guardandoPin = true;
+			loadingPIN.classList.add('visible');
+			pinReglas.style.display = 'none';
+
+			// Animar dots como OK
+			pinDots.forEach((d) => {
+				d.classList.remove('pin-dot--confirmando', 'pin-dot--filled');
+				d.classList.add('pin-dot--ok', 'pin-dot--filled');
+			});
+
+			try {
+				// fn_establecer_pin(p_usuario_id uuid, p_pin text) — verificado MCP
+				const resultado = await establecerPin(estado.usuarioId, pin);
+
+				if (!resultado.ok) {
+					throw new Error(resultado.error);
+				}
+
+				// Éxito
+				loadingPIN.classList.remove('visible');
+				pasoPIN.classList.remove('activo');
+				pasoExito.classList.add('activo');
+
+				// Vibración de éxito
+				if (navigator.vibrate) navigator.vibrate([50, 30, 100]);
+
+			} catch (err) {
+				console.error('[ATSHEL] Error al guardar PIN:', err);
+				estado.guardandoPin = false;
+				loadingPIN.classList.remove('visible');
+				_mostrarErrorPIN(`ERR_HSE_19: No se pudo guardar el PIN. ${err.message}`);
+				_resetearPIN();
+			}
+		}
+
+		// ── Validación de PIN ────────────────────────────────────
+
+		function _validarPin(pin) {
+			if (pin.length !== 6) {
+				return { ok: false, error: 'El PIN debe tener exactamente 6 dígitos.' };
+			}
+
+			if (!/^\d+$/.test(pin)) {
+				return { ok: false, error: 'El PIN solo puede contener números.' };
+			}
+
+			// Secuencias simples prohibidas
+			const secuenciasProhibidas = [
+				'000000','111111','222222','333333','444444',
+				'555555','666666','777777','888888','999999',
+				'123456','234567','345678','456789','987654',
+				'876543','765432','654321','112233','223344',
+			];
+
+			if (secuenciasProhibidas.includes(pin)) {
+				return { ok: false, error: 'PIN demasiado simple. Usá una combinación más segura.' };
+			}
+
+			return { ok: true };
+		}
+
+		// ── Actualizar display visual ────────────────────────────
+
+		function _actualizarDisplayPIN() {
+			const arr          = estado.fasePin === 'ingresar'
+				? estado.pinActual
+				: estado.pinConfirmacion;
+			const confirmando  = estado.fasePin === 'confirmar';
+
+			pinDots.forEach((dot, i) => {
+				dot.classList.remove(
+					'pin-dot--filled', 'pin-dot--confirmando',
+					'pin-dot--error', 'pin-dot--ok'
+				);
+
+				if (i < arr.length) {
+					dot.classList.add('pin-dot--filled');
+					if (confirmando) dot.classList.add('pin-dot--confirmando');
+				}
+			});
+		}
+
+		function _actualizarEstadoPIN() {
+			const textoEl = pinEstadoTexto;
+
+			if (estado.fasePin === 'ingresar') {
+				textoEl.textContent = 'Ingresá 6 dígitos';
+				textoEl.className   = 'pin-estado__texto';
+			} else {
+				textoEl.textContent = 'Confirmá tu PIN';
+				textoEl.className   = 'pin-estado__texto pin-estado__texto--confirmando';
+			}
+		}
+
+		function _actualizarReglasVisuales() {
+			if (estado.fasePin !== 'ingresar') return;
+
+			const pin = estado.pinActual.join('');
+
+			// Longitud
+			if (pin.length === 6) {
+				reglaLongitud.classList.add('cumplida');
+				reglaLongitud.querySelector('.pin-regla__icon').textContent = '✓';
+			} else {
+				reglaLongitud.classList.remove('cumplida');
+				reglaLongitud.querySelector('.pin-regla__icon').textContent = '—';
+			}
+
+			// Solo números
+			if (pin.length > 0 && /^\d+$/.test(pin)) {
+				reglaNumerosEl.classList.add('cumplida');
+				reglaNumerosEl.querySelector('.pin-regla__icon').textContent = '✓';
+			} else {
+				reglaNumerosEl.classList.remove('cumplida');
+				reglaNumerosEl.querySelector('.pin-regla__icon').textContent = '—';
+			}
+
+			// Sin secuencias simples
+			const secuenciasProhibidas = [
+				'000000','111111','222222','333333','444444',
+				'555555','666666','777777','888888','999999',
+				'123456','234567','345678','456789','987654',
+			];
+
+			if (pin.length === 6 && !secuenciasProhibidas.includes(pin)) {
+				reglaNoSecuencia.classList.add('cumplida');
+				reglaNoSecuencia.querySelector('.pin-regla__icon').textContent = '✓';
+			} else {
+				reglaNoSecuencia.classList.remove('cumplida');
+				reglaNoSecuencia.querySelector('.pin-regla__icon').textContent = '—';
+			}
+		}
+
+		function _animarError() {
+			if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+			pinDots.forEach((d) => {
+				d.classList.add('pin-dot--error');
+				setTimeout(() => d.classList.remove('pin-dot--error'), 500);
+			});
+		}
+
+		function _mostrarErrorPIN(msg) {
+			const seguro = typeof DOMPurify !== 'undefined'
+				? DOMPurify.sanitize(msg, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+				: msg;
+			errorPINTexto.textContent = seguro;
+			errorPIN.classList.add('visible');
+		}
+
+		// ── Registrar todos los listeners ────────────────────────
+
+		function _registrarListeners() {
+
+			// ── PASO 1: TÉRMINOS ──────────────────────────────────
+
+			// Checkbox aceptar — click y teclado
+			checkboxAceptar.addEventListener('click', _toggleCheckbox);
+			checkboxAceptar.addEventListener('keydown', (e) => {
+				if (e.key === ' ' || e.key === 'Enter') {
+					e.preventDefault();
+					_toggleCheckbox();
+				}
+			});
+
+			// Botón continuar
+			btnContinuarTerminos.addEventListener('click', _aceptarTerminos);
+
+			// Detectar cuando el usuario scrolleó al final de los términos
+			terminosBody.addEventListener('scroll', _verificarScroll);
+
+			// ── PASO 2: PIN ───────────────────────────────────────
+
+			// Teclas numéricas
+			document.querySelectorAll('.pin-key[data-digit]').forEach((btn) => {
+				btn.addEventListener('click', () => {
+					_agregarDigito(btn.dataset.digit);
+					// Efecto visual press
+					btn.classList.add('pin-key--pressed');
+					setTimeout(() => btn.classList.remove('pin-key--pressed'), 120);
+				});
+			});
+
+			// Tecla borrar
+			btnBorrar.addEventListener('click', _borrarDigito);
+
+			// Teclado físico (para pruebas en desktop)
+			document.addEventListener('keydown', (e) => {
+				if (pasoPIN.classList.contains('activo')) {
+					if (/^\d$/.test(e.key)) _agregarDigito(e.key);
+					if (e.key === 'Backspace') _borrarDigito();
+				}
+			});
+
+			// Botón ir a la app (éxito)
+			btnIrApp.addEventListener('click', () => {
+				window.location.replace('/index.html');
+			});
+		}
+
+		function _toggleCheckbox() {
+			estado.terminosAceptados = !estado.terminosAceptados;
+
+			if (estado.terminosAceptados) {
+				checkboxAceptar.classList.add('marcado');
+				checkboxAceptar.setAttribute('aria-checked', 'true');
+				btnContinuarTerminos.disabled = false;
+				btnContinuarTerminos.removeAttribute('aria-disabled');
+			} else {
+				checkboxAceptar.classList.remove('marcado');
+				checkboxAceptar.setAttribute('aria-checked', 'false');
+				btnContinuarTerminos.disabled = true;
+				btnContinuarTerminos.setAttribute('aria-disabled', 'true');
+			}
+		}
+
+		function _verificarScroll() {
+			const { scrollTop, scrollHeight, clientHeight } = terminosBody;
+			const llegóAlFinal = scrollTop + clientHeight >= scrollHeight - 20;
+
+			if (llegóAlFinal && !estado.terminosLeidos) {
+				estado.terminosLeidos = true;
+				scrollHint.classList.add('oculto');
+			}
+		}
+
+		// ── Arrancar ─────────────────────────────────────────────
+		init().catch((err) => {
+			console.error('[ATSHEL] Error crítico en setup init:', err);
+		});
+	</script>
+
+</body>
+</html>
