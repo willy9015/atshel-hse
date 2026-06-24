@@ -686,4 +686,299 @@
 		const emailEl            = document.getElementById('input-email');
 		const passwordEl         = document.getElementById('input-password');
 		const btnSubmit          = document.getElementById('btn-submit');
-		const bt
+		const btnTogglePwd       = document.getElementById('btn-toggle-password');
+		const iconEye            = document.getElementById('icon-eye');
+		const iconEyeSlash       = document.getElementById('icon-eye-slash');
+		const btnForgot          = document.getElementById('btn-forgot');
+		const formErrorEl        = document.getElementById('form-error');
+		const formErrorTextEl    = document.getElementById('form-error-text');
+		const errorEmailEl       = document.getElementById('error-email');
+		const errorPasswordEl    = document.getElementById('error-password');
+		const connDotEl          = document.getElementById('conn-dot');
+		const connTextEl         = document.getElementById('conn-text');
+
+		// Modal recuperar contraseña
+		const modalForgot        = document.getElementById('modal-forgot');
+		const forgotFormWrap     = document.getElementById('forgot-form-container');
+		const inputForgotEmail   = document.getElementById('input-forgot-email');
+		const errorForgotEmailEl = document.getElementById('error-forgot-email');
+		const btnForgotCancel    = document.getElementById('btn-forgot-cancel');
+		const btnForgotSubmit    = document.getElementById('btn-forgot-submit');
+		const forgotSuccess      = document.getElementById('forgot-success');
+		const btnForgotClose     = document.getElementById('btn-forgot-close');
+
+		// ── Estado ───────────────────────────────────────────────
+		let _submitting = false;
+
+		// ── Mapeo de errores Supabase → español ──────────────────
+		function mapAuthError(msg) {
+			if (!msg) return 'Error desconocido. Intentá de nuevo.';
+			const m = msg.toLowerCase();
+			if (m.includes('invalid login credentials') || m.includes('invalid credentials')) {
+				return 'Email o contraseña incorrectos.';
+			}
+			if (m.includes('email not confirmed')) {
+				return 'Confirmá tu email antes de ingresar. Revisá tu bandeja de entrada.';
+			}
+			if (m.includes('too many requests') || m.includes('rate limit')) {
+				return 'Demasiados intentos. Esperá unos minutos antes de volver a intentar.';
+			}
+			if (m.includes('network') || m.includes('fetch')) {
+				return 'Sin conexión. Verificá tu red e intentá de nuevo.';
+			}
+			return 'No se pudo iniciar sesión. Intentá de nuevo.';
+		}
+
+		// ── Utilidades de UI ─────────────────────────────────────
+		function setFieldError(inputEl, errorEl, msg) {
+			if (msg) {
+				inputEl.setAttribute('aria-invalid', 'true');
+				errorEl.textContent = msg;
+			} else {
+				inputEl.removeAttribute('aria-invalid');
+				errorEl.textContent = '';
+			}
+		}
+
+		function clearErrors() {
+			setFieldError(emailEl,    errorEmailEl,    '');
+			setFieldError(passwordEl, errorPasswordEl, '');
+			formErrorEl.hidden          = true;
+			formErrorTextEl.textContent = '';
+		}
+
+		function showFormError(msg) {
+			formErrorTextEl.textContent = msg;
+			formErrorEl.hidden          = false;
+			formErrorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		}
+
+		function setBtnLoading(loading) {
+			const textEl = btnSubmit.querySelector('.btn-text');
+			const spinEl = btnSubmit.querySelector('.btn-spinner');
+			btnSubmit.disabled  = loading;
+			if (textEl) textEl.hidden = loading;
+			if (spinEl) spinEl.hidden = !loading;
+		}
+
+		// ── Validación ───────────────────────────────────────────
+		function validateForm() {
+			let ok = true;
+
+			const emailVal = emailEl.value.trim();
+			if (!emailVal) {
+				setFieldError(emailEl, errorEmailEl, 'Ingresá tu email.');
+				ok = false;
+			} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+				setFieldError(emailEl, errorEmailEl, 'El formato del email no es válido.');
+				ok = false;
+			} else {
+				setFieldError(emailEl, errorEmailEl, '');
+			}
+
+			const passVal = passwordEl.value;
+			if (!passVal) {
+				setFieldError(passwordEl, errorPasswordEl, 'Ingresá tu contraseña.');
+				ok = false;
+			} else if (passVal.length < 6) {
+				setFieldError(passwordEl, errorPasswordEl, 'Mínimo 6 caracteres.');
+				ok = false;
+			} else {
+				setFieldError(passwordEl, errorPasswordEl, '');
+			}
+
+			return ok;
+		}
+
+		// ── Lógica de redirección post-login ─────────────────────
+		/**
+		 * Consulta public.usuarios para determinar el destino correcto.
+		 * Columnas verificadas MCP:
+		 *   activo (bool), terminos_aceptado_en (timestamptz), deleted_at (timestamptz)
+		 */
+		async function resolvePostLoginRedirect() {
+			const { data: { user }, error: userError } = await supabase.auth.getUser();
+			if (userError || !user) {
+				throw new Error('Sesión inválida. Intentá ingresar de nuevo.');
+			}
+
+			const { data: usuario, error } = await supabase
+				.from('usuarios')
+				.select('activo, terminos_aceptado_en, rol')
+				.eq('id', user.id)
+				.is('deleted_at', null)
+				.single();
+
+			if (error || !usuario) {
+				throw new Error('ERR_SYS_02: No se pudo obtener tu perfil. Contactá al administrador.');
+			}
+
+			if (!usuario.activo) {
+				await supabase.auth.signOut();
+				throw new Error('Tu cuenta está desactivada. Contactá al administrador.');
+			}
+
+			// Términos pendientes → setup
+			if (!usuario.terminos_aceptado_en) {
+				return '/setup.html?paso=terminos';
+			}
+
+			// Todo OK → dashboard
+			return '/index.html';
+		}
+
+		// ── Submit de login ──────────────────────────────────────
+		async function handleSubmit(e) {
+			e.preventDefault();
+			if (_submitting) return;
+
+			clearErrors();
+			if (!validateForm()) return;
+
+			_submitting = true;
+			setBtnLoading(true);
+
+			try {
+				const email = emailEl.value.trim().toLowerCase();
+				const pass  = passwordEl.value;
+
+				const { error: loginError } = await login(email, pass);
+
+				if (loginError) {
+					showFormError(mapAuthError(loginError.message));
+					return;
+				}
+
+				const dest = await resolvePostLoginRedirect();
+				window.location.replace(dest);
+
+			} catch (err) {
+				showFormError(err.message || 'Ocurrió un error inesperado. Intentá de nuevo.');
+			} finally {
+				_submitting = false;
+				setBtnLoading(false);
+			}
+		}
+
+		// ── Toggle visibilidad de contraseña ─────────────────────
+		function togglePassword() {
+			const isPassword           = passwordEl.type === 'password';
+			passwordEl.type            = isPassword ? 'text'  : 'password';
+			iconEye.style.display      = isPassword ? 'none'  : '';
+			iconEyeSlash.style.display = isPassword ? ''      : 'none';
+			btnTogglePwd.setAttribute('aria-label',
+				isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+			);
+		}
+
+		// ── Estado de conexión ───────────────────────────────────
+		function updateConnectionStatus() {
+			const online           = navigator.onLine;
+			connDotEl.className    = 'connection-status__dot ' + (online ? 'online' : 'offline');
+			connTextEl.textContent = online ? 'Conectado' : 'Sin conexión — verificá tu red';
+			// Deshabilitar submit solo si está offline Y no está en proceso
+			if (!_submitting) btnSubmit.disabled = !online;
+		}
+
+		// ── Modal recuperar contraseña ───────────────────────────
+		function openForgotModal() {
+			inputForgotEmail.value           = emailEl.value.trim();
+			errorForgotEmailEl.textContent   = '';
+			forgotSuccess.hidden             = true;
+			forgotFormWrap.hidden            = false;
+			modalForgot.classList.add('is-open');
+			modalForgot.removeAttribute('aria-hidden');
+			inputForgotEmail.focus();
+		}
+
+		function closeForgotModal() {
+			modalForgot.classList.remove('is-open');
+			modalForgot.setAttribute('aria-hidden', 'true');
+		}
+
+		async function handleForgotSubmit() {
+			const emailVal                 = inputForgotEmail.value.trim();
+			errorForgotEmailEl.textContent = '';
+
+			if (!emailVal) {
+				errorForgotEmailEl.textContent = 'Ingresá tu email.';
+				inputForgotEmail.focus();
+				return;
+			}
+			if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+				errorForgotEmailEl.textContent = 'El formato del email no es válido.';
+				inputForgotEmail.focus();
+				return;
+			}
+
+			const textEl              = btnForgotSubmit.querySelector('.btn-text');
+			btnForgotSubmit.disabled  = true;
+			if (textEl) textEl.textContent = 'Enviando...';
+
+			try {
+				await recuperarPassword(emailVal);
+				// Mostrar éxito siempre (no revelar si el email existe)
+				forgotFormWrap.hidden  = true;
+				forgotSuccess.hidden   = false;
+			} catch {
+				errorForgotEmailEl.textContent = 'No se pudo enviar el email. Intentá de nuevo.';
+			} finally {
+				btnForgotSubmit.disabled = false;
+				if (textEl) textEl.textContent = 'Enviar link';
+			}
+		}
+
+		// ── Init ─────────────────────────────────────────────────
+		async function init() {
+			// 1. Redirigir si ya hay sesión activa
+			try {
+				const session = await getSession();
+				if (session) {
+					const dest = await resolvePostLoginRedirect();
+					window.location.replace(dest);
+					return;
+				}
+			} catch {
+				// Sesión inválida o usuario inactivo → cerrar y mostrar login
+				await supabase.auth.signOut().catch(() => {});
+			}
+
+			// 2. Estado de conexión inicial
+			updateConnectionStatus();
+
+			// 3. Event listeners — todos aquí, una sola vez
+			formEl.addEventListener('submit', handleSubmit);
+			btnTogglePwd.addEventListener('click', togglePassword);
+			btnForgot.addEventListener('click', openForgotModal);
+			btnForgotCancel.addEventListener('click', closeForgotModal);
+			btnForgotClose.addEventListener('click', closeForgotModal);
+			btnForgotSubmit.addEventListener('click', handleForgotSubmit);
+
+			// Cerrar modal con Escape
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape' && modalForgot.classList.contains('is-open')) {
+					closeForgotModal();
+				}
+			});
+
+			// Click en el overlay cierra el modal
+			modalForgot.addEventListener('click', (e) => {
+				if (e.target === modalForgot) closeForgotModal();
+			});
+
+			// Estado de red
+			window.addEventListener('online',  updateConnectionStatus);
+			window.addEventListener('offline', updateConnectionStatus);
+
+			// Limpiar errores inline al escribir
+			emailEl.addEventListener('input',    () => setFieldError(emailEl,    errorEmailEl,    ''));
+			passwordEl.addEventListener('input', () => setFieldError(passwordEl, errorPasswordEl, ''));
+
+			// 4. Focus al primer campo
+			emailEl.focus();
+		}
+
+		init();
+	</script>
+</body>
+</html>
