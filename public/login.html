@@ -652,6 +652,7 @@
 	</div>
 
 	<!-- ── VENDOR (síncronos, sin defer ni async) ─────────────── -->
+	<!-- ── VENDOR (síncronos, sin defer ni async) ─────────────── -->
 	<script src="/vendor/dompurify.min.js"></script>
 	<script src="/vendor/phosphor-icons.min.js"></script>
 
@@ -661,24 +662,28 @@
 		 * login.html — módulo de inicialización.
 		 *
 		 * Flujo post-login:
-		 *   1. Login OK → obtener usuario de public.usuarios
+		 *   1. Login OK → consultar public.usuarios
 		 *   2. Si !activo → cerrar sesión + error
 		 *   3. Si !terminos_aceptado_en → /setup.html?paso=terminos
-		 *   4. PIN: /setup.html?paso=pin (setup.html lo maneja)
-		 *   5. Todo OK → /index.html
+		 *   4. Todo OK → /index.html
 		 *
-		 * Columnas verificadas MCP:
-		 *   usuarios.activo (bool), usuarios.terminos_aceptado_en (timestamptz),
-		 *   usuarios.rol ('administrador'|'supervisor'|'hse')
+		 * Columnas verificadas MCP 2026-06-23:
+		 *   usuarios.activo               (bool NOT NULL)
+		 *   usuarios.terminos_aceptado_en (timestamptz NULL)
+		 *   usuarios.rol                  ('administrador'|'supervisor'|'hse')
+		 *   usuarios.deleted_at           (timestamptz NULL)
 		 */
 
-		import { login, logout, getSession, supabase } from '/js/atshel-supabase.js';
+		import {
+			supabase,
+			login,
+			getSession,
+			recuperarPassword,
+		} from '/js/atshel-supabase.js';
 
-		// ── Elementos ───────────────────────────────────────────
-		const formEl          = document.getElementById('login-form');
-		const emailEl         = document.getElementById('input-email');
-		const passwordEl      = document.getElementById('input-password');
-		const btnSubmit       = document.getElementById('btn-submit');
-		const btnTogglePwd    = document.getElementById('btn-toggle-password');
-		const iconEye         = document.getElementById('icon-eye');
-		const iconEyeSlash    = doc
+		// ── Referencias al DOM ───────────────────────────────────
+		const formEl             = document.getElementById('login-form');
+		const emailEl            = document.getElementById('input-email');
+		const passwordEl         = document.getElementById('input-password');
+		const btnSubmit          = document.getElementById('btn-submit');
+		const bt
