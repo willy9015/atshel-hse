@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE Manager — Panel principal">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="ATSHEL">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Panel — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout base ──────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+			position:       relative;
+		}
+
+		/* ── App header ───────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__brand {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.app-header__logo {
+			width:         28px;
+			height:        28px;
+			border-radius: 6px;
+			flex-shrink:   0;
+		}
+
+		.app-header__name {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			letter-spacing: 0.04em;
+			line-height:  1;
+		}
+
+		.app-header__actions {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		/* Badge de sincronización */
+		.sync-badge {
+			display:       flex;
+			align-items:   center;
+			gap:           5px;
+			padding:       4px 8px;
+			border-radius: 20px;
+			font-family:   var(--font-mono);
+			font-size:     10px;
+			font-weight:   500;
+			line-height:   1;
+			cursor:        default;
+			user-select:   none;
+		}
+		.sync-badge--ok      { background: var(--color-success-bg); color: var(--color-success); }
+		.sync-badge--pending { background: var(--color-warning-bg); color: var(--color-warning); }
+		.sync-badge--offline { background: var(--color-danger-bg);  color: var(--color-danger);  }
+
+		.sync-badge__dot {
+			width:         6px;
+			height:        6px;
+			border-radius: 50%;
+			background:    currentColor;
+			flex-shrink:   0;
+		}
+		.sync-badge--pending .sync-badge__dot {
+			animation: pulse-dot 1.4s ease-in-out infinite;
+		}
+		@keyframes pulse-dot {
+			0%, 100% { opacity: 1; }
+			50%       { opacity: 0.3; }
+		}
+
+		/* ── Contenido principal ──────────────────────────────── */
+		.dashboard-main {
+			flex:          1;
+			overflow-y:    auto;
+			padding:       20px 16px calc(80px + env(safe-area-inset-bottom));
+			display:       flex;
+			flex-direction: column;
+			gap:           20px;
+		}
+
+		/* ── Saludo ───────────────────────────────────────────── */
+		.greeting {
+			animation: slide-up 0.4s ease both;
+		}
+		.greeting__sub {
+			font-size:  var(--text-sm);
+			color:      var(--text-secondary);
+			margin-top: 2px;
+		}
+		.greeting__name {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-2xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1.1;
+		}
+		.greeting__role-badge {
+			display:       inline-block;
+			margin-top:    6px;
+			padding:       2px 8px;
+			border-radius: 4px;
+			background:    var(--accent-subtle);
+			border:        1px solid var(--accent-subtle-hover);
+			font-family:   var(--font-mono);
+			font-size:     10px;
+			font-weight:   500;
+			color:         var(--accent);
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+		}
+
+		/* ── Banner de alerta ─────────────────────────────────── */
+		.alert-banner {
+			display:       flex;
+			align-items:   center;
+			gap:           10px;
+			padding:       12px 14px;
+			border-radius: 8px;
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+			animation:     slide-up 0.35s ease both;
+		}
+		.alert-banner--danger {
+			background:  var(--color-danger-bg);
+			border:      1px solid var(--color-danger-border);
+			color:       var(--color-danger);
+		}
+		.alert-banner--warning {
+			background:  var(--color-warning-bg);
+			border:      1px solid var(--color-warning-border);
+			color:       var(--color-warning);
+		}
+		.alert-banner__icon {
+			font-size:  18px;
+			flex-shrink: 0;
+		}
+
+		/* ── Grid de KPIs ─────────────────────────────────────── */
+		.kpi-grid {
+			display:               grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap:                   10px;
+			animation:             slide-up 0.4s 0.05s ease both;
+		}
+
+		.kpi-card {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			padding:       14px 12px;
+			display:       flex;
+			flex-direction: column;
+			gap:           2px;
+			transition:    background 0.15s ease, border-color 0.15s ease;
+			cursor:        default;
+		}
+		.kpi-card:active {
+			background: var(--surface-03);
+		}
+
+		.kpi-card__icon {
+			font-size:    18px;
+			margin-bottom: 4px;
+			line-height:  1;
+		}
+
+		.kpi-card__value {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-3xl);
+			font-weight:  800;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.kpi-card--danger  .kpi-card__value { color: var(--color-danger);  }
+		.kpi-card--warning .kpi-card__value { color: var(--color-warning); }
+		.kpi-card--success .kpi-card__value { color: var(--color-success); }
+		.kpi-card--accent  .kpi-card__value { color: var(--accent);        }
+
+		.kpi-card__label {
+			font-size:   var(--text-xs);
+			font-weight: 600;
+			color:       var(--text-secondary);
+			line-height: 1.3;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		/* Skeleton loader para KPIs */
+		.kpi-skeleton {
+			height:        18px;
+			border-radius: 4px;
+			background:    var(--surface-03);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		.kpi-skeleton--lg { height: 36px; }
+
+		/* ── Barra de cumplimiento ────────────────────────────── */
+		.compliance-bar {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			padding:       14px;
+			display:       flex;
+			flex-direction: column;
+			gap:           8px;
+			animation:     slide-up 0.4s 0.1s ease both;
+		}
+
+		.compliance-bar__header {
+			display:         flex;
+			justify-content: space-between;
+			align-items:     center;
+		}
+
+		.compliance-bar__label {
+			font-size:   var(--text-sm);
+			font-weight: 600;
+			color:       var(--text-secondary);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.compliance-bar__pct {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+		}
+
+		.compliance-bar__track {
+			height:        6px;
+			border-radius: 3px;
+			background:    var(--surface-04);
+			overflow:      hidden;
+		}
+
+		.compliance-bar__fill {
+			height:        100%;
+			border-radius: 3px;
+			background:    var(--color-success);
+			transition:    width 0.6s ease;
+		}
+		.compliance-bar__fill--warn { background: var(--color-warning); }
+		.compliance-bar__fill--bad  { background: var(--color-danger);  }
+
+		.compliance-bar__meta {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+		}
+
+		/* ── Secciones de lista ───────────────────────────────── */
+		.list-section {
+			display:       flex;
+			flex-direction: column;
+			gap:           10px;
+			animation:     slide-up 0.4s 0.15s ease both;
+		}
+
+		.list-section__header {
+			display:         flex;
+			justify-content: space-between;
+			align-items:     baseline;
+		}
+
+		.list-section__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.list-section__link {
+			font-size:      var(--text-sm);
+			font-weight:    600;
+			color:          var(--accent);
+			text-decoration: none;
+		}
+		.list-section__link:hover { color: var(--accent-hover); }
+
+		/* ── Item de lista genérico ───────────────────────────── */
+		.list-item {
+			display:        flex;
+			align-items:    flex-start;
+			gap:            12px;
+			padding:        14px;
+			background:     var(--surface-02);
+			border:         1px solid var(--border-subtle);
+			border-radius:  10px;
+			text-decoration: none;
+			transition:     background 0.15s ease;
+			cursor:         pointer;
+		}
+		.list-item:hover,
+		.list-item:focus-visible { background: var(--surface-03); }
+		.list-item:active         { background: var(--surface-04); }
+
+		.list-item__icon {
+			width:          36px;
+			height:         36px;
+			border-radius:  8px;
+			display:        flex;
+			align-items:    center;
+			justify-content: center;
+			font-size:      16px;
+			flex-shrink:    0;
+		}
+		.list-item__icon--danger  { background: var(--color-danger-bg);  }
+		.list-item__icon--warning { background: var(--color-warning-bg); }
+		.list-item__icon--info    { background: var(--color-info-bg);    }
+		.list-item__icon--success { background: var(--color-success-bg); }
+
+		.list-item__body  { flex: 1; min-width: 0; }
+
+		.list-item__title {
+			font-size:     var(--text-base);
+			font-weight:   600;
+			color:         var(--text-primary);
+			line-height:   1.3;
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+		}
+
+		.list-item__meta {
+			display:     flex;
+			flex-wrap:   wrap;
+			gap:         6px;
+			margin-top:  4px;
+			align-items: center;
+		}
+
+		.list-item__date {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+			font-family: var(--font-mono);
+		}
+
+		/* ── Chips / badges ───────────────────────────────────── */
+		.chip {
+			display:       inline-flex;
+			align-items:   center;
+			padding:       2px 6px;
+			border-radius: 4px;
+			font-size:     10px;
+			font-weight:   600;
+			line-height:   1.4;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			flex-shrink:   0;
+		}
+		.chip--danger  { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--info    { background: var(--color-info-bg);    color: var(--color-info);    }
+		.chip--neutral { background: var(--surface-04);       color: var(--text-secondary);}
+
+		/* ── Estado vacío ─────────────────────────────────────── */
+		.empty-state {
+			padding:     32px 16px;
+			text-align:  center;
+			color:       var(--text-tertiary);
+			font-size:   var(--text-sm);
+			background:  var(--surface-02);
+			border:      1px solid var(--border-subtle);
+			border-radius: 10px;
+		}
+		.empty-state__icon { font-size: 28px; margin-bottom: 8px; }
+
+		/* ── Skeleton genérico ────────────────────────────────── */
+		.skeleton-item {
+			height:        68px;
+			border-radius: 10px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Barra de navegación inferior ─────────────────────── */
+		.bottom-nav {
+			position:     fixed;
+			bottom:       0;
+			left:         0;
+			right:        0;
+			z-index:      100;
+			display:      flex;
+			background:   var(--surface-01);
+			border-top:   1px solid var(--border-subtle);
+			padding-bottom: env(safe-area-inset-bottom);
+		}
+
+		.bottom-nav__item {
+			flex:           1;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            3px;
+			padding:        10px 4px;
+			text-decoration: none;
+			color:          var(--text-tertiary);
+			font-size:      10px;
+			font-weight:    600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			transition:     color 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			min-height:     56px;
+		}
+
+		.bottom-nav__item:hover       { color: var(--text-secondary); }
+		.bottom-nav__item--active     { color: var(--accent); }
+
+		.bottom-nav__icon {
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			width:         28px;
+			height:        28px;
+			border-radius: 8px;
+			transition:    background 0.15s ease;
+			position:      relative;
+		}
+		.bottom-nav__item--active .bottom-nav__icon {
+			background: var(--accent-subtle);
+		}
+
+		.bottom-nav__badge {
+			position:      absolute;
+			top:           -2px;
+			right:         -2px;
+			min-width:     16px;
+			height:        16px;
+			padding:       0 4px;
+			border-radius: 8px;
+			background:    var(--color-danger);
+			color:         #fff;
+			font-family:   var(--font-mono);
+			font-size:     9px;
+			font-weight:   700;
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			line-height:   1;
+		}
+
+		/* ── Animaciones de entrada ───────────────────────────── */
+		@keyframes slide-up {
+			from { opacity: 0; transform: translateY(10px); }
+			to   { opacity: 1; transform: translateY(0);    }
+		}
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__brand">
+			<img
+				src="/icons/icon-192.png"
+				alt=""
+				aria-hidden="true"
+				class="app-header__logo"
+				width="28"
+				height="28"
+			>
+			<span class="app-header__name">ATSHEL</span>
+		</div>
+
+		<div class="app-header__actions">
+			<div
+				id="sync-badge"
+				class="sync-badge sync-badge--pending"
+				aria-live="polite"
+				aria-label="Estado de sincronización"
+			>
+				<span class="sync-badge__dot" aria-hidden="true"></span>
+				<span id="sync-text">Conectando...</span>
+			</div>
+		</div>
+	</header>
+
+	<!-- ── Contenido principal ─────────────────────────────── -->
+	<main class="dashboard-main" id="main-content" role="main">
+
+		<!-- Saludo -->
+		<section class="greeting" aria-label="Saludo">
+			<p id="greeting-time" class="greeting__sub">Cargando...</p>
+			<h1 id="greeting-name" class="greeting__name">—</h1>
+			<span id="greeting-role" class="greeting__role-badge" aria-label="Rol">—</span>
+		</section>
+
+		<!-- Banner de alerta equipos (oculto por defecto) -->
+		<div
+			id="banner-equipos"
+			class="alert-banner alert-banner--danger"
+			role="alert"
+			aria-live="assertive"
+			hidden
+		>
+			<span class="alert-banner__icon" aria-hidden="true">⚠️</span>
+			<span id="banner-equipos-texto"></span>
+		</div>
+
+		<!-- KPI Cards -->
+		<section aria-label="Indicadores del período">
+			<div class="kpi-grid" id="kpi-grid">
+				<!-- Incidentes -->
+				<div class="kpi-card" id="kpi-incidentes" role="img" aria-label="Incidentes">
+					<div class="kpi-card__icon" aria-hidden="true">⚠️</div>
+					<div id="kpi-inc-valor" class="kpi-card__value">—</div>
+					<div class="kpi-card__label">Incidentes</div>
+				</div>
+				<!-- Acciones pendientes -->
+				<div class="kpi-card" id="kpi-acciones" role="img" aria-label="Acciones pendientes">
+					<div class="kpi-card__icon" aria-hidden="true">📋</div>
+					<div id="kpi-acc-valor" class="kpi-card__value">—</div>
+					<div class="kpi-card__label">Acc. pendientes</div>
+				</div>
+				<!-- ATS firmados -->
+				<div class="kpi-card kpi-card--success" id="kpi-ats" role="img" aria-label="ATS firmados">
+					<div class="kpi-card__icon" aria-hidden="true">✅</div>
+					<div id="kpi-ats-valor" class="kpi-card__value">—</div>
+					<div class="kpi-card__label">ATS firmados</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Barra de cumplimiento de acciones -->
+		<div class="compliance-bar" id="compliance-bar" aria-label="Cumplimiento de acciones correctivas">
+			<div class="compliance-bar__header">
+				<span class="compliance-bar__label">Cumplimiento acciones</span>
+				<span id="compliance-pct" class="compliance-bar__pct">—</span>
+			</div>
+			<div class="compliance-bar__track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-labelledby="compliance-pct">
+				<div id="compliance-fill" class="compliance-bar__fill" style="width:0%"></div>
+			</div>
+			<div id="compliance-meta" class="compliance-bar__meta">Últimos 30 días · Meta ISO 45001: ≥ 90%</div>
+		</div>
+
+		<!-- Acciones urgentes -->
+		<section class="list-section" aria-labelledby="title-acciones">
+			<div class="list-section__header">
+				<h2 id="title-acciones" class="list-section__title">Acciones urgentes</h2>
+				<a href="/accion-nueva.html" class="list-section__link">+ Nueva</a>
+			</div>
+			<div id="list-acciones" aria-live="polite">
+				<div class="skeleton-item"></div>
+				<div class="skeleton-item"></div>
+			</div>
+		</section>
+
+		<!-- Últimos incidentes -->
+		<section class="list-section" aria-labelledby="title-incidentes">
+			<div class="list-section__header">
+				<h2 id="title-incidentes" class="list-section__title">Últimos incidentes</h2>
+				<a href="/incidentes.html" class="list-section__link">Ver todos</a>
+			</div>
+			<div id="list-incidentes" aria-live="polite">
+				<div class="skeleton-item"></div>
+				<div class="skeleton-item"></div>
+				<div class="skeleton-item"></div>
+			</div>
+		</section>
+
+	</main>
+
+	<!-- ── Navegación inferior ─────────────────────────────── -->
+	<nav class="bottom-nav" aria-label="Navegación principal">
+
+		<a href="/dashboard.html" class="bottom-nav__item bottom-nav__item--active" aria-current="page">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48a16,16,0,0,1,21.66,0l80,75.48A16,16,0,0,1,224,115.55Z"/>
+				</svg>
+			</span>
+			<span>Inicio</span>
+		</a>
+
+		<a href="/incidentes.html" class="bottom-nav__item" aria-label="Incidentes">
+			<span class="bottom-nav__icon" aria-hidden="true" id="nav-icon-incidentes">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M236.8,188.09,149.35,36.22a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/>
+				</svg>
+				<span id="nav-badge-incidentes" class="bottom-nav__badge" hidden aria-label="incidentes pendientes"></span>
+			</span>
+			<span>Incidentes</span>
+		</a>
+
+		<a href="/ats-nuevo.html" class="bottom-nav__item" aria-label="ATS nuevo">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM40,64H216V80H40ZM216,192H40V96H216Zm-32-72a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,120Zm0,32a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,152ZM96,120a8,8,0,0,1-8,8H80v8a8,8,0,0,1-16,0v-8H56a8,8,0,0,1,0-16H64v-8a8,8,0,0,1,16,0v8h8A8,8,0,0,1,96,120Z"/>
+				</svg>
+			</span>
+			<span>ATS</span>
+		</a>
+
+		<a href="/near-miss.html" class="bottom-nav__item" aria-label="Near miss">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/>
+				</svg>
+			</span>
+			<span>Near Miss</span>
+		</a>
+
+		<a href="/accion-nueva.html" class="bottom-nav__item" aria-label="Acciones correctivas">
+			<span class="bottom-nav__icon" aria-hidden="true" id="nav-icon-acciones">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M243.28,68.24l-24-23.56a16,16,0,0,0-22.59.27L115.27,133.67a16,16,0,0,0,0,22.58l16,16a16.07,16.07,0,0,0,11.31,4.69,15.9,15.9,0,0,0,11.2-4.5l-4-4L213.05,105Zm-56.5,81.77a0,0,0,0,1,0,0l-16-16L243.25,60.35l24,23.56ZM48,68a12,12,0,1,1,12,12A12,12,0,0,1,48,68ZM104,52a12,12,0,1,1,12,12A12,12,0,0,1,104,52ZM162,36a12,12,0,1,1,12,12A12,12,0,0,1,162,36ZM32,120a12,12,0,1,1,12,12A12,12,0,0,1,32,120ZM168,200a12,12,0,1,1,12,12A12,12,0,0,1,168,200ZM124,184a12,12,0,1,1,12,12A12,12,0,0,1,124,184ZM80,168a12,12,0,1,1,12,12A12,12,0,0,1,80,168Z"/>
+				</svg>
+				<span id="nav-badge-acciones" class="bottom-nav__badge" hidden aria-label="acciones pendientes"></span>
+			</span>
+			<span>Acciones</span>
+		</a>
+
+	</nav>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor (síncronos) ──────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo principal ────────────────────────────────── -->
+<script type="module">
+	/**
+	 * dashboard.html — módulo principal.
+	 *
+	 * Fuentes de datos (todas verificadas MCP 2026-06-24):
+	 *   · fn_calcular_kpis(p_empresa_id, p_desde, p_hasta) → JSONB
+	 *       Retorna: incidentes.total, acciones_correctivas.totales,
+	 *                acciones_correctivas.porcentaje_cumplimiento,
+	 *                documentacion.ats_firmados, equipos.vencidos, etc.
+	 *   · public.incidentes (estado: 'Abierto'|'En investigación'|'Cerrado')
+	 *   · public.acciones_correctivas (estado: 'Pendiente'|'En curso'|'Vencida'|'Completada')
+	 *
+	 * Enums verificados con pg_get_constraintdef(oid):
+	 *   incidentes.severidad : 'Leve'|'Moderado'|'Grave'|'Catastrófico'
+	 *   incidentes.tipo      : 'Incidente real'|'Cuasi-accidente'|'Acto inseguro'|'Condición insegura'
+	 */
+
+	import {
+		supabase,
+		getUsuario,
+		getEmpresaId,
+		getRol,
+		requireAuth,
+		calcularKpis,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		formatFechaCorta,
+	} from '/js/atshel-core.js';
+
+	// ── Referencias al DOM ───────────────────────────────────
+	const greetingTimeEl    = document.getElementById('greeting-time');
+	const greetingNameEl    = document.getElementById('greeting-name');
+	const greetingRoleEl    = document.getElementById('greeting-role');
+	const syncBadgeEl       = document.getElementById('sync-badge');
+	const syncTextEl        = document.getElementById('sync-text');
+	const bannerEquiposEl   = document.getElementById('banner-equipos');
+	const bannerEquiposTxt  = document.getElementById('banner-equipos-texto');
+	const kpiIncValorEl     = document.getElementById('kpi-inc-valor');
+	const kpiAccValorEl     = document.getElementById('kpi-acc-valor');
+	const kpiAtsValorEl     = document.getElementById('kpi-ats-valor');
+	const kpiCardAccEl      = document.getElementById('kpi-acciones');
+	const compliancePctEl   = document.getElementById('compliance-pct');
+	const complianceFillEl  = document.getElementById('compliance-fill');
+	const complianceMetaEl  = document.getElementById('compliance-meta');
+	const listAccionesEl    = document.getElementById('list-acciones');
+	const listIncidentesEl  = document.getElementById('list-incidentes');
+	const navBadgeIncEl     = document.getElementById('nav-badge-incidentes');
+	const navBadgeAccEl     = document.getElementById('nav-badge-acciones');
+
+	// ── Helpers de saludo ────────────────────────────────────
+	function getSaludo() {
+		const h = new Date().getHours();
+		if (h >= 6  && h < 12) return 'Buenos días';
+		if (h >= 12 && h < 19) return 'Buenas tardes';
+		return 'Buenas noches';
+	}
+
+	const ROLES_LABEL = {
+		administrador: 'Administrador',
+		supervisor:    'Supervisor',
+		hse:           'HSE',
+	};
+
+	// ── Helpers de chips ─────────────────────────────────────
+	function chipSeveridad(sev) {
+		const map = {
+			'Leve':        ['neutral',  'Leve'],
+			'Moderado':    ['warning',  'Moderado'],
+			'Grave':       ['danger',   'Grave'],
+			'Catastrófico':['danger',   'Catastrófico'],
+		};
+		const [tipo, label] = map[sev] || ['neutral', sev || '—'];
+		return `<span class="chip chip--${tipo}">${sanitizeHTML(label)}</span>`;
+	}
+
+	function chipEstadoAccion(estado) {
+		const map = {
+			'Pendiente': 'warning',
+			'En curso':  'info',
+			'Vencida':   'danger',
+			'Completada':'success',
+		};
+		const tipo = map[estado] || 'neutral';
+		return `<span class="chip chip--${tipo}">${sanitizeHTML(estado || '—')}</span>`;
+	}
+
+	function chipEstadoIncidente(estado) {
+		const map = {
+			'Abierto':           'danger',
+			'En investigación':  'warning',
+			'Cerrado':           'success',
+		};
+		const tipo = map[estado] || 'neutral';
+		return `<span class="chip chip--${tipo}">${sanitizeHTML(estado || '—')}</span>`;
+	}
+
+	// Icono y clase para incidente según tipo
+	function incidenteIconData(tipo) {
+		const map = {
+			'Incidente real':   ['⚠️', 'danger'],
+			'Cuasi-accidente':  ['🔶', 'warning'],
+			'Acto inseguro':    ['👁️', 'info'],
+			'Condición insegura':['🔧','info'],
+		};
+		return map[tipo] || ['📌', 'neutral'];
+	}
+
+	// ── Actualizar badge de sincronización ───────────────────
+	function updateSyncBadge(estado) {
+		// estado: 'ok' | 'pending' | 'offline'
+		const clases = {
+			ok:      'sync-badge sync-badge--ok',
+			pending: 'sync-badge sync-badge--pending',
+			offline: 'sync-badge sync-badge--offline',
+		};
+		const textos = {
+			ok:      'Sincronizado',
+			pending: 'Sincronizando...',
+			offline: 'Sin conexión',
+		};
+		syncBadgeEl.className = clases[estado] || clases.pending;
+		syncTextEl.textContent = textos[estado] || textos.pending;
+	}
+
+	// ── Render: KPIs ─────────────────────────────────────────
+	function renderKpis(kpis) {
+		if (!kpis) return;
+
+		const totalInc = kpis.incidentes?.total ?? 0;
+		kpiIncValorEl.textContent = totalInc;
+		// Color según riesgo
+		if (totalInc === 0) {
+			document.getElementById('kpi-incidentes').classList.add('kpi-card--success');
+		} else if (totalInc >= 3) {
+			document.getElementById('kpi-incidentes').classList.add('kpi-card--danger');
+		} else {
+			document.getElementById('kpi-incidentes').classList.add('kpi-card--warning');
+		}
+
+		const atsVal = kpis.documentacion?.ats_firmados ?? 0;
+		kpiAtsValorEl.textContent = atsVal;
+
+		// Cumplimiento
+		const pct = kpis.acciones_correctivas?.porcentaje_cumplimiento;
+		if (pct !== null && pct !== undefined) {
+			compliancePctEl.textContent = pct + '%';
+			complianceFillEl.style.width = Math.min(pct, 100) + '%';
+			complianceFillEl.parentElement.setAttribute('aria-valuenow', pct);
+			if (pct >= 90) {
+				complianceFillEl.className = 'compliance-bar__fill';
+			} else if (pct >= 70) {
+				complianceFillEl.className = 'compliance-bar__fill compliance-bar__fill--warn';
+			} else {
+				complianceFillEl.className = 'compliance-bar__fill compliance-bar__fill--bad';
+			}
+			const tot   = kpis.acciones_correctivas?.totales ?? 0;
+			const cerr  = kpis.acciones_correctivas?.cerradas_a_tiempo ?? 0;
+			complianceMetaEl.textContent =
+				`${cerr} de ${tot} cerradas a tiempo · Meta ISO 45001: ≥ 90%`;
+		} else {
+			compliancePctEl.textContent  = 'Sin datos';
+			complianceFillEl.style.width = '0%';
+			complianceMetaEl.textContent = 'No hay acciones en el período.';
+		}
+
+		// Equipos vencidos
+		const venc = kpis.equipos?.vencidos ?? 0;
+		const porV = kpis.equipos?.por_vencer ?? 0;
+		if (venc > 0) {
+			bannerEquiposTxt.textContent =
+				`${venc} equipo${venc > 1 ? 's' : ''} con calibración vencida. Revisá antes de operar.`;
+			bannerEquiposEl.hidden = false;
+			bannerEquiposEl.className = 'alert-banner alert-banner--danger';
+		} else if (porV > 0) {
+			bannerEquiposTxt.textContent =
+				`${porV} equipo${porV > 1 ? 's' : ''} vence${porV === 1 ? 'n' : ''} en los próximos 30 días.`;
+			bannerEquiposEl.hidden = false;
+			bannerEquiposEl.className = 'alert-banner alert-banner--warning';
+		}
+	}
+
+	// ── Render: acciones urgentes ────────────────────────────
+	function renderAcciones(acciones, totalPendiente) {
+		// Actualizar KPI de acciones pendientes
+		kpiAccValorEl.textContent = totalPendiente ?? 0;
+		if ((totalPendiente ?? 0) > 0) {
+			kpiCardAccEl.classList.add('kpi-card--warning');
+		}
+		// Badge en nav
+		if (totalPendiente > 0) {
+			navBadgeAccEl.textContent = totalPendiente > 9 ? '9+' : String(totalPendiente);
+			navBadgeAccEl.hidden = false;
+		}
+
+		if (!acciones || acciones.length === 0) {
+			listAccionesEl.innerHTML =
+				`<div class="empty-state">
+					<div class="empty-state__icon">✅</div>
+					Sin acciones urgentes
+				</div>`;
+			return;
+		}
+
+		const items = acciones.map(a => {
+			const esVencida = a.estado === 'Vencida';
+			const venc = a.fecha_vencimiento
+				? formatFechaCorta(a.fecha_vencimiento)
+				: 'Sin fecha';
+			return `
+			<a href="/accion-detalle.html?id=${sanitizeHTML(a.id)}"
+			   class="list-item"
+			   aria-label="Acción: ${sanitizeHTML(a.descripcion?.substring(0,60) ?? '—')}">
+				<div class="list-item__icon ${esVencida ? 'list-item__icon--danger' : 'list-item__icon--warning'}"
+				     aria-hidden="true">
+					${esVencida ? '🔴' : '🟠'}
+				</div>
+				<div class="list-item__body">
+					<div class="list-item__title">${sanitizeHTML(a.descripcion?.substring(0,80) ?? '—')}</div>
+					<div class="list-item__meta">
+						${chipEstadoAccion(a.estado)}
+						<span class="list-item__date">Vence: ${sanitizeHTML(venc)}</span>
+					</div>
+				</div>
+			</a>`;
+		}).join('');
+
+		listAccionesEl.innerHTML = items;
+	}
+
+	// ── Render: incidentes recientes ─────────────────────────
+	function renderIncidentes(incidentes, cantAbiertas) {
+		// Badge en nav
+		if (cantAbiertas > 0) {
+			navBadgeIncEl.textContent = cantAbiertas > 9 ? '9+' : String(cantAbiertas);
+			navBadgeIncEl.hidden = false;
+			navBadgeIncEl.setAttribute('aria-label', `${cantAbiertas} incidentes abiertos`);
+		}
+
+		if (!incidentes || incidentes.length === 0) {
+			listIncidentesEl.innerHTML =
+				`<div class="empty-state">
+					<div class="empty-state__icon">🛡️</div>
+					Sin incidentes en los últimos 30 días
+				</div>`;
+			return;
+		}
+
+		const items = incidentes.map(inc => {
+			const [icono, iconClass] = incidenteIconData(inc.tipo);
+			const fecha = inc.fecha_hora
+				? formatFechaCorta(inc.fecha_hora)
+				: 'Sin fecha';
+			const lugar = inc.locacion_nombre
+				? ` · ${inc.locacion_nombre}`
+				: '';
+			return `
+			<a href="/incidente-detalle.html?id=${sanitizeHTML(inc.id)}"
+			   class="list-item"
+			   aria-label="Incidente ${sanitizeHTML(inc.numero ?? '')}: ${sanitizeHTML(inc.descripcion?.substring(0,60) ?? '—')}">
+				<div class="list-item__icon list-item__icon--${iconClass}" aria-hidden="true">
+					${icono}
+				</div>
+				<div class="list-item__body">
+					<div class="list-item__title">${sanitizeHTML(inc.descripcion?.substring(0,80) ?? '—')}</div>
+					<div class="list-item__meta">
+						${chipSeveridad(inc.severidad)}
+						${chipEstadoIncidente(inc.estado)}
+						<span class="list-item__date">${sanitizeHTML(fecha + lugar)}</span>
+					</div>
+				</div>
+			</a>`;
+		}).join('');
+
+		listIncidentesEl.innerHTML = items;
+	}
+
+	// ── Estado de error por sección ──────────────────────────
+	function renderSectionError(containerEl, msg) {
+		containerEl.innerHTML =
+			`<div class="empty-state">
+				<div class="empty-state__icon">⚡</div>
+				${sanitizeHTML(msg)}
+			</div>`;
+	}
+
+	// ── Carga de datos ───────────────────────────────────────
+	async function cargarDatos(empresaId) {
+		const hoy    = new Date();
+		const desde  = new Date(hoy);
+		desde.setDate(desde.getDate() - 30);
+		const desdeStr = desde.toISOString().slice(0, 10);
+		const hastaStr = hoy.toISOString().slice(0, 10);
+
+		// Las tres cargas en paralelo para minimizar latencia
+		const [kpisResult, accionesResult, incidentesResult] = await Promise.allSettled([
+
+			// 1. KPIs vía RPC
+			calcularKpis({ empresaId, desde: desdeStr, hasta: hastaStr }),
+
+			// 2. Acciones urgentes (Pendiente, En curso, Vencida) — máximo 5
+			supabase
+				.from('acciones_correctivas')
+				.select('id, descripcion, estado, fecha_vencimiento')
+				.in('estado', ['Pendiente', 'En curso', 'Vencida'])
+				.is('deleted_at', null)
+				.order('fecha_vencimiento', { ascending: true, nullsFirst: false })
+				.limit(5),
+
+			// 3. Incidentes recientes — máximo 5
+			supabase
+				.from('incidentes')
+				.select('id, numero, tipo, severidad, estado, descripcion, fecha_hora, locacion_nombre')
+				.is('deleted_at', null)
+				.order('created_at', { ascending: false })
+				.limit(5),
+		]);
+
+		// KPIs
+		if (kpisResult.status === 'fulfilled' && !kpisResult.value?.error) {
+			renderKpis(kpisResult.value?.data ?? kpisResult.value);
+		} else {
+			// KPIs indisponibles — no es bloqueante, mostrar parcial
+			kpiIncValorEl.textContent = '—';
+			kpiAccValorEl.textContent = '—';
+			kpiAtsValorEl.textContent = '—';
+		}
+
+		// Acciones
+		if (accionesResult.status === 'fulfilled' && !accionesResult.value?.error) {
+			const { data } = accionesResult.value;
+			// Contar totales pendientes (para badge)
+			const { count } = await supabase
+				.from('acciones_correctivas')
+				.select('id', { count: 'exact', head: true })
+				.in('estado', ['Pendiente', 'En curso', 'Vencida'])
+				.is('deleted_at', null);
+			renderAcciones(data, count ?? 0);
+		} else {
+			renderSectionError(listAccionesEl, 'No se pudieron cargar las acciones.');
+		}
+
+		// Incidentes
+		if (incidentesResult.status === 'fulfilled' && !incidentesResult.value?.error) {
+			const { data } = incidentesResult.value;
+			// Contar abiertos para badge
+			const { count: cantAbiertas } = await supabase
+				.from('incidentes')
+				.select('id', { count: 'exact', head: true })
+				.in('estado', ['Abierto', 'En investigación'])
+				.is('deleted_at', null);
+			renderIncidentes(data, cantAbiertas ?? 0);
+		} else {
+			renderSectionError(listIncidentesEl, 'No se pudieron cargar los incidentes.');
+		}
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Verificar sesión — redirige a login si no hay
+		await requireAuth('/login.html');
+
+		// 2. Cargar datos del usuario
+		let usuario;
+		try {
+			usuario = await getUsuario();
+		} catch {
+			// Si falla, redirigir a login
+			window.location.replace('/login.html');
+			return;
+		}
+
+		// 3. Renderizar saludo inmediatamente (no espera los KPIs)
+		greetingTimeEl.textContent = getSaludo();
+		const nombre = usuario?.nombre_completo?.split(' ')[0] ?? 'Operador';
+		greetingNameEl.textContent = nombre;
+		const rol = usuario?.rol ?? await getRol() ?? 'hse';
+		greetingRoleEl.textContent = ROLES_LABEL[rol] ?? rol;
+
+		// 4. Estado de red inicial
+		updateSyncBadge(navigator.onLine ? 'pending' : 'offline');
+
+		// 5. Cargar datos en paralelo
+		const empresaId = usuario?.empresa_id ?? await getEmpresaId();
+		try {
+			await cargarDatos(empresaId);
+			updateSyncBadge(navigator.onLine ? 'ok' : 'offline');
+		} catch {
+			updateSyncBadge('offline');
+		}
+
+		// 6. Actualizar badge de red en tiempo real
+		window.addEventListener('online',  () => updateSyncBadge('ok'));
+		window.addEventListener('offline', () => updateSyncBadge('offline'));
+	}
+
+	init();
+</script>
+</body>
+</html>
