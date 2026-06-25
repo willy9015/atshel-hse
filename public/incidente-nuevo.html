@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Reportar nuevo incidente">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Nuevo incidente — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			transition:      background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:hover  { background: var(--surface-03); }
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Form main ────────────────────────────────────────── */
+		.form-main {
+			flex:           1;
+			padding:        20px 16px calc(100px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            24px;
+		}
+
+		/* ── Sección ──────────────────────────────────────────── */
+		.form-section {
+			display:        flex;
+			flex-direction: column;
+			gap:            10px;
+		}
+
+		.form-section__label {
+			font-family:    var(--font-condensed);
+			font-size:      var(--text-lg);
+			font-weight:    700;
+			color:          var(--text-primary);
+			line-height:    1;
+		}
+
+		.form-section__label abbr {
+			text-decoration: none;
+			color:           var(--color-danger);
+			margin-left:     2px;
+		}
+
+		.form-section__hint {
+			font-size:  var(--text-sm);
+			color:      var(--text-tertiary);
+			margin-top: -4px;
+		}
+
+		/* ── Selector de tipo (4 cards grandes) ───────────────── */
+		.tipo-grid {
+			display:               grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap:                   8px;
+		}
+
+		.tipo-card {
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            6px;
+			padding:        16px 10px;
+			border-radius:  10px;
+			border:         2px solid var(--border-subtle);
+			background:     var(--surface-02);
+			cursor:         pointer;
+			transition:     all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			user-select:    none;
+			min-height:     80px;
+		}
+		.tipo-card:hover { background: var(--surface-03); }
+		.tipo-card:active { transform: scale(0.98); }
+
+		.tipo-card__icon   { font-size: 24px; line-height: 1; }
+		.tipo-card__label  {
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			color:       var(--text-secondary);
+			text-align:  center;
+			line-height: 1.2;
+		}
+
+		.tipo-card[aria-pressed="true"] {
+			border-color: var(--accent);
+			background:   var(--accent-subtle);
+		}
+		.tipo-card[aria-pressed="true"] .tipo-card__label {
+			color: var(--accent);
+		}
+
+		/* ── Selector de severidad (4 cards de colores) ────────── */
+		.sev-grid {
+			display:               grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap:                   6px;
+		}
+
+		.sev-card {
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            4px;
+			padding:        10px 4px;
+			border-radius:  8px;
+			border:         2px solid transparent;
+			cursor:         pointer;
+			transition:     all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			user-select:    none;
+			min-height:     64px;
+		}
+		.sev-card:active { transform: scale(0.97); }
+
+		.sev-card__dot {
+			width:         12px;
+			height:        12px;
+			border-radius: 50%;
+		}
+		.sev-card__label {
+			font-size:   10px;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			text-align:  center;
+			line-height: 1.2;
+		}
+
+		/* Colores por severidad */
+		.sev-card--leve {
+			background:   var(--color-success-bg);
+			border-color: var(--color-success-bg);
+			color:        var(--color-success);
+		}
+		.sev-card--leve .sev-card__dot { background: var(--color-success); }
+		.sev-card--leve[aria-pressed="true"] {
+			border-color: var(--color-success);
+		}
+
+		.sev-card--moderado {
+			background:   var(--color-warning-bg);
+			border-color: var(--color-warning-bg);
+			color:        var(--color-warning);
+		}
+		.sev-card--moderado .sev-card__dot { background: var(--color-warning); }
+		.sev-card--moderado[aria-pressed="true"] {
+			border-color: var(--color-warning);
+		}
+
+		.sev-card--grave {
+			background:   rgba(255,100,0,0.1);
+			border-color: rgba(255,100,0,0.1);
+			color:        #FF6400;
+		}
+		.sev-card--grave .sev-card__dot { background: #FF6400; }
+		.sev-card--grave[aria-pressed="true"] {
+			border-color: #FF6400;
+		}
+
+		.sev-card--catastrofico {
+			background:   var(--color-danger-bg);
+			border-color: var(--color-danger-bg);
+			color:        var(--color-danger);
+		}
+		.sev-card--catastrofico .sev-card__dot { background: var(--color-danger); }
+		.sev-card--catastrofico[aria-pressed="true"] {
+			border-color: var(--color-danger);
+		}
+
+		/* ── Campos de texto estándar ─────────────────────────── */
+		.field {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
+
+		.field__label {
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			color:       var(--text-secondary);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+		.field__label abbr {
+			text-decoration: none;
+			color: var(--color-danger);
+			margin-left: 2px;
+		}
+
+		.field__input,
+		.field__textarea,
+		.field__datetime {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       11px 14px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__input:focus,
+		.field__textarea:focus,
+		.field__datetime:focus {
+			border-color: var(--accent);
+		}
+		.field__input::placeholder,
+		.field__textarea::placeholder {
+			color: var(--text-tertiary);
+		}
+		.field__input[aria-invalid="true"],
+		.field__textarea[aria-invalid="true"],
+		.field__datetime[aria-invalid="true"] {
+			border-color: var(--color-danger);
+		}
+
+		.field__textarea {
+			resize:     vertical;
+			min-height: 100px;
+			line-height: 1.5;
+		}
+
+		.field__datetime {
+			color-scheme: dark;
+		}
+
+		.field__error {
+			font-size:  var(--text-xs);
+			color:      var(--color-danger);
+			font-weight: 600;
+			min-height: 16px;
+		}
+
+		/* ── Bloque de geolocalización ────────────────────────── */
+		.geo-row {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.btn-geo {
+			display:         flex;
+			align-items:     center;
+			gap:             6px;
+			padding:         10px 14px;
+			border-radius:   8px;
+			background:      var(--surface-03);
+			border:          1px solid var(--border-subtle);
+			color:           var(--text-secondary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			white-space:     nowrap;
+			flex-shrink:     0;
+			transition:      background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-geo:hover  { background: var(--surface-04); }
+		.btn-geo:active { transform: scale(0.97); }
+		.btn-geo:disabled { opacity: 0.5; cursor: not-allowed; }
+		.btn-geo--ok    { color: var(--color-success); border-color: var(--color-success-bg); }
+		.btn-geo--error { color: var(--color-danger);  border-color: var(--color-danger-bg);  }
+
+		.geo-coords {
+			font-family: var(--font-mono);
+			font-size:   var(--text-xs);
+			color:       var(--text-tertiary);
+			flex:        1;
+			min-width:   0;
+			overflow:    hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		/* ── Lista dinámica de acciones inmediatas ────────────── */
+		.acciones-list {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
+
+		.accion-row {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.accion-row__input {
+			flex:          1;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       10px 12px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+		}
+		.accion-row__input:focus { border-color: var(--accent); }
+		.accion-row__input::placeholder { color: var(--text-tertiary); }
+
+		.btn-remove-accion {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      var(--color-danger-bg);
+			border:          none;
+			color:           var(--color-danger);
+			cursor:          pointer;
+			font-size:       18px;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-remove-accion:hover { background: var(--color-danger); color: #fff; }
+
+		.btn-add-accion {
+			display:         flex;
+			align-items:     center;
+			gap:             6px;
+			padding:         9px 14px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          1px dashed var(--border-subtle);
+			color:           var(--text-secondary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			width:           100%;
+			justify-content: center;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-add-accion:hover { border-color: var(--accent); color: var(--accent); }
+
+		/* ── Banner de error global del formulario ────────────── */
+		.form-error-banner {
+			padding:       12px 14px;
+			border-radius: 8px;
+			background:    var(--color-danger-bg);
+			border:        1px solid var(--color-danger-border);
+			color:         var(--color-danger);
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+		}
+
+		/* ── Footer fijo con botón guardar ────────────────────── */
+		.form-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+		}
+
+		.btn-guardar {
+			width:         100%;
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			gap:           8px;
+			padding:       14px;
+			border-radius: 10px;
+			background:    var(--accent);
+			border:        none;
+			color:         #000;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   700;
+			cursor:        pointer;
+			transition:    background 0.15s ease, transform 0.1s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar:hover  { background: var(--accent-hover); }
+		.btn-guardar:active { transform: scale(0.99); }
+		.btn-guardar:disabled {
+			opacity: 0.5;
+			cursor:  not-allowed;
+			transform: none;
+		}
+
+		.btn-guardar__spinner {
+			width:         18px;
+			height:        18px;
+			border:        2px solid rgba(0,0,0,0.3);
+			border-top-color: #000;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+		}
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button
+				id="btn-back"
+				class="btn-back"
+				type="button"
+				aria-label="Volver a incidentes"
+			>
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<h1 class="app-header__title">Nuevo incidente</h1>
+		</div>
+	</header>
+
+	<!-- ── Formulario ──────────────────────────────────────── -->
+	<main class="form-main" id="main-content" role="main">
+
+		<!-- Error global (oculto por default) -->
+		<div id="form-error-banner" class="form-error-banner" role="alert" aria-live="assertive" hidden>
+			<span id="form-error-text"></span>
+		</div>
+
+		<!-- ── Tipo de incidente ────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-tipo">
+			<div id="label-tipo" class="form-section__label">
+				Tipo de incidente <abbr title="Requerido">*</abbr>
+			</div>
+			<div
+				class="tipo-grid"
+				role="group"
+				aria-labelledby="label-tipo"
+				aria-required="true"
+				id="tipo-grid"
+			>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Incidente real"
+					aria-pressed="false"
+					aria-label="Incidente real"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">⚠️</span>
+					<span class="tipo-card__label">Incidente real</span>
+				</button>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Cuasi-accidente"
+					aria-pressed="false"
+					aria-label="Cuasi-accidente"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">🔶</span>
+					<span class="tipo-card__label">Cuasi-accidente</span>
+				</button>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Acto inseguro"
+					aria-pressed="false"
+					aria-label="Acto inseguro"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">👁️</span>
+					<span class="tipo-card__label">Acto inseguro</span>
+				</button>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Condición insegura"
+					aria-pressed="false"
+					aria-label="Condición insegura"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">🔧</span>
+					<span class="tipo-card__label">Condición insegura</span>
+				</button>
+			</div>
+			<div id="error-tipo" class="field__error" aria-live="polite"></div>
+		</section>
+
+		<!-- ── Severidad ────────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-sev">
+			<div id="label-sev" class="form-section__label">
+				Severidad <abbr title="Requerido">*</abbr>
+			</div>
+			<div
+				class="sev-grid"
+				role="group"
+				aria-labelledby="label-sev"
+				aria-required="true"
+				id="sev-grid"
+			>
+				<button
+					class="sev-card sev-card--leve"
+					type="button"
+					data-sev="Leve"
+					aria-pressed="false"
+					aria-label="Severidad: Leve"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Leve</span>
+				</button>
+				<button
+					class="sev-card sev-card--moderado"
+					type="button"
+					data-sev="Moderado"
+					aria-pressed="false"
+					aria-label="Severidad: Moderado"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Moderado</span>
+				</button>
+				<button
+					class="sev-card sev-card--grave"
+					type="button"
+					data-sev="Grave"
+					aria-pressed="false"
+					aria-label="Severidad: Grave"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Grave</span>
+				</button>
+				<button
+					class="sev-card sev-card--catastrofico"
+					type="button"
+					data-sev="Catastrófico"
+					aria-pressed="false"
+					aria-label="Severidad: Catastrófico"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Catastrófico</span>
+				</button>
+			</div>
+			<div id="error-sev" class="field__error" aria-live="polite"></div>
+		</section>
+
+		<!-- ── Descripción ──────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-desc">
+			<div id="label-desc" class="form-section__label">
+				Descripción <abbr title="Requerido">*</abbr>
+			</div>
+			<div class="field">
+				<textarea
+					id="input-descripcion"
+					class="field__textarea"
+					rows="4"
+					placeholder="¿Qué ocurrió? Describí el incidente con el mayor detalle posible."
+					aria-labelledby="label-desc"
+					aria-required="true"
+					maxlength="2000"
+				></textarea>
+				<div id="error-descripcion" class="field__error" aria-live="polite"></div>
+			</div>
+		</section>
+
+		<!-- ── Fecha y hora ──────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-fechahora">
+			<div id="label-fechahora" class="form-section__label">
+				Fecha y hora <abbr title="Requerido">*</abbr>
+			</div>
+			<div class="field">
+				<input
+					id="input-fecha-hora"
+					class="field__datetime"
+					type="datetime-local"
+					aria-labelledby="label-fechahora"
+					aria-required="true"
+				>
+				<div id="error-fecha-hora" class="field__error" aria-live="polite"></div>
+			</div>
+		</section>
+
+		<!-- ── Lugar ─────────────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-lugar">
+			<div id="label-lugar" class="form-section__label">
+				Lugar <abbr title="Requerido">*</abbr>
+			</div>
+
+			<div class="field">
+				<label class="field__label" for="input-ubicacion">
+					Descripción del lugar <abbr title="Requerido">*</abbr>
+				</label>
+				<input
+					id="input-ubicacion"
+					class="field__input"
+					type="text"
+					placeholder="Ej: Área de manifold, Pozo N°12, Sector de válvulas..."
+					aria-required="true"
+					autocomplete="off"
+					maxlength="300"
+				>
+				<div id="error-ubicacion" class="field__error" aria-live="polite"></div>
+			</div>
+
+			<div class="field">
+				<label class="field__label" for="input-locacion-nombre">Nombre del sector (opcional)</label>
+				<input
+					id="input-locacion-nombre"
+					class="field__input"
+					type="text"
+					placeholder="Ej: Bloque Loma Campana, Pad 14-H..."
+					autocomplete="off"
+					maxlength="200"
+				>
+			</div>
+
+			<!-- Geolocalización -->
+			<div class="geo-row">
+				<button
+					id="btn-geo"
+					class="btn-geo"
+					type="button"
+					aria-label="Obtener mi ubicación actual"
+				>
+					📍 Usar mi ubicación
+				</button>
+				<span id="geo-status" class="geo-coords" aria-live="polite"></span>
+			</div>
+		</section>
+
+		<!-- ── Acciones inmediatas ───────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-acciones">
+			<div id="label-acciones" class="form-section__label">Acciones inmediatas</div>
+			<div class="form-section__hint">
+				¿Qué medidas se tomaron en el momento?
+			</div>
+			<div id="acciones-list" class="acciones-list" aria-label="Lista de acciones inmediatas">
+				<!-- Los items se insertan dinámicamente -->
+			</div>
+			<button
+				id="btn-add-accion"
+				class="btn-add-accion"
+				type="button"
+				aria-label="Agregar acción inmediata"
+			>
+				<span aria-hidden="true">+</span> Agregar acción
+			</button>
+		</section>
+
+	</main>
+
+	<!-- ── Footer fijo ─────────────────────────────────────── -->
+	<footer class="form-footer" role="contentinfo">
+		<button
+			id="btn-guardar"
+			class="btn-guardar"
+			type="button"
+			aria-label="Guardar incidente"
+		>
+			<span id="btn-guardar-text">Guardar incidente</span>
+			<span id="btn-guardar-spinner" class="btn-guardar__spinner" hidden aria-hidden="true"></span>
+		</button>
+	</footer>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * incidente-nuevo.html — reporte de nuevo incidente.
+	 *
+	 * Columnas verificadas MCP 2026-06-24:
+	 *   Requeridas (NOT NULL, sin default): tipo, severidad, descripcion,
+	 *     fecha_hora (timestamptz), ubicacion, empresa_id
+	 *   Opcionales: locacion_nombre, latitud, longitud,
+	 *     acciones_inmediatas (jsonb, default [])
+	 *   created_by → public.usuarios.id (NO auth.users.id)
+	 *
+	 * Idempotencia: atshel_local_id tiene UNIQUE constraint.
+	 *   Error code 23505 = duplicado, no es error real → buscar el existente.
+	 *
+	 * Numeración: trigger trigger_numerar_incidente genera INC-YY-XXXXX.
+	 *   También valida empresa_id == auth_empresa_id() del JWT.
+	 *
+	 * Nota fecha_hora: datetime-local da "YYYY-MM-DDTHH:mm" (con tiempo),
+	 *   por lo que new Date(value).toISOString() es seguro —
+	 *   no es el bug de date-only "YYYY-MM-DD".
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		generateLocalId,
+		sanitizeHTML,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── ID local (generado una sola vez para idempotencia) ───
+	const _localId = generateLocalId();
+
+	// ── Estado del formulario ────────────────────────────────
+	let _tipo      = '';
+	let _severidad = '';
+	let _latitud   = null;
+	let _longitud  = null;
+	let _submitting = false;
+
+	// Acciones inmediatas: array de IDs de input (para leerlos al submit)
+	let _accionCount = 0;
+
+	// ── Referencias al DOM ───────────────────────────────────
+	const btnBackEl          = document.getElementById('btn-back');
+	const formErrorBannerEl  = document.getElementById('form-error-banner');
+	const formErrorTextEl    = document.getElementById('form-error-text');
+	const tipoGridEl         = document.getElementById('tipo-grid');
+	const sevGridEl          = document.getElementById('sev-grid');
+	const errorTipoEl        = document.getElementById('error-tipo');
+	const errorSevEl         = document.getElementById('error-sev');
+	const descripcionEl      = document.getElementById('input-descripcion');
+	const errorDescEl        = document.getElementById('error-descripcion');
+	const fechaHoraEl        = document.getElementById('input-fecha-hora');
+	const errorFechaEl       = document.getElementById('error-fecha-hora');
+	const ubicacionEl        = document.getElementById('input-ubicacion');
+	const errorUbicacionEl   = document.getElementById('error-ubicacion');
+	const locacionNombreEl   = document.getElementById('input-locacion-nombre');
+	const btnGeoEl           = document.getElementById('btn-geo');
+	const geoStatusEl        = document.getElementById('geo-status');
+	const accionesListEl     = document.getElementById('acciones-list');
+	const btnAddAccionEl     = document.getElementById('btn-add-accion');
+	const btnGuardarEl       = document.getElementById('btn-guardar');
+	const btnGuardarTextEl   = document.getElementById('btn-guardar-text');
+	const btnGuardarSpinEl   = document.getElementById('btn-guardar-spinner');
+
+	// ── Helpers de UI ────────────────────────────────────────
+	function setFieldError(inputEl, errorEl, msg) {
+		errorEl.textContent = msg;
+		if (msg) {
+			inputEl.setAttribute('aria-invalid', 'true');
+		} else {
+			inputEl.removeAttribute('aria-invalid');
+		}
+	}
+
+	function clearFieldError(inputEl, errorEl) {
+		setFieldError(inputEl, errorEl, '');
+	}
+
+	function showFormError(msg) {
+		formErrorTextEl.textContent = msg;
+		formErrorBannerEl.hidden    = false;
+		formErrorBannerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	function hideFormError() {
+		formErrorBannerEl.hidden = true;
+		formErrorTextEl.textContent = '';
+	}
+
+	function setBtnLoading(loading) {
+		_submitting             = loading;
+		btnGuardarEl.disabled   = loading;
+		btnGuardarTextEl.hidden = loading;
+		btnGuardarSpinEl.hidden = !loading;
+	}
+
+	// ── Selección de tipo (exclusive toggle) ─────────────────
+	function selectTipo(valor) {
+		_tipo = valor;
+		tipoGridEl.querySelectorAll('.tipo-card').forEach(card => {
+			const activo = card.dataset.tipo === valor;
+			card.setAttribute('aria-pressed', String(activo));
+		});
+		clearFieldError({ removeAttribute: () => {} }, errorTipoEl);
+	}
+
+	// ── Selección de severidad ───────────────────────────────
+	function selectSeveridad(valor) {
+		_severidad = valor;
+		sevGridEl.querySelectorAll('.sev-card').forEach(card => {
+			const activo = card.dataset.sev === valor;
+			card.setAttribute('aria-pressed', String(activo));
+		});
+		clearFieldError({ removeAttribute: () => {} }, errorSevEl);
+	}
+
+	// ── Geolocalización ──────────────────────────────────────
+	function obtenerUbicacion() {
+		if (!navigator.geolocation) {
+			geoStatusEl.textContent = 'Geolocalización no disponible.';
+			return;
+		}
+		btnGeoEl.disabled        = true;
+		btnGeoEl.className       = 'btn-geo';
+		geoStatusEl.textContent  = 'Obteniendo ubicación...';
+
+		navigator.geolocation.getCurrentPosition(
+			(pos) => {
+				_latitud  = parseFloat(pos.coords.latitude.toFixed(6));
+				_longitud = parseFloat(pos.coords.longitude.toFixed(6));
+				geoStatusEl.textContent = `${_latitud}, ${_longitud}`;
+				btnGeoEl.className      = 'btn-geo btn-geo--ok';
+				btnGeoEl.textContent    = '✓ Ubicación obtenida';
+				btnGeoEl.disabled       = false;
+			},
+			(err) => {
+				_latitud  = null;
+				_longitud = null;
+				const msgs = {
+					1: 'Permiso denegado.',
+					2: 'Posición no disponible.',
+					3: 'Tiempo de espera agotado.',
+				};
+				geoStatusEl.textContent = msgs[err.code] || 'Error desconocido.';
+				btnGeoEl.className      = 'btn-geo btn-geo--error';
+				btnGeoEl.textContent    = '📍 Reintentar';
+				btnGeoEl.disabled       = false;
+			},
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+		);
+	}
+
+	// ── Acciones inmediatas ───────────────────────────────────
+	function addAccionRow(textoInicial = '') {
+		_accionCount++;
+		const id = `accion-${_accionCount}`;
+		const row = document.createElement('div');
+		row.className = 'accion-row';
+		row.dataset.accionId = id;
+
+		row.innerHTML = `
+			<input
+				id="${id}"
+				class="accion-row__input"
+				type="text"
+				placeholder="Ej: Evacuación del área, corte de energía..."
+				maxlength="300"
+				value="${sanitizeHTML(textoInicial)}"
+				aria-label="Acción inmediata ${_accionCount}"
+			>
+			<button
+				class="btn-remove-accion"
+				type="button"
+				aria-label="Eliminar esta acción"
+				data-remove="${id}"
+			>✕</button>`;
+
+		accionesListEl.appendChild(row);
+		row.querySelector(`#${id}`).focus();
+	}
+
+	function removeAccionRow(inputId) {
+		const row = accionesListEl.querySelector(`[data-accion-id="${inputId}"]`);
+		if (row) row.remove();
+	}
+
+	function getAcciones() {
+		return Array.from(accionesListEl.querySelectorAll('.accion-row__input'))
+			.map(el => el.value.trim())
+			.filter(v => v.length > 0);
+	}
+
+	// ── Validación ───────────────────────────────────────────
+	function validate() {
+		let ok = true;
+		hideFormError();
+
+		if (!_tipo) {
+			errorTipoEl.textContent = 'Seleccioná el tipo de incidente.';
+			ok = false;
+		} else {
+			errorTipoEl.textContent = '';
+		}
+
+		if (!_severidad) {
+			errorSevEl.textContent = 'Seleccioná la severidad.';
+			ok = false;
+		} else {
+			errorSevEl.textContent = '';
+		}
+
+		const desc = descripcionEl.value.trim();
+		if (!desc) {
+			setFieldError(descripcionEl, errorDescEl, 'Describí el incidente.');
+			ok = false;
+		} else if (desc.length < 10) {
+			setFieldError(descripcionEl, errorDescEl, 'La descripción es demasiado corta (mínimo 10 caracteres).');
+			ok = false;
+		} else {
+			clearFieldError(descripcionEl, errorDescEl);
+		}
+
+		const fechaVal = fechaHoraEl.value;
+		if (!fechaVal) {
+			setFieldError(fechaHoraEl, errorFechaEl, 'Indicá la fecha y hora del incidente.');
+			ok = false;
+		} else {
+			// Validar que no sea futura (más de 10 min en el futuro)
+			const fechaDate = new Date(fechaVal); // seguro: datetime-local tiene tiempo
+			const ahoraMs   = Date.now();
+			if (fechaDate.getTime() > ahoraMs + 10 * 60 * 1000) {
+				setFieldError(fechaHoraEl, errorFechaEl, 'La fecha no puede ser futura.');
+				ok = false;
+			} else {
+				clearFieldError(fechaHoraEl, errorFechaEl);
+			}
+		}
+
+		const ubic = ubicacionEl.value.trim();
+		if (!ubic) {
+			setFieldError(ubicacionEl, errorUbicacionEl, 'Indicá el lugar donde ocurrió.');
+			ok = false;
+		} else {
+			clearFieldError(ubicacionEl, errorUbicacionEl);
+		}
+
+		return ok;
+	}
+
+	// ── Mapeo de errores PostgreSQL → español ─────────────────
+	function mapDbError(err) {
+		if (!err) return 'Error desconocido al guardar.';
+		const code    = err.code ?? '';
+		const message = (err.message ?? '').toLowerCase();
+
+		// Unique violation en atshel_local_id = duplicado de reenvío (no es error real)
+		if (code === '23505' && message.includes('atshel_local_id')) {
+			return null; // señal de duplicado → recuperar registro existente
+		}
+		if (code === 'P0001' && message.includes('err_sec_01')) {
+			return 'Error de seguridad: empresa_id inválido. Cerrá sesión e ingresá de nuevo.';
+		}
+		if (code === 'P0001' && message.includes('err_val_01')) {
+			return 'Error al generar el número de incidente. Intentá de nuevo.';
+		}
+		if (message.includes('network') || message.includes('fetch') || code === '') {
+			return 'Sin conexión. Verificá tu red e intentá de nuevo.';
+		}
+		return `Error al guardar (${code}). Intentá de nuevo.`;
+	}
+
+	// ── Submit ───────────────────────────────────────────────
+	async function handleSubmit() {
+		if (_submitting) return;
+		if (!validate()) {
+			// Scroll al primer error
+			document.querySelector('[aria-invalid="true"]')?.scrollIntoView({
+				behavior: 'smooth', block: 'center',
+			});
+			return;
+		}
+
+		setBtnLoading(true);
+
+		try {
+			const usuario    = await getUsuario();
+			const empresaId  = usuario?.empresa_id ?? await getEmpresaId();
+
+			// datetime-local = "YYYY-MM-DDTHH:mm" (con tiempo = seguro con new Date)
+			const fechaISO = new Date(fechaHoraEl.value).toISOString();
+
+			const payload = {
+				atshel_local_id:    _localId,
+				empresa_id:         empresaId,
+				tipo:               _tipo,
+				severidad:          _severidad,
+				descripcion:        descripcionEl.value.trim(),
+				fecha_hora:         fechaISO,
+				ubicacion:          ubicacionEl.value.trim(),
+				locacion_nombre:    locacionNombreEl.value.trim() || null,
+				latitud:            _latitud,
+				longitud:           _longitud,
+				acciones_inmediatas: getAcciones(),
+				created_by:         usuario?.id ?? null, // → public.usuarios.id
+			};
+
+			const { data, error } = await supabase
+				.from('incidentes')
+				.insert(payload)
+				.select('id')
+				.single();
+
+			if (error) {
+				const msg = mapDbError(error);
+
+				if (msg === null) {
+					// Duplicado: el registro ya fue guardado, buscar su id
+					const { data: existente } = await supabase
+						.from('incidentes')
+						.select('id')
+						.eq('atshel_local_id', _localId)
+						.is('deleted_at', null)
+						.single();
+
+					if (existente?.id) {
+						showToast('El incidente ya fue guardado.', 'info');
+						window.location.replace(`/incidente-detalle.html?id=${existente.id}`);
+						return;
+					}
+					showFormError('No se pudo verificar el incidente guardado. Revisá la lista de incidentes.');
+				} else {
+					showFormError(msg);
+				}
+				return;
+			}
+
+			showToast('Incidente guardado correctamente.', 'success');
+			window.location.replace(`/incidente-detalle.html?id=${data.id}`);
+
+		} catch (err) {
+			showFormError(err?.message || 'Error inesperado. Intentá de nuevo.');
+		} finally {
+			setBtnLoading(false);
+		}
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Verificar sesión
+		await requireAuth('/login.html');
+
+		// 2. Fecha y hora por defecto = ahora
+		// datetime-local no acepta .toISOString() directamente (tiene Z y milisegundos)
+		const ahora    = new Date();
+		const offset   = ahora.getTimezoneOffset();
+		const localISO = new Date(ahora.getTime() - offset * 60000)
+			.toISOString()
+			.slice(0, 16); // "YYYY-MM-DDTHH:mm"
+		fechaHoraEl.value = localISO;
+		fechaHoraEl.max   = localISO; // no permitir futuros (se actualiza en tiempo real)
+
+		// Actualizar max cada minuto para que el límite sea dinámico
+		setInterval(() => {
+			const n = new Date();
+			const off = n.getTimezoneOffset();
+			fechaHoraEl.max = new Date(n.getTime() - off * 60000).toISOString().slice(0, 16);
+		}, 60000);
+
+		// 3. Event listeners — todos aquí, event delegation donde aplica
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign('/incidentes.html');
+		});
+
+		// Tipo — event delegation en el grid
+		tipoGridEl.addEventListener('click', (e) => {
+			const card = e.target.closest('.tipo-card[data-tipo]');
+			if (card) selectTipo(card.dataset.tipo);
+		});
+
+		// Severidad — event delegation en el grid
+		sevGridEl.addEventListener('click', (e) => {
+			const card = e.target.closest('.sev-card[data-sev]');
+			if (card) selectSeveridad(card.dataset.sev);
+		});
+
+		// Limpiar errores al escribir
+		descripcionEl.addEventListener('input', () => clearFieldError(descripcionEl, errorDescEl));
+		fechaHoraEl.addEventListener('change',  () => clearFieldError(fechaHoraEl,   errorFechaEl));
+		ubicacionEl.addEventListener('input',   () => clearFieldError(ubicacionEl,   errorUbicacionEl));
+
+		// Geolocalización
+		btnGeoEl.addEventListener('click', obtenerUbicacion);
+
+		// Acciones inmediatas — event delegation en la lista
+		accionesListEl.addEventListener('click', (e) => {
+			const btnRemove = e.target.closest('.btn-remove-accion[data-remove]');
+			if (btnRemove) removeAccionRow(btnRemove.dataset.remove);
+		});
+
+		btnAddAccionEl.addEventListener('click', () => addAccionRow());
+
+		// Guardar
+		btnGuardarEl.addEventListener('click', handleSubmit);
+
+		// Soporte para submit con Enter en campos de texto
+		[descripcionEl, ubicacionEl, locacionNombreEl].forEach(el => {
+			el.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' && e.ctrlKey) handleSubmit();
+			});
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
