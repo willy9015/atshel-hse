@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE Manager — Listado de incidentes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Incidentes — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── App header ───────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         200;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__row {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			transition:      background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:hover       { background: var(--surface-03); }
+		.btn-back:active      { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.btn-nuevo {
+			display:       flex;
+			align-items:   center;
+			gap:           5px;
+			padding:       8px 14px;
+			border-radius: 8px;
+			background:    var(--accent);
+			border:        none;
+			color:         #000;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   700;
+			cursor:        pointer;
+			transition:    background 0.15s ease, transform 0.1s ease;
+			-webkit-tap-highlight-color: transparent;
+			text-decoration: none;
+			white-space:   nowrap;
+		}
+		.btn-nuevo:hover  { background: var(--accent-hover); }
+		.btn-nuevo:active { transform: scale(0.97); }
+
+		.app-header__sync {
+			display:     flex;
+			align-items: center;
+		}
+
+		/* ── Barra de búsqueda + filtros (sticky bajo header) ─── */
+		.filters-bar {
+			position:        sticky;
+			top:             calc(56px + env(safe-area-inset-top));
+			z-index:         100;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			display:         flex;
+			flex-direction:  column;
+			gap:             10px;
+			padding:         10px 16px;
+		}
+
+		.search-wrap {
+			display:       flex;
+			align-items:   center;
+			gap:           8px;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       0 12px;
+			height:        40px;
+			transition:    border-color 0.15s ease;
+		}
+		.search-wrap:focus-within {
+			border-color: var(--accent);
+		}
+
+		.search-wrap__icon {
+			color:      var(--text-tertiary);
+			flex-shrink: 0;
+			line-height: 0;
+		}
+
+		#search-input {
+			flex:        1;
+			background:  transparent;
+			border:      none;
+			outline:     none;
+			font-family: var(--font-sans);
+			font-size:   var(--text-base);
+			color:       var(--text-primary);
+			min-width:   0;
+		}
+		#search-input::placeholder { color: var(--text-tertiary); }
+
+		.btn-clear-search {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           24px;
+			height:          24px;
+			border-radius:   50%;
+			background:      var(--surface-04);
+			border:          none;
+			color:           var(--text-secondary);
+			font-size:       14px;
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		/* ── Filter chips ─────────────────────────────────────── */
+		.filter-chips {
+			display:        flex;
+			gap:            6px;
+			overflow-x:     auto;
+			scrollbar-width: none;
+			-webkit-overflow-scrolling: touch;
+			padding-bottom: 2px;
+		}
+		.filter-chips::-webkit-scrollbar { display: none; }
+
+		.filter-chip {
+			flex-shrink:   0;
+			padding:       5px 12px;
+			border-radius: 20px;
+			border:        1px solid var(--border-subtle);
+			background:    var(--surface-02);
+			color:         var(--text-secondary);
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			cursor:        pointer;
+			transition:    background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+			white-space:   nowrap;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.filter-chip:hover {
+			background:    var(--surface-03);
+			color:         var(--text-primary);
+		}
+		.filter-chip[aria-pressed="true"],
+		.filter-chip--active {
+			background:    var(--accent-subtle);
+			border-color:  var(--accent-subtle-hover);
+			color:         var(--accent);
+		}
+
+		/* ── Contenido principal ──────────────────────────────── */
+		.list-main {
+			flex:           1;
+			padding:        12px 16px calc(80px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            8px;
+		}
+
+		/* ── Contador de resultados ───────────────────────────── */
+		.results-count {
+			font-size:  var(--text-sm);
+			color:      var(--text-tertiary);
+			padding:    4px 0;
+			font-family: var(--font-mono);
+		}
+
+		/* ── Item de incidente ────────────────────────────────── */
+		.inc-item {
+			display:        flex;
+			align-items:    flex-start;
+			gap:            12px;
+			padding:        14px;
+			background:     var(--surface-02);
+			border:         1px solid var(--border-subtle);
+			border-radius:  10px;
+			text-decoration: none;
+			transition:     background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.inc-item:hover,
+		.inc-item:focus-visible { background: var(--surface-03); }
+		.inc-item:active         { background: var(--surface-04); }
+
+		.inc-item__icon {
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			font-size:       16px;
+			flex-shrink:     0;
+		}
+		.inc-item__icon--danger  { background: var(--color-danger-bg);  }
+		.inc-item__icon--warning { background: var(--color-warning-bg); }
+		.inc-item__icon--info    { background: var(--color-info-bg);    }
+		.inc-item__icon--neutral { background: var(--surface-04);       }
+
+		.inc-item__body { flex: 1; min-width: 0; }
+
+		.inc-item__header {
+			display:         flex;
+			justify-content: space-between;
+			align-items:     flex-start;
+			gap:             8px;
+			margin-bottom:   4px;
+		}
+
+		.inc-item__numero {
+			font-family:  var(--font-mono);
+			font-size:    var(--text-xs);
+			font-weight:  500;
+			color:        var(--text-tertiary);
+			white-space:  nowrap;
+			flex-shrink:  0;
+		}
+
+		.inc-item__desc {
+			font-size:     var(--text-base);
+			font-weight:   600;
+			color:         var(--text-primary);
+			line-height:   1.35;
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+		}
+
+		.inc-item__meta {
+			display:     flex;
+			flex-wrap:   wrap;
+			align-items: center;
+			gap:         5px;
+			margin-top:  5px;
+		}
+
+		.inc-item__date {
+			font-size:   var(--text-xs);
+			color:       var(--text-tertiary);
+			font-family: var(--font-mono);
+		}
+
+		.inc-item__place {
+			font-size:     var(--text-xs);
+			color:         var(--text-tertiary);
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+			max-width:     120px;
+		}
+
+		/* Separador visual */
+		.inc-item__sep {
+			color:       var(--text-tertiary);
+			font-size:   var(--text-xs);
+		}
+
+		/* ── Chips ────────────────────────────────────────────── */
+		.chip {
+			display:        inline-flex;
+			align-items:    center;
+			padding:        2px 6px;
+			border-radius:  4px;
+			font-size:      10px;
+			font-weight:    600;
+			line-height:    1.4;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			flex-shrink:    0;
+		}
+		.chip--danger   { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning  { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success  { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--info     { background: var(--color-info-bg);    color: var(--color-info);    }
+		.chip--neutral  { background: var(--surface-04);       color: var(--text-secondary);}
+
+		/* ── Skeletons ────────────────────────────────────────── */
+		.skeleton-item {
+			height:        76px;
+			border-radius: 10px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Botón cargar más ─────────────────────────────────── */
+		.btn-load-more {
+			width:         100%;
+			padding:       12px;
+			border-radius: 8px;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			color:         var(--text-secondary);
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			cursor:        pointer;
+			transition:    background 0.15s ease;
+			margin-top:    4px;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-load-more:hover  { background: var(--surface-03); }
+		.btn-load-more:active { background: var(--surface-04); }
+		.btn-load-more:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		/* ── Estado vacío / error ─────────────────────────────── */
+		.empty-state {
+			padding:       48px 24px;
+			text-align:    center;
+			display:       flex;
+			flex-direction: column;
+			align-items:   center;
+			gap:           8px;
+		}
+		.empty-state__icon { font-size: 36px; }
+		.empty-state__title {
+			font-family: var(--font-condensed);
+			font-size:   var(--text-xl);
+			font-weight: 700;
+			color:       var(--text-secondary);
+		}
+		.empty-state__sub {
+			font-size: var(--text-sm);
+			color:     var(--text-tertiary);
+		}
+
+		/* ── Sync badge ───────────────────────────────────────── */
+		.sync-badge {
+			display:       flex;
+			align-items:   center;
+			gap:           5px;
+			padding:       4px 8px;
+			border-radius: 20px;
+			font-family:   var(--font-mono);
+			font-size:     10px;
+			font-weight:   500;
+		}
+		.sync-badge--ok      { background: var(--color-success-bg); color: var(--color-success); }
+		.sync-badge--pending { background: var(--color-warning-bg); color: var(--color-warning); }
+		.sync-badge--offline { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.sync-badge__dot {
+			width: 6px; height: 6px;
+			border-radius: 50%;
+			background: currentColor;
+		}
+
+		/* ── Bottom nav ───────────────────────────────────────── */
+		.bottom-nav {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			z-index:        100;
+			display:        flex;
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			padding-bottom: env(safe-area-inset-bottom);
+		}
+		.bottom-nav__item {
+			flex:           1;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            3px;
+			padding:        10px 4px;
+			text-decoration: none;
+			color:          var(--text-tertiary);
+			font-size:      10px;
+			font-weight:    600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			transition:     color 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			min-height:     56px;
+		}
+		.bottom-nav__item--active { color: var(--accent); }
+		.bottom-nav__icon {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           28px;
+			height:          28px;
+			border-radius:   8px;
+			position:        relative;
+		}
+		.bottom-nav__item--active .bottom-nav__icon { background: var(--accent-subtle); }
+		.bottom-nav__badge {
+			position:       absolute;
+			top:            -2px;
+			right:          -2px;
+			min-width:      16px;
+			height:         16px;
+			padding:        0 4px;
+			border-radius:  8px;
+			background:     var(--color-danger);
+			color:          #fff;
+			font-family:    var(--font-mono);
+			font-size:      9px;
+			font-weight:    700;
+			display:        flex;
+			align-items:    center;
+			justify-content: center;
+		}
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__row">
+			<div class="app-header__left">
+				<a href="/dashboard.html" class="btn-back" aria-label="Volver al panel">
+					<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+						<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+					</svg>
+				</a>
+				<h1 class="app-header__title">Incidentes</h1>
+			</div>
+
+			<div style="display:flex;align-items:center;gap:10px">
+				<div
+					id="sync-badge"
+					class="sync-badge sync-badge--pending"
+					aria-live="polite"
+					aria-label="Estado de sincronización"
+				>
+					<span class="sync-badge__dot" aria-hidden="true"></span>
+					<span id="sync-text">...</span>
+				</div>
+
+				<a
+					href="/incidente-nuevo.html"
+					class="btn-nuevo"
+					aria-label="Reportar nuevo incidente"
+				>
+					+ Nuevo
+				</a>
+			</div>
+		</div>
+	</header>
+
+	<!-- ── Búsqueda y filtros ──────────────────────────────── -->
+	<div class="filters-bar" role="search">
+
+		<div class="search-wrap">
+			<span class="search-wrap__icon" aria-hidden="true">
+				<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M229.66,218.34l-50.07-50.07a88.21,88.21,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.31ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/>
+				</svg>
+			</span>
+			<input
+				id="search-input"
+				type="search"
+				inputmode="search"
+				autocomplete="off"
+				autocorrect="off"
+				spellcheck="false"
+				placeholder="Buscar por descripción o número..."
+				aria-label="Buscar incidentes"
+			>
+			<button
+				id="btn-clear-search"
+				class="btn-clear-search"
+				aria-label="Limpiar búsqueda"
+				hidden
+			>✕</button>
+		</div>
+
+		<div
+			class="filter-chips"
+			role="group"
+			aria-label="Filtrar por estado"
+			id="filter-chips"
+		>
+			<button class="filter-chip filter-chip--active" data-estado=""    aria-pressed="true">Todos</button>
+			<button class="filter-chip"                     data-estado="Abierto"             aria-pressed="false">Abiertos</button>
+			<button class="filter-chip"                     data-estado="En investigación"    aria-pressed="false">En investigación</button>
+			<button class="filter-chip"                     data-estado="Cerrado"             aria-pressed="false">Cerrados</button>
+		</div>
+	</div>
+
+	<!-- ── Lista ───────────────────────────────────────────── -->
+	<main class="list-main" id="main-content" role="main">
+		<p id="results-count" class="results-count" aria-live="polite" aria-atomic="true"></p>
+
+		<div id="list-container" aria-live="polite" aria-label="Lista de incidentes">
+			<!-- Skeletons mientras carga -->
+			<div class="skeleton-item"></div>
+			<div class="skeleton-item"></div>
+			<div class="skeleton-item"></div>
+			<div class="skeleton-item"></div>
+		</div>
+
+		<button
+			id="btn-load-more"
+			class="btn-load-more"
+			hidden
+			aria-label="Cargar más incidentes"
+		>
+			Cargar más
+		</button>
+	</main>
+
+	<!-- ── Barra de navegación inferior ─────────────────────── -->
+	<nav class="bottom-nav" aria-label="Navegación principal">
+
+		<a href="/dashboard.html" class="bottom-nav__item" aria-label="Inicio">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48a16,16,0,0,1,21.66,0l80,75.48A16,16,0,0,1,224,115.55Z"/>
+				</svg>
+			</span>
+			<span>Inicio</span>
+		</a>
+
+		<a href="/incidentes.html" class="bottom-nav__item bottom-nav__item--active" aria-current="page" aria-label="Incidentes">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M236.8,188.09,149.35,36.22a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/>
+				</svg>
+			</span>
+			<span>Incidentes</span>
+		</a>
+
+		<a href="/ats-nuevo.html" class="bottom-nav__item" aria-label="ATS">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM40,64H216V80H40ZM216,192H40V96H216Zm-32-72a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,120Zm0,32a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,152ZM96,120a8,8,0,0,1-8,8H80v8a8,8,0,0,1-16,0v-8H56a8,8,0,0,1,0-16H64v-8a8,8,0,0,1,16,0v8h8A8,8,0,0,1,96,120Z"/>
+				</svg>
+			</span>
+			<span>ATS</span>
+		</a>
+
+		<a href="/near-miss.html" class="bottom-nav__item" aria-label="Near miss">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/>
+				</svg>
+			</span>
+			<span>Near Miss</span>
+		</a>
+
+		<a href="/accion-nueva.html" class="bottom-nav__item" aria-label="Acciones">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M243.28,68.24l-24-23.56a16,16,0,0,0-22.59.27L115.27,133.67a16,16,0,0,0,0,22.58l16,16a16.07,16.07,0,0,0,11.31,4.69,15.9,15.9,0,0,0,11.2-4.5l-4-4L213.05,105Zm-56.5,81.77a0,0,0,0,1,0,0l-16-16L243.25,60.35l24,23.56Z"/>
+				</svg>
+			</span>
+			<span>Acciones</span>
+		</a>
+
+	</nav>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * incidentes.html — lista paginada con búsqueda y filtros.
+	 *
+	 * Columnas verificadas MCP 2026-06-24:
+	 *   incidentes.numero         TEXT
+	 *   incidentes.estado         TEXT ('Abierto'|'En investigación'|'Cerrado')
+	 *   incidentes.severidad      TEXT ('Leve'|'Moderado'|'Grave'|'Catastrófico')
+	 *   incidentes.tipo           TEXT ('Incidente real'|'Cuasi-accidente'|'Acto inseguro'|'Condición insegura')
+	 *   incidentes.estado_aprobacion TEXT ('pendiente'|'aprobado_supervisor'|'rechazado_supervisor'|'aprobado_gerente'|'rechazado_gerente')
+	 *   incidentes.deleted_at     TIMESTAMPTZ (soft-delete)
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		formatFechaCorta,
+	} from '/js/atshel-core.js';
+
+	// ── Constantes ───────────────────────────────────────────
+	const PAGE_SIZE = 20;
+
+	// ── Estado ───────────────────────────────────────────────
+	let _offset       = 0;
+	let _total        = 0;
+	let _filtroEstado = '';
+	let _busqueda     = '';
+	let _cargando     = false;
+
+	// ── Referencias al DOM ───────────────────────────────────
+	const searchInputEl   = document.getElementById('search-input');
+	const btnClearEl      = document.getElementById('btn-clear-search');
+	const filterChipsEl   = document.getElementById('filter-chips');
+	const listContainerEl = document.getElementById('list-container');
+	const resultCountEl   = document.getElementById('results-count');
+	const btnLoadMoreEl   = document.getElementById('btn-load-more');
+	const syncBadgeEl     = document.getElementById('sync-badge');
+	const syncTextEl      = document.getElementById('sync-text');
+
+	// ── Debounce ─────────────────────────────────────────────
+	function debounce(fn, ms) {
+		let timer;
+		return (...args) => {
+			clearTimeout(timer);
+			timer = setTimeout(() => fn(...args), ms);
+		};
+	}
+
+	// ── Sync badge ───────────────────────────────────────────
+	function updateSyncBadge(estado) {
+		const clases = { ok: 'sync-badge sync-badge--ok', pending: 'sync-badge sync-badge--pending', offline: 'sync-badge sync-badge--offline' };
+		const textos = { ok: 'Sincronizado', pending: 'Sincronizando...', offline: 'Sin conexión' };
+		syncBadgeEl.className      = clases[estado] ?? clases.pending;
+		syncTextEl.textContent     = textos[estado]  ?? textos.pending;
+	}
+
+	// ── Chips de severidad / estado ──────────────────────────
+	const SEV_MAP = {
+		'Leve':         ['neutral', 'Leve'],
+		'Moderado':     ['warning', 'Moderado'],
+		'Grave':        ['danger',  'Grave'],
+		'Catastrófico': ['danger',  'Catastrófico'],
+	};
+
+	const ESTADO_MAP = {
+		'Abierto':          ['danger',  'Abierto'],
+		'En investigación': ['warning', 'En invest.'],
+		'Cerrado':          ['success', 'Cerrado'],
+	};
+
+	const TIPO_ICON = {
+		'Incidente real':    ['⚠️', 'danger'],
+		'Cuasi-accidente':   ['🔶', 'warning'],
+		'Acto inseguro':     ['👁️', 'info'],
+		'Condición insegura':['🔧', 'info'],
+	};
+
+	function chip(value, map, fallbackClass = 'neutral') {
+		const [cls, label] = map[value] || [fallbackClass, value || '—'];
+		return `<span class="chip chip--${cls}">${sanitizeHTML(label)}</span>`;
+	}
+
+	// Chip de aprobación — solo se muestra en estados relevantes
+	function chipAprobacion(estado, estadoAprobacion) {
+		if (estado !== 'En investigación' && estado !== 'Cerrado') return '';
+		const map = {
+			'rechazado_supervisor': ['danger',  'Rechazado sup.'],
+			'rechazado_gerente':    ['danger',  'Rechazado ger.'],
+			'aprobado_supervisor':  ['info',    'Aprobado sup.'],
+			'aprobado_gerente':     ['success', 'Aprobado'],
+		};
+		const entry = map[estadoAprobacion];
+		if (!entry) return '';
+		return `<span class="chip chip--${entry[0]}">${sanitizeHTML(entry[1])}</span>`;
+	}
+
+	// ── Render de un item ─────────────────────────────────────
+	function renderItem(inc) {
+		const [icono, iconCls] = TIPO_ICON[inc.tipo] || ['📌', 'neutral'];
+		const fecha = inc.fecha_hora ? formatFechaCorta(inc.fecha_hora) : '—';
+		const lugar = inc.locacion_nombre
+			? `<span class="inc-item__sep">·</span><span class="inc-item__place">${sanitizeHTML(inc.locacion_nombre)}</span>`
+			: '';
+		const desc  = inc.descripcion
+			? sanitizeHTML(inc.descripcion.substring(0, 90))
+			: '—';
+
+		return `
+		<a
+			href="/incidente-detalle.html?id=${sanitizeHTML(inc.id)}"
+			class="inc-item"
+			aria-label="Incidente ${sanitizeHTML(inc.numero ?? '')}: ${sanitizeHTML(inc.descripcion?.substring(0,60) ?? '—')}"
+		>
+			<div class="inc-item__icon inc-item__icon--${iconCls}" aria-hidden="true">${icono}</div>
+			<div class="inc-item__body">
+				<div class="inc-item__header">
+					<div class="inc-item__desc">${desc}</div>
+					<span class="inc-item__numero">${sanitizeHTML(inc.numero ?? '—')}</span>
+				</div>
+				<div class="inc-item__meta">
+					${chip(inc.severidad, SEV_MAP)}
+					${chip(inc.estado, ESTADO_MAP)}
+					${chipAprobacion(inc.estado, inc.estado_aprobacion)}
+					<span class="inc-item__date">${sanitizeHTML(fecha)}</span>
+					${lugar}
+				</div>
+			</div>
+		</a>`;
+	}
+
+	// ── Render: vacío ─────────────────────────────────────────
+	function renderEmpty(busqueda, filtro) {
+		const esFiltrado = busqueda || filtro;
+		return `
+		<div class="empty-state">
+			<div class="empty-state__icon">${esFiltrado ? '🔍' : '🛡️'}</div>
+			<div class="empty-state__title">
+				${esFiltrado ? 'Sin resultados' : 'Sin incidentes'}
+			</div>
+			<div class="empty-state__sub">
+				${esFiltrado
+					? 'Probá con otros filtros o términos de búsqueda.'
+					: 'Cuando reportes un incidente aparecerá acá.'}
+			</div>
+		</div>`;
+	}
+
+	// ── Render: error ─────────────────────────────────────────
+	function renderError(msg) {
+		return `
+		<div class="empty-state">
+			<div class="empty-state__icon">⚡</div>
+			<div class="empty-state__title">Error al cargar</div>
+			<div class="empty-state__sub">${sanitizeHTML(msg)}</div>
+		</div>`;
+	}
+
+	// ── Skeletons durante carga ───────────────────────────────
+	function showSkeletons(n = 3) {
+		listContainerEl.innerHTML = Array(n).fill('<div class="skeleton-item"></div>').join('');
+	}
+
+	// ── Actualizar contador ───────────────────────────────────
+	function updateCount() {
+		const showing = listContainerEl.querySelectorAll('.inc-item').length;
+		if (_total === 0) {
+			resultCountEl.textContent = '';
+		} else {
+			resultCountEl.textContent = `${showing} de ${_total} incidente${_total !== 1 ? 's' : ''}`;
+		}
+	}
+
+	// ── Query principal ───────────────────────────────────────
+	function buildQuery(forCount = false) {
+		let q = supabase
+			.from('incidentes')
+			.select(
+				forCount
+					? 'id'
+					: 'id, numero, tipo, severidad, descripcion, fecha_hora, locacion_nombre, estado, estado_aprobacion',
+				forCount ? { count: 'exact', head: true } : { count: 'exact' }
+			)
+			.is('deleted_at', null);
+
+		if (_filtroEstado) {
+			q = q.eq('estado', _filtroEstado);
+		}
+
+		const termino = _busqueda.trim();
+		if (termino) {
+			// numero es TEXT → ilike funciona en ambos campos
+			q = q.or(`descripcion.ilike.%${termino}%,numero.ilike.%${termino}%`);
+		}
+
+		return q;
+	}
+
+	// ── Carga (reset = primera página, false = página siguiente) ─
+	async function cargar(reset = false) {
+		if (_cargando) return;
+		if (reset) _offset = 0;
+
+		_cargando = true;
+		btnLoadMoreEl.disabled = true;
+
+		if (reset) showSkeletons();
+
+		const { data, count, error } = await buildQuery()
+			.order('fecha_hora', { ascending: false, nullsFirst: false })
+			.range(_offset, _offset + PAGE_SIZE - 1);
+
+		_cargando = false;
+
+		if (error) {
+			listContainerEl.innerHTML = renderError(
+				navigator.onLine
+					? 'No se pudo conectar al servidor.'
+					: 'Sin conexión. Reconectate para ver los incidentes.'
+			);
+			btnLoadMoreEl.hidden = true;
+			return;
+		}
+
+		_total = count ?? 0;
+
+		if (reset) {
+			if (!data || data.length === 0) {
+				listContainerEl.innerHTML = renderEmpty(_busqueda, _filtroEstado);
+				btnLoadMoreEl.hidden = true;
+				updateCount();
+				return;
+			}
+			listContainerEl.innerHTML = data.map(renderItem).join('');
+		} else {
+			if (data && data.length > 0) {
+				listContainerEl.insertAdjacentHTML('beforeend', data.map(renderItem).join(''));
+			}
+		}
+
+		_offset += data?.length ?? 0;
+		updateCount();
+
+		const hayMas = _offset < _total;
+		btnLoadMoreEl.hidden    = !hayMas;
+		btnLoadMoreEl.disabled  = false;
+	}
+
+	// ── Cambiar filtro de estado ──────────────────────────────
+	function setFiltroEstado(estado) {
+		_filtroEstado = estado;
+
+		filterChipsEl.querySelectorAll('.filter-chip').forEach(chip => {
+			const activo = chip.dataset.estado === estado;
+			chip.setAttribute('aria-pressed', String(activo));
+			chip.classList.toggle('filter-chip--active', activo);
+		});
+
+		cargar(true);
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Verificar sesión
+		await requireAuth('/login.html');
+
+		// 2. Estado de red
+		updateSyncBadge(navigator.onLine ? 'ok' : 'offline');
+
+		// 3. Carga inicial
+		await cargar(true);
+
+		// 4. Event listeners — todos aquí, una sola vez
+		// Búsqueda con debounce
+		const debouncedBuscar = debounce(() => {
+			_busqueda = searchInputEl.value;
+			btnClearEl.hidden = !_busqueda;
+			cargar(true);
+		}, 350);
+
+		searchInputEl.addEventListener('input', debouncedBuscar);
+
+		// Limpiar búsqueda
+		btnClearEl.addEventListener('click', () => {
+			searchInputEl.value = '';
+			_busqueda           = '';
+			btnClearEl.hidden   = true;
+			searchInputEl.focus();
+			cargar(true);
+		});
+
+		// Filtro chips — event delegation
+		filterChipsEl.addEventListener('click', (e) => {
+			const chip = e.target.closest('.filter-chip[data-estado]');
+			if (!chip) return;
+			setFiltroEstado(chip.dataset.estado);
+		});
+
+		// Cargar más
+		btnLoadMoreEl.addEventListener('click', () => cargar(false));
+
+		// Red
+		window.addEventListener('online',  () => updateSyncBadge('ok'));
+		window.addEventListener('offline', () => updateSyncBadge('offline'));
+	}
+
+	init();
+</script>
+</body>
+</html>
