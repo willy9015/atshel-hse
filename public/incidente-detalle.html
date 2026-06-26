@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Detalle de incidente">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Incidente — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+			gap:             8px;
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			min-width:   0;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__numero {
+			font-family:   var(--font-mono);
+			font-size:     var(--text-base);
+			font-weight:   500;
+			color:         var(--text-primary);
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+		}
+
+		/* ── Chip ─────────────────────────────────────────────── */
+		.chip {
+			display:        inline-flex;
+			align-items:    center;
+			padding:        3px 8px;
+			border-radius:  4px;
+			font-size:      10px;
+			font-weight:    700;
+			line-height:    1.4;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			flex-shrink:    0;
+			white-space:    nowrap;
+		}
+		.chip--danger   { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning  { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success  { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--info     { background: var(--color-info-bg);    color: var(--color-info);    }
+		.chip--neutral  { background: var(--surface-04);       color: var(--text-secondary);}
+
+		/* ── Contenido principal ──────────────────────────────── */
+		.detail-main {
+			flex:           1;
+			padding:        16px 16px calc(96px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            16px;
+		}
+
+		/* ── Cards ────────────────────────────────────────────── */
+		.card {
+			background:     var(--surface-02);
+			border:         1px solid var(--border-subtle);
+			border-radius:  12px;
+			overflow:       hidden;
+		}
+
+		.card__header {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         12px 16px;
+			border-bottom:   1px solid var(--border-subtle);
+		}
+
+		.card__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.card__body { padding: 16px; }
+
+		/* ── Campos de datos ──────────────────────────────────── */
+		.data-row {
+			display:         flex;
+			gap:             12px;
+			padding:         10px 0;
+			border-bottom:   1px solid var(--border-subtle);
+			align-items:     flex-start;
+		}
+		.data-row:last-child { border-bottom: none; }
+
+		.data-row__label {
+			font-size:      var(--text-xs);
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			flex-shrink:    0;
+			width:          100px;
+			padding-top:    2px;
+		}
+
+		.data-row__value {
+			font-size:  var(--text-base);
+			color:      var(--text-primary);
+			line-height: 1.4;
+			flex:       1;
+			min-width:  0;
+		}
+
+		.data-row__value--mono {
+			font-family: var(--font-mono);
+			font-size:   var(--text-sm);
+		}
+
+		/* ── Descripción ──────────────────────────────────────── */
+		.descripcion-text {
+			font-size:   var(--text-base);
+			color:       var(--text-primary);
+			line-height: 1.6;
+			white-space: pre-wrap;
+			word-break:  break-word;
+		}
+
+		/* ── Timeline de aprobaciones ─────────────────────────── */
+		.timeline {
+			display:        flex;
+			flex-direction: column;
+			gap:            0;
+			padding:        0 16px;
+		}
+
+		.timeline-step {
+			display:     flex;
+			gap:         12px;
+			padding:     12px 0;
+			position:    relative;
+		}
+
+		.timeline-step:not(:last-child)::after {
+			content:    '';
+			position:   absolute;
+			left:       15px;
+			top:        36px;
+			bottom:     0;
+			width:      2px;
+			background: var(--border-subtle);
+		}
+
+		.timeline-step__dot {
+			width:           32px;
+			height:          32px;
+			border-radius:   50%;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			font-size:       14px;
+			flex-shrink:     0;
+			position:        relative;
+			z-index:         1;
+		}
+		.timeline-step__dot--pending  { background: var(--surface-04);       color: var(--text-tertiary); border: 2px dashed var(--border-subtle); }
+		.timeline-step__dot--aprobado { background: var(--color-success-bg);  color: var(--color-success); }
+		.timeline-step__dot--rechazado{ background: var(--color-danger-bg);   color: var(--color-danger);  }
+
+		.timeline-step__content { flex: 1; min-width: 0; }
+
+		.timeline-step__rol {
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			color:       var(--text-primary);
+			line-height: 1.2;
+		}
+
+		.timeline-step__meta {
+			font-size:   var(--text-xs);
+			color:       var(--text-tertiary);
+			margin-top:  2px;
+		}
+
+		.timeline-step__comentario {
+			margin-top:  6px;
+			padding:     8px 10px;
+			background:  var(--surface-03);
+			border-radius: 6px;
+			font-size:   var(--text-sm);
+			color:       var(--text-secondary);
+			line-height: 1.4;
+			font-style:  italic;
+			border-left: 2px solid var(--color-danger);
+		}
+
+		/* ── Lista de acciones inmediatas ─────────────────────── */
+		.acciones-list {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
+
+		.accion-item {
+			display:     flex;
+			align-items: flex-start;
+			gap:         8px;
+			font-size:   var(--text-sm);
+			color:       var(--text-primary);
+			line-height: 1.4;
+		}
+		.accion-item::before {
+			content:     '→';
+			color:       var(--accent);
+			font-weight: 700;
+			flex-shrink: 0;
+			margin-top:  1px;
+		}
+
+		/* ── Lesiones ─────────────────────────────────────────── */
+		.lesion-card {
+			display:        flex;
+			flex-direction: column;
+			gap:            8px;
+			padding:        12px;
+			background:     var(--color-danger-bg);
+			border:         1px solid var(--color-danger-border);
+			border-radius:  8px;
+		}
+
+		.lesion-card__header {
+			display:     flex;
+			align-items: center;
+			gap:         6px;
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			color:       var(--color-danger);
+		}
+
+		.lesion-card__data {
+			display:   grid;
+			grid-template-columns: 1fr 1fr;
+			gap:       8px;
+		}
+
+		.lesion-field__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.lesion-field__value {
+			font-size:  var(--text-sm);
+			color:      var(--text-primary);
+			font-weight: 600;
+			margin-top: 2px;
+		}
+
+		/* ── Grilla de fotos ──────────────────────────────────── */
+		.fotos-grid {
+			display:               grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap:                   4px;
+		}
+
+		.foto-thumb {
+			aspect-ratio:  1;
+			border-radius: 6px;
+			overflow:      hidden;
+			background:    var(--surface-03);
+			cursor:        pointer;
+		}
+
+		.foto-thumb img {
+			width:      100%;
+			height:     100%;
+			object-fit: cover;
+			display:    block;
+		}
+
+		/* ── Skeleton ─────────────────────────────────────────── */
+		.skeleton-line {
+			height:        14px;
+			border-radius: 4px;
+			background:    var(--surface-03);
+			animation:     shimmer 1.5s ease-in-out infinite;
+			margin-bottom: 8px;
+		}
+		.skeleton-line--lg { height: 20px; }
+		.skeleton-card {
+			height:        120px;
+			border-radius: 12px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Footer de acciones ───────────────────────────────── */
+		.action-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+			display:        flex;
+			gap:            10px;
+		}
+
+		.btn-action {
+			flex:          1;
+			padding:       12px;
+			border-radius: 10px;
+			border:        none;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   700;
+			cursor:        pointer;
+			transition:    all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-action:active     { transform: scale(0.98); }
+		.btn-action:disabled   { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-action--primary   { background: var(--accent);           color: #000; }
+		.btn-action--primary:hover { background: var(--accent-hover); }
+
+		.btn-action--danger    { background: var(--color-danger-bg);  color: var(--color-danger); border: 1px solid var(--color-danger-border); }
+		.btn-action--danger:hover { background: var(--color-danger);  color: #fff; }
+
+		.btn-action--secondary { background: var(--surface-03); color: var(--text-primary); border: 1px solid var(--border-subtle); }
+		.btn-action--secondary:hover { background: var(--surface-04); }
+
+		/* ── Modal de rechazo ─────────────────────────────────── */
+		.modal-overlay {
+			position:        fixed;
+			inset:           0;
+			z-index:         200;
+			background:      rgba(0,0,0,0.6);
+			display:         flex;
+			align-items:     flex-end;
+			padding-bottom:  env(safe-area-inset-bottom);
+		}
+		.modal-overlay[aria-hidden="true"] { display: none; }
+
+		.modal-sheet {
+			width:          100%;
+			background:     var(--surface-01);
+			border-radius:  16px 16px 0 0;
+			padding:        24px 16px 20px;
+			display:        flex;
+			flex-direction: column;
+			gap:            16px;
+		}
+
+		.modal-sheet__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+		}
+
+		.modal-sheet__subtitle {
+			font-size:  var(--text-sm);
+			color:      var(--text-secondary);
+			margin-top: -8px;
+		}
+
+		.modal-textarea {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       12px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			resize:        vertical;
+			min-height:    100px;
+			outline:       none;
+		}
+		.modal-textarea:focus { border-color: var(--color-danger); }
+
+		.modal-error {
+			font-size:  var(--text-xs);
+			color:      var(--color-danger);
+			font-weight: 600;
+			min-height: 16px;
+		}
+
+		.modal-actions {
+			display: flex;
+			gap:     10px;
+		}
+
+		/* ── Estado vacío ─────────────────────────────────────── */
+		.empty-note {
+			font-size:  var(--text-sm);
+			color:      var(--text-tertiary);
+			font-style: italic;
+			padding:    4px 0;
+		}
+
+		/* ── Error de página ──────────────────────────────────── */
+		.page-error {
+			flex:            1;
+			display:         flex;
+			flex-direction:  column;
+			align-items:     center;
+			justify-content: center;
+			padding:         32px 24px;
+			text-align:      center;
+			gap:             8px;
+		}
+		.page-error__icon  { font-size: 40px; }
+		.page-error__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
+		.page-error__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button id="btn-back" class="btn-back" type="button" aria-label="Volver a incidentes">
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<span id="header-numero" class="app-header__numero">Cargando...</span>
+		</div>
+		<span id="header-chip"></span>
+	</header>
+
+	<!-- ── Main ────────────────────────────────────────────── -->
+	<main class="detail-main" id="main-content" role="main">
+
+		<!-- Skeletons iniciales -->
+		<div id="skeleton-area">
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+		</div>
+
+		<!-- Contenido real (oculto hasta cargar) -->
+		<div id="content-area" hidden>
+
+			<!-- Timeline de aprobaciones -->
+			<div class="card" id="card-aprobaciones">
+				<div class="card__header">
+					<span class="card__title">Estado de aprobación</span>
+				</div>
+				<div class="timeline" id="timeline-aprobaciones"></div>
+			</div>
+
+			<!-- Datos del incidente -->
+			<div class="card">
+				<div class="card__header">
+					<span class="card__title">Datos del incidente</span>
+				</div>
+				<div class="card__body" style="padding:0 16px;">
+					<div class="data-row">
+						<span class="data-row__label">Tipo</span>
+						<span class="data-row__value" id="val-tipo"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Severidad</span>
+						<span class="data-row__value" id="val-severidad"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Fecha</span>
+						<span class="data-row__value data-row__value--mono" id="val-fecha"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Lugar</span>
+						<span class="data-row__value" id="val-ubicacion"></span>
+					</div>
+					<div class="data-row" id="row-locacion" hidden>
+						<span class="data-row__label">Sector</span>
+						<span class="data-row__value" id="val-locacion"></span>
+					</div>
+					<div class="data-row" id="row-coords" hidden>
+						<span class="data-row__label">Coordenadas</span>
+						<span class="data-row__value data-row__value--mono" id="val-coords"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Reportado</span>
+						<span class="data-row__value data-row__value--mono" id="val-creado"></span>
+					</div>
+					<div class="data-row" id="row-createdby" hidden>
+						<span class="data-row__label">Por</span>
+						<span class="data-row__value" id="val-createdby"></span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Descripción -->
+			<div class="card">
+				<div class="card__header">
+					<span class="card__title">Descripción</span>
+				</div>
+				<div class="card__body">
+					<p id="val-descripcion" class="descripcion-text"></p>
+				</div>
+			</div>
+
+			<!-- Acciones inmediatas -->
+			<div class="card" id="card-acciones" hidden>
+				<div class="card__header">
+					<span class="card__title">Acciones inmediatas</span>
+				</div>
+				<div class="card__body">
+					<div id="list-acciones" class="acciones-list"></div>
+				</div>
+			</div>
+
+			<!-- Lesiones -->
+			<div class="card" id="card-lesiones" hidden>
+				<div class="card__header">
+					<span class="card__title">Lesiones registradas</span>
+					<span id="lesiones-count" class="chip chip--danger"></span>
+				</div>
+				<div class="card__body" id="body-lesiones"></div>
+			</div>
+
+			<!-- Fotos -->
+			<div class="card" id="card-fotos" hidden>
+				<div class="card__header">
+					<span class="card__title">Evidencias fotográficas</span>
+					<span id="fotos-count" class="chip chip--neutral"></span>
+				</div>
+				<div class="card__body">
+					<div id="fotos-grid" class="fotos-grid"></div>
+				</div>
+			</div>
+
+			<!-- Investigación -->
+			<div class="card" id="card-investigacion">
+				<div class="card__header">
+					<span class="card__title">Investigación de causa raíz</span>
+				</div>
+				<div class="card__body" id="body-investigacion"></div>
+			</div>
+
+		</div><!-- /#content-area -->
+
+		<!-- Error de página -->
+		<div id="page-error" class="page-error" hidden>
+			<div class="page-error__icon">⚡</div>
+			<div class="page-error__title">No se pudo cargar el incidente</div>
+			<div id="page-error-sub" class="page-error__sub"></div>
+		</div>
+
+	</main>
+
+	<!-- ── Footer de acciones (dinámico) ───────────────────── -->
+	<footer id="action-footer" class="action-footer" role="contentinfo" hidden></footer>
+
+	<!-- ── Modal de rechazo ────────────────────────────────── -->
+	<div
+		id="modal-rechazo"
+		class="modal-overlay"
+		aria-hidden="true"
+		aria-modal="true"
+		role="dialog"
+		aria-labelledby="modal-rechazo-title"
+	>
+		<div class="modal-sheet">
+			<h2 id="modal-rechazo-title" class="modal-sheet__title">Rechazar incidente</h2>
+			<p class="modal-sheet__subtitle">El comentario es obligatorio para justificar el rechazo.</p>
+			<textarea
+				id="modal-comentario"
+				class="modal-textarea"
+				placeholder="Describí el motivo del rechazo..."
+				rows="4"
+				maxlength="500"
+				aria-required="true"
+				aria-label="Motivo de rechazo"
+			></textarea>
+			<div id="modal-error" class="modal-error" aria-live="polite"></div>
+			<div class="modal-actions">
+				<button id="btn-modal-cancelar" class="btn-action btn-action--secondary" type="button">
+					Cancelar
+				</button>
+				<button id="btn-modal-confirmar" class="btn-action btn-action--danger" type="button">
+					Confirmar rechazo
+				</button>
+			</div>
+		</div>
+	</div>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * incidente-detalle.html
+	 *
+	 * Tablas verificadas MCP 2026-06-24:
+	 *   aprobaciones_incidente.estado     : 'pendiente'|'aprobado'|'rechazado'
+	 *   aprobaciones_incidente.rol_aprobador: 'supervisor'|'prevencionista'|'gerente'|'admin'|'tecnico_hse'
+	 *   aprobaciones_incidente.comentario : obligatorio al rechazar (validado por trigger)
+	 *   aprobaciones_incidente.orden      : secuencial — no se aprueba paso N sin el N-1
+	 *   lesiones.gravedad                 : 'leve'|'moderada'|'grave'|'mortal'
+	 *   adjuntos.tabla_referencia         : 'incidentes'
+	 *
+	 * Roles usuarios: 'administrador'|'supervisor'|'hse'
+	 * Mapping a rol_aprobador:
+	 *   supervisor    → 'supervisor'
+	 *   hse           → 'prevencionista', 'tecnico_hse'
+	 *   administrador → cualquiera
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		formatFecha,
+		formatFechaCorta,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── ID del incidente desde URL ───────────────────────────
+	const _incidenteId = new URLSearchParams(window.location.search).get('id');
+
+	// ── Estado ───────────────────────────────────────────────
+	let _incidente      = null;
+	let _aprobaciones   = [];
+	let _usuario        = null;
+	let _pendienteId    = null; // id de la aprobación pendiente que le corresponde al usuario
+	let _submitting     = false;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl         = document.getElementById('btn-back');
+	const headerNumeroEl    = document.getElementById('header-numero');
+	const headerChipEl      = document.getElementById('header-chip');
+	const skeletonAreaEl    = document.getElementById('skeleton-area');
+	const contentAreaEl     = document.getElementById('content-area');
+	const pageErrorEl       = document.getElementById('page-error');
+	const pageErrorSubEl    = document.getElementById('page-error-sub');
+	const actionFooterEl    = document.getElementById('action-footer');
+	const timelineEl        = document.getElementById('timeline-aprobaciones');
+	const modalRechazoEl    = document.getElementById('modal-rechazo');
+	const modalComentarioEl = document.getElementById('modal-comentario');
+	const modalErrorEl      = document.getElementById('modal-error');
+	const btnModalCancelarEl   = document.getElementById('btn-modal-cancelar');
+	const btnModalConfirmarEl  = document.getElementById('btn-modal-confirmar');
+
+	// ── Mapas de valores ─────────────────────────────────────
+	const ESTADO_CHIP = {
+		'Abierto':          ['danger',  'Abierto'],
+		'En investigación': ['warning', 'En investigación'],
+		'Cerrado':          ['success', 'Cerrado'],
+	};
+
+	const SEV_CHIP = {
+		'Leve':         ['neutral', 'Leve'],
+		'Moderado':     ['warning', 'Moderado'],
+		'Grave':        ['danger',  'Grave'],
+		'Catastrófico': ['danger',  'Catastrófico'],
+	};
+
+	const GRAVEDAD_LESION_CHIP = {
+		'leve':    ['neutral', 'Leve'],
+		'moderada':['warning', 'Moderada'],
+		'grave':   ['danger',  'Grave'],
+		'mortal':  ['danger',  'Mortal'],
+	};
+
+	const ROL_LABEL = {
+		supervisor:    'Supervisor',
+		prevencionista:'Prevencionista',
+		gerente:       'Gerente',
+		admin:         'Administrador',
+		tecnico_hse:   'Técnico HSE',
+	};
+
+	// Roles de usuario → rol_aprobador que pueden resolver
+	const ROL_PUEDE_RESOLVER = {
+		supervisor:    ['supervisor'],
+		hse:           ['prevencionista', 'tecnico_hse'],
+		administrador: ['supervisor', 'prevencionista', 'gerente', 'admin', 'tecnico_hse'],
+	};
+
+	// ── Helpers ───────────────────────────────────────────────
+	function chip(value, map, fallback = 'neutral') {
+		const [cls, label] = map[value] || [fallback, value || '—'];
+		return `<span class="chip chip--${cls}">${sanitizeHTML(label)}</span>`;
+	}
+
+	// ── Render: header ────────────────────────────────────────
+	function renderHeader(inc) {
+		headerNumeroEl.textContent = inc.numero || 'Sin número';
+		const [cls, label] = ESTADO_CHIP[inc.estado] || ['neutral', inc.estado];
+		headerChipEl.innerHTML = `<span class="chip chip--${cls}">${sanitizeHTML(label)}</span>`;
+	}
+
+	// ── Render: timeline de aprobaciones ─────────────────────
+	function renderTimeline(aprobaciones) {
+		if (!aprobaciones || aprobaciones.length === 0) {
+			timelineEl.innerHTML = `<div style="padding:16px"><p class="empty-note">Sin aprobaciones registradas.</p></div>`;
+			return;
+		}
+
+		const items = aprobaciones.map(ap => {
+			const icono = ap.estado === 'aprobado'  ? '✓'
+			            : ap.estado === 'rechazado' ? '✕'
+			            : '○';
+			const dotCls = ap.estado === 'aprobado'  ? 'timeline-step__dot--aprobado'
+			             : ap.estado === 'rechazado' ? 'timeline-step__dot--rechazado'
+			             : 'timeline-step__dot--pending';
+			const rolLabel = ROL_LABEL[ap.rol_aprobador] || ap.rol_aprobador;
+			const fecha = ap.resuelto_en
+				? formatFechaCorta(ap.resuelto_en)
+				: ap.estado === 'pendiente' ? 'Pendiente' : '—';
+
+			const comentarioHTML = ap.comentario
+				? `<div class="timeline-step__comentario">${sanitizeHTML(ap.comentario)}</div>`
+				: '';
+
+			return `
+			<div class="timeline-step">
+				<div class="timeline-step__dot ${dotCls}" aria-hidden="true">${icono}</div>
+				<div class="timeline-step__content">
+					<div class="timeline-step__rol">${sanitizeHTML(rolLabel)}</div>
+					<div class="timeline-step__meta">${sanitizeHTML(fecha)}</div>
+					${comentarioHTML}
+				</div>
+			</div>`;
+		}).join('');
+
+		timelineEl.innerHTML = items;
+	}
+
+	// ── Render: datos del incidente ───────────────────────────
+	function renderDatos(inc, creadorNombre) {
+		document.getElementById('val-tipo').innerHTML = chip(inc.tipo, {
+			'Incidente real':    ['info', 'Incidente real'],
+			'Cuasi-accidente':   ['warning', 'Cuasi-accidente'],
+			'Acto inseguro':     ['info', 'Acto inseguro'],
+			'Condición insegura':['info', 'Condición insegura'],
+		});
+		document.getElementById('val-severidad').innerHTML = chip(inc.severidad, SEV_CHIP);
+		document.getElementById('val-fecha').textContent     = inc.fecha_hora ? formatFecha(inc.fecha_hora) : '—';
+		document.getElementById('val-ubicacion').textContent = inc.ubicacion  || '—';
+		document.getElementById('val-descripcion').textContent = inc.descripcion || '—';
+		document.getElementById('val-creado').textContent    = inc.created_at ? formatFechaCorta(inc.created_at) : '—';
+
+		if (inc.locacion_nombre) {
+			document.getElementById('val-locacion').textContent = inc.locacion_nombre;
+			document.getElementById('row-locacion').hidden      = false;
+		}
+		if (inc.latitud != null && inc.longitud != null) {
+			document.getElementById('val-coords').textContent = `${inc.latitud}, ${inc.longitud}`;
+			document.getElementById('row-coords').hidden      = false;
+		}
+		if (creadorNombre) {
+			document.getElementById('val-createdby').textContent = creadorNombre;
+			document.getElementById('row-createdby').hidden      = false;
+		}
+	}
+
+	// ── Render: acciones inmediatas ───────────────────────────
+	function renderAcciones(acciones) {
+		if (!acciones || acciones.length === 0) return;
+		const items = acciones
+			.filter(a => a && String(a).trim())
+			.map(a => `<div class="accion-item">${sanitizeHTML(String(a))}</div>`)
+			.join('');
+		if (!items) return;
+		document.getElementById('list-acciones').innerHTML = items;
+		document.getElementById('card-acciones').hidden = false;
+	}
+
+	// ── Render: lesiones ──────────────────────────────────────
+	function renderLesiones(lesiones) {
+		if (!lesiones || lesiones.length === 0) return;
+		const cardEl   = document.getElementById('card-lesiones');
+		const bodyEl   = document.getElementById('body-lesiones');
+		const countEl  = document.getElementById('lesiones-count');
+
+		countEl.textContent = `${lesiones.length} lesión${lesiones.length !== 1 ? 'es' : ''}`;
+
+		const items = lesiones.map(l => `
+		<div class="lesion-card">
+			<div class="lesion-card__header">🩹 Lesión registrada</div>
+			<div class="lesion-card__data">
+				<div>
+					<div class="lesion-field__label">Tipo</div>
+					<div class="lesion-field__value">${sanitizeHTML(l.tipo_lesion || '—')}</div>
+				</div>
+				<div>
+					<div class="lesion-field__label">Parte del cuerpo</div>
+					<div class="lesion-field__value">${sanitizeHTML(l.parte_cuerpo || '—')}</div>
+				</div>
+				<div>
+					<div class="lesion-field__label">Días perdidos</div>
+					<div class="lesion-field__value">${sanitizeHTML(String(l.dias_perdidos ?? 0))}</div>
+				</div>
+				<div>
+					<div class="lesion-field__label">Gravedad</div>
+					<div class="lesion-field__value">${chip(l.gravedad, GRAVEDAD_LESION_CHIP)}</div>
+				</div>
+			</div>
+		</div>`).join('');
+
+		bodyEl.innerHTML  = items;
+		cardEl.hidden     = false;
+	}
+
+	// ── Render: fotos ─────────────────────────────────────────
+	function renderFotos(adjuntos) {
+		const fotos = (adjuntos || []).filter(a => a.tipo === 'foto' || a.url?.match(/\.(jpg|jpeg|png|webp)/i));
+		if (fotos.length === 0) return;
+
+		const gridEl  = document.getElementById('fotos-grid');
+		const cardEl  = document.getElementById('card-fotos');
+		const countEl = document.getElementById('fotos-count');
+
+		countEl.textContent = `${fotos.length}`;
+		gridEl.innerHTML = fotos.map(f => `
+		<div class="foto-thumb">
+			<img
+				src="${sanitizeHTML(f.url)}"
+				alt="Evidencia fotográfica"
+				loading="lazy"
+				width="150"
+				height="150"
+				onerror="this.parentElement.style.display='none'"
+			>
+		</div>`).join('');
+
+		cardEl.hidden = false;
+	}
+
+	// ── Render: investigación ─────────────────────────────────
+	function renderInvestigacion(inv, incidente, usuario) {
+		const bodyEl = document.getElementById('body-investigacion');
+		const puedeComencar = ['hse', 'supervisor', 'administrador'].includes(usuario?.rol);
+
+		if (!inv) {
+			if (puedeComencar) {
+				bodyEl.innerHTML = `
+				<a
+					href="/incidente-investigar.html?id=${sanitizeHTML(_incidenteId)}"
+					style="
+						display:block; padding:14px; border-radius:8px;
+						background:var(--accent-subtle); border:1px solid var(--accent-subtle-hover);
+						color:var(--accent); font-weight:700; font-size:var(--text-sm);
+						text-decoration:none; text-align:center;
+					"
+					aria-label="Iniciar investigación de causa raíz"
+				>
+					+ Iniciar investigación (5 Porqués)
+				</a>`;
+			} else {
+				bodyEl.innerHTML = `<p class="empty-note">Aún no hay investigación registrada.</p>`;
+			}
+			return;
+		}
+
+		// Hay investigación
+		const resumen = inv.porque_1
+			? `<div class="data-row" style="border:none;padding-top:0">
+				<span class="data-row__label">¿Por qué 1?</span>
+				<span class="data-row__value">${sanitizeHTML(inv.porque_1)}</span>
+			</div>`
+			: '';
+		const conclusion = inv.conclusion
+			? `<div class="data-row" style="border-top:1px solid var(--border-subtle);margin-top:8px;padding-bottom:0">
+				<span class="data-row__label">Conclusión</span>
+				<span class="data-row__value">${sanitizeHTML(inv.conclusion)}</span>
+			</div>`
+			: '';
+
+		bodyEl.innerHTML = `
+		${resumen}
+		${conclusion}
+		<a
+			href="/incidente-investigar.html?id=${sanitizeHTML(_incidenteId)}"
+			style="
+				display:block; margin-top:12px; padding:10px; border-radius:8px;
+				background:var(--surface-03); border:1px solid var(--border-subtle);
+				color:var(--text-secondary); font-weight:600; font-size:var(--text-sm);
+				text-decoration:none; text-align:center;
+			"
+		>Ver investigación completa →</a>`;
+	}
+
+	// ── Render: footer de acciones ────────────────────────────
+	function renderFooter(aprobaciones, usuario) {
+		if (!usuario || !aprobaciones) return;
+
+		const rolesPermitidos = ROL_PUEDE_RESOLVER[usuario.rol] || [];
+		const pendiente = aprobaciones.find(ap =>
+			ap.estado === 'pendiente' &&
+			rolesPermitidos.includes(ap.rol_aprobador)
+		);
+
+		if (pendiente) {
+			_pendienteId = pendiente.id;
+			actionFooterEl.innerHTML = `
+			<button id="btn-aprobar" class="btn-action btn-action--primary" type="button">
+				✓ Aprobar
+			</button>
+			<button id="btn-rechazar" class="btn-action btn-action--danger" type="button">
+				✕ Rechazar
+			</button>`;
+			actionFooterEl.hidden = false;
+
+			document.getElementById('btn-aprobar').addEventListener('click', handleAprobar);
+			document.getElementById('btn-rechazar').addEventListener('click', openModalRechazo);
+		}
+	}
+
+	// ── Aprobar ───────────────────────────────────────────────
+	async function handleAprobar() {
+		if (_submitting || !_pendienteId) return;
+		_submitting = true;
+
+		const btnAprobar = document.getElementById('btn-aprobar');
+		if (btnAprobar) { btnAprobar.disabled = true; btnAprobar.textContent = 'Aprobando...'; }
+
+		try {
+			const { error } = await supabase
+				.from('aprobaciones_incidente')
+				.update({
+					estado:      'aprobado',
+					usuario_id:  _usuario?.id ?? null,
+					comentario:  null,
+				})
+				.eq('id', _pendienteId);
+
+			if (error) throw error;
+
+			showToast('Aprobación registrada.', 'success');
+			// Recargar para reflejar el nuevo estado
+			window.location.reload();
+
+		} catch (err) {
+			showToast('Error al aprobar: ' + (err.message || 'Intentá de nuevo.'), 'error');
+			if (btnAprobar) { btnAprobar.disabled = false; btnAprobar.textContent = '✓ Aprobar'; }
+		} finally {
+			_submitting = false;
+		}
+	}
+
+	// ── Modal de rechazo ──────────────────────────────────────
+	function openModalRechazo() {
+		modalComentarioEl.value   = '';
+		modalErrorEl.textContent  = '';
+		modalRechazoEl.removeAttribute('aria-hidden');
+		modalComentarioEl.focus();
+	}
+
+	function closeModalRechazo() {
+		modalRechazoEl.setAttribute('aria-hidden', 'true');
+	}
+
+	async function handleRechazar() {
+		const comentario = modalComentarioEl.value.trim();
+		if (!comentario) {
+			modalErrorEl.textContent = 'El motivo del rechazo es obligatorio.';
+			modalComentarioEl.focus();
+			return;
+		}
+		if (_submitting || !_pendienteId) return;
+		_submitting = true;
+
+		btnModalConfirmarEl.disabled   = true;
+		btnModalConfirmarEl.textContent = 'Rechazando...';
+
+		try {
+			const { error } = await supabase
+				.from('aprobaciones_incidente')
+				.update({
+					estado:     'rechazado',
+					usuario_id: _usuario?.id ?? null,
+					comentario: comentario,
+				})
+				.eq('id', _pendienteId);
+
+			if (error) {
+				// El trigger valida el comentario — si llega aquí con error, es otro problema
+				const msg = error.message?.includes('APROBACION_ERROR')
+					? 'El motivo es obligatorio al rechazar.'
+					: (error.message || 'Error al rechazar.');
+				modalErrorEl.textContent = msg;
+				return;
+			}
+
+			closeModalRechazo();
+			showToast('Rechazo registrado.', 'info');
+			window.location.reload();
+
+		} catch (err) {
+			modalErrorEl.textContent = err.message || 'Error inesperado. Intentá de nuevo.';
+		} finally {
+			_submitting = false;
+			btnModalConfirmarEl.disabled   = false;
+			btnModalConfirmarEl.textContent = 'Confirmar rechazo';
+		}
+	}
+
+	// ── Carga de datos ────────────────────────────────────────
+	async function cargarDatos() {
+		if (!_incidenteId) {
+			showPageError('ID de incidente inválido.');
+			return;
+		}
+
+		const [incResult, aprobResult, lesionesResult, adjuntosResult, invResult] =
+			await Promise.allSettled([
+
+			supabase.from('incidentes')
+				.select('*')
+				.eq('id', _incidenteId)
+				.is('deleted_at', null)
+				.single(),
+
+			supabase.from('aprobaciones_incidente')
+				.select('id, rol_aprobador, estado, comentario, orden, usuario_id, solicitado_en, resuelto_en')
+				.eq('incidente_id', _incidenteId)
+				.order('orden', { ascending: true }),
+
+			supabase.from('lesiones')
+				.select('tipo_lesion, parte_cuerpo, dias_perdidos, gravedad')
+				.eq('incidente_id', _incidenteId)
+				.is('deleted_at', null),
+
+			supabase.from('adjuntos')
+				.select('id, url, tipo, created_at')
+				.eq('tabla_referencia', 'incidentes')
+				.eq('registro_id', _incidenteId)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: true }),
+
+			supabase.from('investigaciones_causa_raiz')
+				.select('id, porque_1, conclusion, created_at')
+				.eq('incidente_id', _incidenteId)
+				.is('deleted_at', null)
+				.maybeSingle(),
+		]);
+
+		// Verificar error del incidente principal
+		if (incResult.status === 'rejected' || incResult.value?.error) {
+			const err = incResult.value?.error || incResult.reason;
+			showPageError(
+				err?.code === 'PGRST116'
+					? 'Incidente no encontrado o sin acceso.'
+					: (err?.message || 'No se pudo cargar el incidente.')
+			);
+			return;
+		}
+
+		_incidente    = incResult.value.data;
+		_aprobaciones = aprobResult.value?.data  ?? [];
+
+		// Buscar nombre del creador si hay created_by
+		let creadorNombre = null;
+		if (_incidente.created_by) {
+			const { data: creador } = await supabase
+				.from('usuarios')
+				.select('nombre_completo')
+				.eq('id', _incidente.created_by)
+				.single();
+			creadorNombre = creador?.nombre_completo ?? null;
+		}
+
+		// Ocultar skeletons, mostrar contenido
+		skeletonAreaEl.hidden = true;
+		contentAreaEl.hidden  = false;
+
+		// Renderizar todo
+		renderHeader(_incidente);
+		renderTimeline(_aprobaciones);
+		renderDatos(_incidente, creadorNombre);
+		renderAcciones(_incidente.acciones_inmediatas);
+		renderLesiones(lesionesResult.value?.data ?? []);
+		renderFotos(adjuntosResult.value?.data ?? []);
+		renderInvestigacion(invResult.value?.data ?? null, _incidente, _usuario);
+		renderFooter(_aprobaciones, _usuario);
+	}
+
+	// ── Error de página ───────────────────────────────────────
+	function showPageError(msg) {
+		skeletonAreaEl.hidden = true;
+		pageErrorSubEl.textContent = msg;
+		pageErrorEl.hidden    = false;
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Verificar sesión
+		await requireAuth('/login.html');
+
+		// 2. Datos del usuario (para acciones de rol)
+		_usuario = await getUsuario().catch(() => null);
+
+		// 3. Cargar datos del incidente
+		await cargarDatos();
+
+		// 4. Event listeners — todos aquí
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign('/incidentes.html');
+		});
+
+		btnModalCancelarEl.addEventListener('click', closeModalRechazo);
+		btnModalConfirmarEl.addEventListener('click', handleRechazar);
+
+		// Cerrar modal con Escape
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && !modalRechazoEl.hasAttribute('aria-hidden')) {
+				closeModalRechazo();
+			}
+		});
+
+		// Click en overlay cierra modal
+		modalRechazoEl.addEventListener('click', (e) => {
+			if (e.target === modalRechazoEl) closeModalRechazo();
+		});
+
+		// Limpiar error del modal al escribir
+		modalComentarioEl.addEventListener('input', () => {
+			modalErrorEl.textContent = '';
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
