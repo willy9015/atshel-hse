@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Investigación de causa raíz">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Investigación — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__row {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			gap:             8px;
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			min-width:   0;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:   var(--font-condensed);
+			font-size:     var(--text-xl);
+			font-weight:   700;
+			color:         var(--text-primary);
+			line-height:   1;
+		}
+
+		.app-header__sub {
+			font-family:   var(--font-mono);
+			font-size:     var(--text-xs);
+			color:         var(--text-tertiary);
+			white-space:   nowrap;
+		}
+
+		/* ── Modo badge ───────────────────────────────────────── */
+		.mode-badge {
+			padding:       3px 8px;
+			border-radius: 4px;
+			font-size:     10px;
+			font-weight:   700;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			flex-shrink:   0;
+		}
+		.mode-badge--new  { background: var(--accent-subtle);       color: var(--accent); }
+		.mode-badge--edit { background: var(--color-info-bg);       color: var(--color-info); }
+
+		/* ── Form main ────────────────────────────────────────── */
+		.form-main {
+			flex:           1;
+			padding:        20px 16px calc(96px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            24px;
+		}
+
+		/* ── Contexto del incidente ───────────────────────────── */
+		.incident-context {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			padding:       12px 14px;
+		}
+
+		.incident-context__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			margin-bottom:  4px;
+		}
+
+		.incident-context__desc {
+			font-size:   var(--text-sm);
+			color:       var(--text-primary);
+			line-height: 1.4;
+			display:     -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+			overflow:    hidden;
+		}
+
+		/* ── Sección ──────────────────────────────────────────── */
+		.form-section {
+			display:        flex;
+			flex-direction: column;
+			gap:            12px;
+		}
+
+		.form-section__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.form-section__hint {
+			font-size:  var(--text-sm);
+			color:      var(--text-tertiary);
+			margin-top: -6px;
+		}
+
+		/* ── Cadena de 5 porqués ──────────────────────────────── */
+		.porques-chain {
+			display:        flex;
+			flex-direction: column;
+			gap:            0;
+		}
+
+		.porque-step {
+			display:        flex;
+			gap:            12px;
+			position:       relative;
+		}
+
+		.porque-step:not(:last-child) .porque-step__connector {
+			display: block;
+		}
+
+		.porque-step__left {
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			flex-shrink:    0;
+			width:          32px;
+		}
+
+		.porque-step__num {
+			width:           32px;
+			height:          32px;
+			border-radius:   50%;
+			background:      var(--surface-03);
+			border:          2px solid var(--border-subtle);
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			font-family:     var(--font-condensed);
+			font-size:       var(--text-base);
+			font-weight:     800;
+			color:           var(--text-tertiary);
+			flex-shrink:     0;
+			transition:      all 0.2s ease;
+		}
+
+		.porque-step.is-filled .porque-step__num {
+			background:   var(--accent-subtle);
+			border-color: var(--accent);
+			color:        var(--accent);
+		}
+
+		.porque-step__connector {
+			display:    none;
+			width:      2px;
+			flex:       1;
+			background: var(--border-subtle);
+			margin:     4px 0;
+			min-height: 16px;
+		}
+		.porque-step.is-filled + .porque-step .porque-step__connector {
+			background: var(--accent-subtle-hover);
+		}
+
+		.porque-step__body {
+			flex:           1;
+			padding-bottom: 16px;
+			min-width:      0;
+		}
+
+		.porque-step__label {
+			font-size:      var(--text-sm);
+			font-weight:    700;
+			color:          var(--text-secondary);
+			margin-bottom:  6px;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+		.porque-step.is-filled .porque-step__label { color: var(--accent); }
+
+		.porque-step:last-child .porque-step__label {
+			color: var(--color-danger);
+		}
+		.porque-step:last-child.is-filled .porque-step__label {
+			color: var(--color-danger);
+		}
+		.porque-step:last-child .porque-step__num {
+			border-color: var(--color-danger-border);
+			color:        var(--color-danger);
+		}
+		.porque-step:last-child.is-filled .porque-step__num {
+			background:   var(--color-danger-bg);
+			border-color: var(--color-danger);
+		}
+
+		/* ── Textarea estándar ────────────────────────────────── */
+		.field__textarea {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       11px 14px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			resize:        vertical;
+			min-height:    80px;
+			line-height:   1.5;
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__textarea:focus  { border-color: var(--accent); }
+		.field__textarea::placeholder { color: var(--text-tertiary); }
+		.field__textarea[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		.field__error {
+			font-size:   var(--text-xs);
+			color:       var(--color-danger);
+			font-weight: 600;
+			min-height:  16px;
+			margin-top:  2px;
+		}
+
+		/* ── Campo de texto simple ────────────────────────────── */
+		.field__input,
+		.field__date,
+		.field__select {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       10px 14px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__input:focus,
+		.field__date:focus,
+		.field__select:focus  { border-color: var(--accent); }
+		.field__input::placeholder { color: var(--text-tertiary); }
+		.field__date  { color-scheme: dark; }
+		.field__select option { background: var(--surface-02); }
+		.field__input[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		/* ── Sección de soluciones ────────────────────────────── */
+		.solucion-card {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			padding:       14px;
+			display:       flex;
+			flex-direction: column;
+			gap:           10px;
+			position:      relative;
+		}
+
+		.solucion-card__header {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+		}
+
+		.solucion-card__num {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-base);
+			font-weight:  700;
+			color:        var(--text-tertiary);
+		}
+
+		.btn-remove-sol {
+			width:           30px;
+			height:          30px;
+			border-radius:   6px;
+			background:      var(--color-danger-bg);
+			border:          none;
+			color:           var(--color-danger);
+			font-size:       16px;
+			cursor:          pointer;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			-webkit-tap-highlight-color: transparent;
+			flex-shrink:     0;
+		}
+		.btn-remove-sol:hover { background: var(--color-danger); color: #fff; }
+
+		.field__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			margin-bottom:  4px;
+		}
+		.field__label abbr { text-decoration: none; color: var(--color-danger); }
+
+		.solucion-row {
+			display:               grid;
+			grid-template-columns: 1fr 1fr;
+			gap:                   10px;
+		}
+
+		/* ── Botón agregar solución ───────────────────────────── */
+		.btn-add-sol {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             6px;
+			padding:         10px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          1px dashed var(--border-subtle);
+			color:           var(--text-secondary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			width:           100%;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-add-sol:hover { border-color: var(--accent); color: var(--accent); }
+
+		/* ── Banner de error ──────────────────────────────────── */
+		.form-error-banner {
+			padding:       12px 14px;
+			border-radius: 8px;
+			background:    var(--color-danger-bg);
+			border:        1px solid var(--color-danger-border);
+			color:         var(--color-danger);
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+		}
+
+		/* ── Footer ───────────────────────────────────────────── */
+		.form-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+		}
+
+		.btn-guardar {
+			width:           100%;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             8px;
+			padding:         14px;
+			border-radius:   10px;
+			background:      var(--accent);
+			border:          none;
+			color:           #000;
+			font-family:     var(--font-sans);
+			font-size:       var(--text-base);
+			font-weight:     700;
+			cursor:          pointer;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar:hover    { background: var(--accent-hover); }
+		.btn-guardar:active   { transform: scale(0.99); }
+		.btn-guardar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-spinner {
+			width:         18px;
+			height:        18px;
+			border:        2px solid rgba(0,0,0,0.25);
+			border-top-color: #000;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+			flex-shrink:   0;
+		}
+		@keyframes spin { to { transform: rotate(360deg); } }
+
+		/* ── Skeleton ─────────────────────────────────────────── */
+		.skeleton-card {
+			height:        120px;
+			border-radius: 10px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__row">
+			<div class="app-header__left">
+				<button id="btn-back" class="btn-back" type="button" aria-label="Volver al incidente">
+					<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+						<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+					</svg>
+				</button>
+				<div>
+					<div class="app-header__title">Investigación</div>
+					<div id="header-numero" class="app-header__sub">Cargando...</div>
+				</div>
+			</div>
+			<span id="mode-badge" class="mode-badge mode-badge--new">Nueva</span>
+		</div>
+	</header>
+
+	<!-- ── Form ────────────────────────────────────────────── -->
+	<main class="form-main" id="main-content" role="main">
+
+		<!-- Skeletons -->
+		<div id="skeleton-area">
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+		</div>
+
+		<!-- Contenido (oculto hasta cargar) -->
+		<div id="content-area" hidden>
+
+			<!-- Error banner -->
+			<div id="form-error-banner" class="form-error-banner" role="alert" aria-live="assertive" hidden>
+				<span id="form-error-text"></span>
+			</div>
+
+			<!-- Contexto del incidente -->
+			<div class="incident-context" id="incident-context">
+				<div class="incident-context__label">Incidente</div>
+				<div id="incident-desc" class="incident-context__desc">—</div>
+			</div>
+
+			<!-- 5 Porqués -->
+			<section class="form-section" aria-labelledby="title-porques">
+				<h2 id="title-porques" class="form-section__title">5 Porqués</h2>
+				<p class="form-section__hint">
+					Empezá con la causa inmediata y preguntá "¿Por qué?" hasta llegar a la causa raíz.
+					Todos los campos son obligatorios.
+				</p>
+
+				<div class="porques-chain" id="porques-chain">
+
+					<div class="porque-step" id="step-1">
+						<div class="porque-step__left">
+							<div class="porque-step__num">1</div>
+							<div class="porque-step__connector"></div>
+						</div>
+						<div class="porque-step__body">
+							<div class="porque-step__label">¿Por qué ocurrió? <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr></div>
+							<textarea
+								id="porque-1"
+								class="field__textarea"
+								rows="2"
+								placeholder="Causa inmediata del incidente..."
+								aria-required="true"
+								aria-label="Por qué 1"
+								maxlength="1000"
+							></textarea>
+							<div id="error-porque-1" class="field__error" aria-live="polite"></div>
+						</div>
+					</div>
+
+					<div class="porque-step" id="step-2">
+						<div class="porque-step__left">
+							<div class="porque-step__num">2</div>
+							<div class="porque-step__connector"></div>
+						</div>
+						<div class="porque-step__body">
+							<div class="porque-step__label">¿Por qué ocurrió eso? <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr></div>
+							<textarea
+								id="porque-2"
+								class="field__textarea"
+								rows="2"
+								placeholder="Causa subyacente..."
+								aria-required="true"
+								aria-label="Por qué 2"
+								maxlength="1000"
+							></textarea>
+							<div id="error-porque-2" class="field__error" aria-live="polite"></div>
+						</div>
+					</div>
+
+					<div class="porque-step" id="step-3">
+						<div class="porque-step__left">
+							<div class="porque-step__num">3</div>
+							<div class="porque-step__connector"></div>
+						</div>
+						<div class="porque-step__body">
+							<div class="porque-step__label">¿Por qué? <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr></div>
+							<textarea
+								id="porque-3"
+								class="field__textarea"
+								rows="2"
+								placeholder="Profundizá más..."
+								aria-required="true"
+								aria-label="Por qué 3"
+								maxlength="1000"
+							></textarea>
+							<div id="error-porque-3" class="field__error" aria-live="polite"></div>
+						</div>
+					</div>
+
+					<div class="porque-step" id="step-4">
+						<div class="porque-step__left">
+							<div class="porque-step__num">4</div>
+							<div class="porque-step__connector"></div>
+						</div>
+						<div class="porque-step__body">
+							<div class="porque-step__label">¿Por qué? <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr></div>
+							<textarea
+								id="porque-4"
+								class="field__textarea"
+								rows="2"
+								placeholder="Seguí profundizando..."
+								aria-required="true"
+								aria-label="Por qué 4"
+								maxlength="1000"
+							></textarea>
+							<div id="error-porque-4" class="field__error" aria-live="polite"></div>
+						</div>
+					</div>
+
+					<div class="porque-step" id="step-5">
+						<div class="porque-step__left">
+							<div class="porque-step__num">5</div>
+						</div>
+						<div class="porque-step__body">
+							<div class="porque-step__label">Causa raíz <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr></div>
+							<textarea
+								id="porque-5"
+								class="field__textarea"
+								rows="3"
+								placeholder="Causa raíz del sistema (falla organizacional, de proceso o de entrenamiento)..."
+								aria-required="true"
+								aria-label="Causa raíz (Por qué 5)"
+								maxlength="1000"
+							></textarea>
+							<div id="error-porque-5" class="field__error" aria-live="polite"></div>
+						</div>
+					</div>
+
+				</div>
+			</section>
+
+			<!-- Conclusión -->
+			<section class="form-section" aria-labelledby="title-conclusion">
+				<h2 id="title-conclusion" class="form-section__title">Conclusión</h2>
+				<textarea
+					id="input-conclusion"
+					class="field__textarea"
+					rows="3"
+					placeholder="Resumen de la investigación y recomendaciones generales (opcional)..."
+					aria-label="Conclusión de la investigación"
+					maxlength="2000"
+				></textarea>
+			</section>
+
+			<!-- Acciones correctivas / Soluciones -->
+			<section class="form-section" aria-labelledby="title-soluciones">
+				<h2 id="title-soluciones" class="form-section__title">Acciones correctivas</h2>
+				<p class="form-section__hint">
+					Definí las acciones concretas para eliminar la causa raíz.
+				</p>
+
+				<div id="soluciones-list" aria-label="Lista de acciones correctivas"></div>
+
+				<button id="btn-add-sol" class="btn-add-sol" type="button" aria-label="Agregar acción correctiva">
+					<span aria-hidden="true">+</span> Agregar acción correctiva
+				</button>
+			</section>
+
+		</div><!-- /#content-area -->
+
+	</main>
+
+	<!-- ── Footer ──────────────────────────────────────────── -->
+	<footer class="form-footer" role="contentinfo">
+		<button id="btn-guardar" class="btn-guardar" type="button" aria-label="Guardar investigación">
+			<span id="btn-text">Guardar investigación</span>
+			<span id="btn-spinner" class="btn-spinner" hidden aria-hidden="true"></span>
+		</button>
+	</footer>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * incidente-investigar.html — investigación 5 porqués + soluciones.
+	 *
+	 * Columnas verificadas MCP 2026-06-24:
+	 *   investigaciones_causa_raiz:
+	 *     porque_1..5   TEXT NOT NULL
+	 *     conclusion    TEXT NULL
+	 *     auditor_id    UUID NOT NULL → public.usuarios.id
+	 *     incidente_id  UNIQUE → una sola investigación por incidente
+	 *   soluciones_incidentes:
+	 *     accion_correctiva TEXT NOT NULL
+	 *     fecha_limite      DATE NOT NULL
+	 *     responsable_id    UUID NULL → public.usuarios.id
+	 *     estado_solucion   TEXT default 'Pendiente'
+	 *
+	 * fecha_limite es DATE → se guarda como "YYYY-MM-DD" string.
+	 * Se muestra con parseLocalDate() — nunca new Date("YYYY-MM-DD").
+	 *
+	 * Control de concurrencia en incidentes.version:
+	 *   UPDATE incidentes SET estado='En investigación', version=version+1
+	 *   WHERE id=? AND version=? (rechaza si otra sesión modificó antes)
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		generateLocalId,
+		parseLocalDate,
+		formatFechaCorta,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── IDs desde URL ────────────────────────────────────────
+	const _incidenteId = new URLSearchParams(window.location.search).get('id');
+
+	// ── Estado ───────────────────────────────────────────────
+	let _usuario          = null;
+	let _incidente        = null;
+	let _invExistente     = null; // null = nueva, objeto = edición
+	let _invLocalId       = generateLocalId(); // para nueva
+	let _usuarios         = [];  // lista de usuarios de la empresa para el select
+	let _solCount         = 0;
+	let _submitting       = false;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl         = document.getElementById('btn-back');
+	const headerNumeroEl    = document.getElementById('header-numero');
+	const modeBadgeEl       = document.getElementById('mode-badge');
+	const skeletonAreaEl    = document.getElementById('skeleton-area');
+	const contentAreaEl     = document.getElementById('content-area');
+	const incidentDescEl    = document.getElementById('incident-desc');
+	const formErrorBannerEl = document.getElementById('form-error-banner');
+	const formErrorTextEl   = document.getElementById('form-error-text');
+	const solucionesListEl  = document.getElementById('soluciones-list');
+	const btnAddSolEl       = document.getElementById('btn-add-sol');
+	const btnGuardarEl      = document.getElementById('btn-guardar');
+	const btnTextEl         = document.getElementById('btn-text');
+	const btnSpinnerEl      = document.getElementById('btn-spinner');
+
+	// Textareas de porqués
+	const porqueEls = [1,2,3,4,5].map(i => document.getElementById(`porque-${i}`));
+	const errorEls  = [1,2,3,4,5].map(i => document.getElementById(`error-porque-${i}`));
+	const stepEls   = [1,2,3,4,5].map(i => document.getElementById(`step-${i}`));
+
+	// ── Helpers ───────────────────────────────────────────────
+	function showFormError(msg) {
+		formErrorTextEl.textContent = msg;
+		formErrorBannerEl.hidden    = false;
+		formErrorBannerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	function hideFormError() {
+		formErrorBannerEl.hidden    = true;
+		formErrorTextEl.textContent = '';
+	}
+
+	function setBtnLoading(loading) {
+		_submitting          = loading;
+		btnGuardarEl.disabled = loading;
+		btnTextEl.hidden     = loading;
+		btnSpinnerEl.hidden  = !loading;
+	}
+
+	// Actualizar estado visual del paso
+	function updateStepState(idx) {
+		const filled = porqueEls[idx].value.trim().length > 0;
+		stepEls[idx].classList.toggle('is-filled', filled);
+	}
+
+	// ── Build select de usuarios ──────────────────────────────
+	function buildUsuariosOptions(selectedId = null) {
+		const placeholder = `<option value="">Sin asignar</option>`;
+		const opts = _usuarios.map(u =>
+			`<option value="${sanitizeHTML(u.id)}" ${u.id === selectedId ? 'selected' : ''}>
+				${sanitizeHTML(u.nombre_completo || u.id)}
+			</option>`
+		).join('');
+		return placeholder + opts;
+	}
+
+	// ── Agregar fila de solución ──────────────────────────────
+	function addSolucionRow(data = {}) {
+		_solCount++;
+		const rowId   = `sol-${_solCount}`;
+		const localId = data.atshel_local_id || generateLocalId();
+
+		// fecha_limite: si viene de DB es "YYYY-MM-DD" (DATE), seguro usarla en value
+		// Para el default: mañana en timezone local
+		let fechaDefault = '';
+		if (data.fecha_limite) {
+			// DATE string de Postgres: "YYYY-MM-DD" — usar directamente en input[type=date]
+			fechaDefault = data.fecha_limite;
+		} else {
+			const manana = new Date();
+			manana.setDate(manana.getDate() + 30); // default: 30 días
+			const off = manana.getTimezoneOffset();
+			fechaDefault = new Date(manana.getTime() - off * 60000).toISOString().slice(0, 10);
+		}
+
+		const card = document.createElement('div');
+		card.className        = 'solucion-card';
+		card.dataset.rowId    = rowId;
+		card.dataset.localId  = localId;
+		if (data.id) card.dataset.dbId = data.id;
+		if (data.version) card.dataset.version = data.version;
+
+		card.innerHTML = `
+		<div class="solucion-card__header">
+			<span class="solucion-card__num">Acción #${_solCount}</span>
+			<button
+				class="btn-remove-sol"
+				type="button"
+				aria-label="Eliminar acción ${_solCount}"
+				data-remove="${rowId}"
+			>✕</button>
+		</div>
+		<div>
+			<div class="field__label">Acción correctiva <abbr title="Requerido">*</abbr></div>
+			<textarea
+				id="${rowId}-accion"
+				class="field__textarea"
+				rows="2"
+				placeholder="Describí la acción a implementar..."
+				maxlength="500"
+				aria-required="true"
+				aria-label="Acción correctiva ${_solCount}"
+			>${sanitizeHTML(data.accion_correctiva || '')}</textarea>
+			<div id="${rowId}-error-accion" class="field__error" aria-live="polite"></div>
+		</div>
+		<div class="solucion-row">
+			<div>
+				<div class="field__label">Fecha límite <abbr title="Requerido">*</abbr></div>
+				<input
+					id="${rowId}-fecha"
+					class="field__date"
+					type="date"
+					value="${sanitizeHTML(fechaDefault)}"
+					aria-required="true"
+					aria-label="Fecha límite acción ${_solCount}"
+				>
+				<div id="${rowId}-error-fecha" class="field__error" aria-live="polite"></div>
+			</div>
+			<div>
+				<div class="field__label">Responsable</div>
+				<select
+					id="${rowId}-responsable"
+					class="field__select"
+					aria-label="Responsable de la acción ${_solCount}"
+				>
+					${buildUsuariosOptions(data.responsable_id || null)}
+				</select>
+			</div>
+		</div>`;
+
+		solucionesListEl.appendChild(card);
+	}
+
+	function removeSolucionRow(rowId) {
+		const card = solucionesListEl.querySelector(`[data-row-id="${rowId}"]`);
+		if (card) card.remove();
+	}
+
+	// ── Leer todas las soluciones del DOM ─────────────────────
+	function getSoluciones() {
+		return Array.from(solucionesListEl.querySelectorAll('.solucion-card')).map(card => ({
+			localId:    card.dataset.localId,
+			dbId:       card.dataset.dbId   || null,
+			version:    parseInt(card.dataset.version || '1'),
+			accion:     card.querySelector('[id$="-accion"]')?.value.trim()     || '',
+			fecha:      card.querySelector('[id$="-fecha"]')?.value             || '',
+			responsable:card.querySelector('[id$="-responsable"]')?.value       || null,
+		}));
+	}
+
+	// ── Validación ───────────────────────────────────────────
+	function validate() {
+		let ok = true;
+		hideFormError();
+
+		// Validar los 5 porqués
+		porqueEls.forEach((el, i) => {
+			const val = el.value.trim();
+			if (!val) {
+				errorEls[i].textContent = `El porqué ${i + 1} es obligatorio.`;
+				el.setAttribute('aria-invalid', 'true');
+				ok = false;
+			} else if (val.length < 5) {
+				errorEls[i].textContent = 'Demasiado corto (mínimo 5 caracteres).';
+				el.setAttribute('aria-invalid', 'true');
+				ok = false;
+			} else {
+				errorEls[i].textContent = '';
+				el.removeAttribute('aria-invalid');
+			}
+		});
+
+		// Validar soluciones
+		const soluciones = getSoluciones();
+		soluciones.forEach(sol => {
+			const card          = solucionesListEl.querySelector(`[data-local-id="${sol.localId}"]`);
+			const errorAccionEl = card?.querySelector('[id$="-error-accion"]');
+			const errorFechaEl  = card?.querySelector('[id$="-error-fecha"]');
+			const accionEl      = card?.querySelector('[id$="-accion"]');
+			const fechaEl       = card?.querySelector('[id$="-fecha"]');
+
+			if (!sol.accion) {
+				if (errorAccionEl) errorAccionEl.textContent = 'La acción es obligatoria.';
+				if (accionEl) accionEl.setAttribute('aria-invalid', 'true');
+				ok = false;
+			} else {
+				if (errorAccionEl) errorAccionEl.textContent = '';
+				if (accionEl) accionEl.removeAttribute('aria-invalid');
+			}
+
+			if (!sol.fecha) {
+				if (errorFechaEl) errorFechaEl.textContent = 'La fecha límite es obligatoria.';
+				ok = false;
+			} else {
+				// Verificar que no sea pasada usando parseLocalDate (regla crítica)
+				const fechaDate = parseLocalDate(sol.fecha);
+				const ayer      = new Date();
+				ayer.setDate(ayer.getDate() - 1);
+				ayer.setHours(0, 0, 0, 0);
+				if (fechaDate < ayer) {
+					if (errorFechaEl) errorFechaEl.textContent = 'La fecha límite no puede ser anterior a hoy.';
+					ok = false;
+				} else {
+					if (errorFechaEl) errorFechaEl.textContent = '';
+				}
+			}
+		});
+
+		return ok;
+	}
+
+	// ── Guardar ───────────────────────────────────────────────
+	async function handleGuardar() {
+		if (_submitting) return;
+		if (!validate()) {
+			const firstInvalid = document.querySelector('[aria-invalid="true"]');
+			firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			return;
+		}
+
+		setBtnLoading(true);
+
+		try {
+			const empresaId  = _usuario?.empresa_id ?? await getEmpresaId();
+			const auditorId  = _usuario?.id;
+			const soluciones = getSoluciones();
+
+			const invPayload = {
+				empresa_id:         empresaId,
+				incidente_id:       _incidenteId,
+				auditor_id:         auditorId,
+				fecha_investigacion: new Date().toISOString(),
+				porque_1:           porqueEls[0].value.trim(),
+				porque_2:           porqueEls[1].value.trim(),
+				porque_3:           porqueEls[2].value.trim(),
+				porque_4:           porqueEls[3].value.trim(),
+				porque_5:           porqueEls[4].value.trim(),
+				conclusion:         document.getElementById('input-conclusion').value.trim() || null,
+			};
+
+			let invId;
+
+			if (_invExistente) {
+				// Edición: UPDATE con control de version
+				const { data: updated, error: updateErr } = await supabase
+					.from('investigaciones_causa_raiz')
+					.update({ ...invPayload, version: _invExistente.version + 1 })
+					.eq('id', _invExistente.id)
+					.eq('version', _invExistente.version)
+					.select('id')
+					.single();
+
+				if (updateErr) throw updateErr;
+				if (!updated) throw new Error('Conflicto de versión. Recargá la página e intentá de nuevo.');
+				invId = _invExistente.id;
+
+			} else {
+				// Nueva investigación: INSERT con idempotencia
+				const { data: inserted, error: insertErr } = await supabase
+					.from('investigaciones_causa_raiz')
+					.insert({ ...invPayload, atshel_local_id: _invLocalId })
+					.select('id')
+					.single();
+
+				if (insertErr) {
+					// 23505 en atshel_local_id o incidente_id = ya existe
+					if (insertErr.code === '23505') {
+						const { data: existente } = await supabase
+							.from('investigaciones_causa_raiz')
+							.select('id')
+							.eq('incidente_id', _incidenteId)
+							.is('deleted_at', null)
+							.single();
+						if (existente?.id) {
+							invId = existente.id;
+						} else {
+							throw insertErr;
+						}
+					} else {
+						throw insertErr;
+					}
+				} else {
+					invId = inserted.id;
+				}
+			}
+
+			// Actualizar estado del incidente con control de concurrencia
+			if (_incidente && _incidente.estado === 'Abierto') {
+				await supabase
+					.from('incidentes')
+					.update({
+						estado:  'En investigación',
+						version: (_incidente.version ?? 1) + 1,
+					})
+					.eq('id', _incidenteId)
+					.eq('version', _incidente.version ?? 1);
+				// No lanzar error si falla el update de estado (ya puede estar en otro estado)
+			}
+
+			// Guardar soluciones (INSERT nuevas, UPDATE existentes)
+			for (const sol of soluciones) {
+				const solPayload = {
+					investigacion_id: invId,
+					empresa_id:       empresaId,
+					accion_correctiva: sol.accion,
+					// fecha_limite es DATE → string "YYYY-MM-DD" directo (sin convertir a Date)
+					fecha_limite:     sol.fecha,
+					responsable_id:   sol.responsable || null,
+					estado_solucion:  'Pendiente',
+				};
+
+				if (sol.dbId) {
+					await supabase
+						.from('soluciones_incidentes')
+						.update({ ...solPayload, version: sol.version + 1 })
+						.eq('id', sol.dbId)
+						.eq('version', sol.version)
+						.is('deleted_at', null);
+				} else {
+					await supabase
+						.from('soluciones_incidentes')
+						.insert({ ...solPayload, atshel_local_id: sol.localId })
+						.select('id');
+				}
+			}
+
+			showToast('Investigación guardada correctamente.', 'success');
+			window.location.replace(`/incidente-detalle.html?id=${_incidenteId}`);
+
+		} catch (err) {
+			const msg = err.message?.includes('version')
+				? 'Conflicto de versión. Recargá e intentá de nuevo.'
+				: (err.message || 'Error inesperado. Intentá de nuevo.');
+			showFormError(msg);
+		} finally {
+			setBtnLoading(false);
+		}
+	}
+
+	// ── Carga de datos ────────────────────────────────────────
+	async function cargarDatos() {
+		if (!_incidenteId) {
+			showFormError('ID de incidente inválido.');
+			return;
+		}
+
+		const [incResult, invResult, usuariosResult] = await Promise.allSettled([
+
+			supabase.from('incidentes')
+				.select('id, numero, descripcion, estado, version, empresa_id')
+				.eq('id', _incidenteId)
+				.is('deleted_at', null)
+				.single(),
+
+			supabase.from('investigaciones_causa_raiz')
+				.select('id, porque_1, porque_2, porque_3, porque_4, porque_5, conclusion, version, soluciones_incidentes(id, atshel_local_id, accion_correctiva, fecha_limite, responsable_id, version, estado_solucion, deleted_at)')
+				.eq('incidente_id', _incidenteId)
+				.is('deleted_at', null)
+				.maybeSingle(),
+
+			supabase.from('usuarios')
+				.select('id, nombre_completo')
+				.eq('activo', true)
+				.is('deleted_at', null)
+				.order('nombre_completo', { ascending: true }),
+		]);
+
+		// Verificar incidente
+		if (incResult.status === 'rejected' || incResult.value?.error) {
+			showFormError('No se pudo cargar el incidente.');
+			return;
+		}
+		_incidente = incResult.value.data;
+
+		// Usuarios para selects
+		_usuarios = usuariosResult.value?.data ?? [];
+
+		// Investigación existente
+		_invExistente = invResult.value?.data ?? null;
+
+		// Actualizar header
+		headerNumeroEl.textContent = _incidente.numero || 'Sin número';
+		incidentDescEl.textContent = _incidente.descripcion || '—';
+
+		if (_invExistente) {
+			modeBadgeEl.textContent  = 'Editar';
+			modeBadgeEl.className    = 'mode-badge mode-badge--edit';
+			btnTextEl.textContent    = 'Actualizar investigación';
+
+			// Pre-cargar los porqués
+			[1,2,3,4,5].forEach(i => {
+				const ta  = document.getElementById(`porque-${i}`);
+				ta.value  = _invExistente[`porque_${i}`] || '';
+				updateStepState(i - 1);
+			});
+			document.getElementById('input-conclusion').value = _invExistente.conclusion || '';
+
+			// Cargar soluciones existentes (filtrar deleted)
+			const soluciones = (_invExistente.soluciones_incidentes ?? [])
+				.filter(s => !s.deleted_at);
+			if (soluciones.length > 0) {
+				soluciones.forEach(s => addSolucionRow(s));
+			} else {
+				addSolucionRow(); // Al menos una vacía
+			}
+
+		} else {
+			// Nueva: una solución vacía por defecto
+			addSolucionRow();
+		}
+
+		// Mostrar contenido
+		skeletonAreaEl.hidden = true;
+		contentAreaEl.hidden  = false;
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Sesión
+		await requireAuth('/login.html');
+
+		// 2. Usuario
+		_usuario = await getUsuario().catch(() => null);
+
+		// 3. Cargar datos
+		await cargarDatos();
+
+		// 4. Event listeners — todos aquí
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign(`/incidente-detalle.html?id=${_incidenteId}`);
+		});
+
+		// Porqués: actualizar estado visual al escribir
+		porqueEls.forEach((el, i) => {
+			el.addEventListener('input', () => {
+				updateStepState(i);
+				errorEls[i].textContent = '';
+				el.removeAttribute('aria-invalid');
+			});
+		});
+
+		// Soluciones: event delegation
+		solucionesListEl.addEventListener('click', (e) => {
+			const btnRemove = e.target.closest('.btn-remove-sol[data-remove]');
+			if (btnRemove) removeSolucionRow(btnRemove.dataset.remove);
+		});
+
+		btnAddSolEl.addEventListener('click', () => addSolucionRow());
+
+		btnGuardarEl.addEventListener('click', handleGuardar);
+
+		// Ctrl+Enter en cualquier textarea = guardar
+		document.querySelectorAll('textarea').forEach(ta => {
+			ta.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' && e.ctrlKey) handleGuardar();
+			});
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
