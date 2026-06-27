@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Nueva acción correctiva">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Nueva acción — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Form ─────────────────────────────────────────────── */
+		.form-main {
+			flex:           1;
+			padding:        20px 16px calc(96px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            20px;
+		}
+
+		/* ── Campos ───────────────────────────────────────────── */
+		.field {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
+
+		.field__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.field__label abbr { text-decoration: none; color: var(--color-danger); margin-left: 2px; }
+
+		.field__input,
+		.field__date,
+		.field__select,
+		.field__textarea {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       11px 14px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__textarea        { resize: vertical; min-height: 100px; line-height: 1.5; }
+		.field__date            { color-scheme: dark; }
+		.field__select option   { background: var(--surface-02); }
+
+		.field__input:focus,
+		.field__date:focus,
+		.field__select:focus,
+		.field__textarea:focus  { border-color: var(--accent); }
+
+		.field__input::placeholder,
+		.field__textarea::placeholder { color: var(--text-tertiary); }
+
+		.field__input[aria-invalid="true"],
+		.field__select[aria-invalid="true"],
+		.field__date[aria-invalid="true"],
+		.field__textarea[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		.field__error {
+			font-size:   var(--text-xs);
+			color:       var(--color-danger);
+			font-weight: 600;
+			min-height:  16px;
+		}
+
+		/* ── Contexto de incidente vinculado ──────────────────── */
+		.inc-context {
+			display:        flex;
+			align-items:    flex-start;
+			gap:            10px;
+			padding:        12px 14px;
+			background:     var(--surface-02);
+			border:         1px solid var(--border-subtle);
+			border-radius:  8px;
+		}
+
+		.inc-context__icon {
+			font-size:   18px;
+			flex-shrink: 0;
+			margin-top:  1px;
+		}
+
+		.inc-context__body { flex: 1; min-width: 0; }
+
+		.inc-context__numero {
+			font-family:  var(--font-mono);
+			font-size:    var(--text-xs);
+			color:        var(--text-tertiary);
+			margin-bottom: 2px;
+		}
+
+		.inc-context__desc {
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			color:         var(--text-primary);
+			line-height:   1.3;
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+		}
+
+		.inc-context__chips {
+			display:     flex;
+			gap:         4px;
+			margin-top:  4px;
+			flex-wrap:   wrap;
+		}
+
+		.chip {
+			display:        inline-flex;
+			align-items:    center;
+			padding:        2px 6px;
+			border-radius:  4px;
+			font-size:      10px;
+			font-weight:    700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+		.chip--danger  { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--neutral { background: var(--surface-04);       color: var(--text-secondary);}
+
+		.btn-change-inc {
+			display:    block;
+			margin-top: 8px;
+			font-size:  var(--text-xs);
+			color:      var(--accent);
+			font-weight: 600;
+			background: none;
+			border:     none;
+			padding:    0;
+			cursor:     pointer;
+			text-align: left;
+		}
+
+		/* ── Select incidente (cuando no viene por URL) ───────── */
+		.inc-search-wrap {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
+
+		/* ── Sección de título ────────────────────────────────── */
+		.section-title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Hint de fecha ────────────────────────────────────── */
+		.field__hint {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+			margin-top: -2px;
+		}
+
+		/* ── Error banner ─────────────────────────────────────── */
+		.form-error-banner {
+			padding:       12px 14px;
+			border-radius: 8px;
+			background:    var(--color-danger-bg);
+			border:        1px solid var(--color-danger-border);
+			color:         var(--color-danger);
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+		}
+
+		/* ── Skeleton ─────────────────────────────────────────── */
+		.skeleton-line {
+			height:        14px;
+			border-radius: 4px;
+			background:    var(--surface-03);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Footer ───────────────────────────────────────────── */
+		.form-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+		}
+
+		.btn-guardar {
+			width:           100%;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             8px;
+			padding:         14px;
+			border-radius:   10px;
+			background:      var(--accent);
+			border:          none;
+			color:           #000;
+			font-family:     var(--font-sans);
+			font-size:       var(--text-base);
+			font-weight:     700;
+			cursor:          pointer;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar:hover    { background: var(--accent-hover); }
+		.btn-guardar:active   { transform: scale(0.99); }
+		.btn-guardar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-spinner {
+			width:         18px;
+			height:        18px;
+			border:        2px solid rgba(0,0,0,0.25);
+			border-top-color: #000;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+		}
+		@keyframes spin { to { transform: rotate(360deg); } }
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button id="btn-back" class="btn-back" type="button" aria-label="Volver">
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<h1 class="app-header__title">Nueva acción correctiva</h1>
+		</div>
+	</header>
+
+	<!-- ── Form ────────────────────────────────────────────── -->
+	<main class="form-main" id="main-content" role="main">
+
+		<!-- Error banner -->
+		<div id="form-error-banner" class="form-error-banner" role="alert" aria-live="assertive" hidden>
+			<span id="form-error-text"></span>
+		</div>
+
+		<!-- Incidente vinculado -->
+		<div>
+			<div class="section-title" style="margin-bottom:10px">
+				Incidente vinculado <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr>
+			</div>
+
+			<!-- Contexto pre-cargado (cuando viene ?incidente_id) -->
+			<div id="inc-context-loaded" hidden>
+				<div class="inc-context" id="inc-context-card">
+					<span class="inc-context__icon" aria-hidden="true">⚠️</span>
+					<div class="inc-context__body">
+						<div id="ctx-numero" class="inc-context__numero">—</div>
+						<div id="ctx-desc"   class="inc-context__desc">—</div>
+						<div class="inc-context__chips">
+							<span id="ctx-tipo"      class="chip chip--neutral"></span>
+							<span id="ctx-severidad" class="chip chip--neutral"></span>
+						</div>
+					</div>
+				</div>
+				<button id="btn-change-inc" class="btn-change-inc" type="button">
+					Cambiar incidente
+				</button>
+			</div>
+
+			<!-- Selector (cuando NO viene ?incidente_id o usuario quiere cambiar) -->
+			<div id="inc-selector" hidden>
+				<div class="inc-search-wrap">
+					<div class="field__label">Buscá y seleccioná el incidente</div>
+					<select
+						id="select-incidente"
+						class="field__select"
+						aria-label="Seleccioná el incidente"
+						aria-required="true"
+					>
+						<option value="">— Seleccioná un incidente —</option>
+					</select>
+					<div id="error-incidente" class="field__error" aria-live="polite"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Descripción -->
+		<div class="field">
+			<label class="field__label" for="input-descripcion">
+				Descripción de la acción <abbr title="Requerido">*</abbr>
+			</label>
+			<textarea
+				id="input-descripcion"
+				class="field__textarea"
+				rows="4"
+				placeholder="¿Qué acción debe tomarse? Sé específico y accionable."
+				aria-required="true"
+				maxlength="1000"
+			></textarea>
+			<div id="error-descripcion" class="field__error" aria-live="polite"></div>
+		</div>
+
+		<!-- Responsable -->
+		<div class="field">
+			<label class="field__label" for="select-responsable">
+				Responsable (opcional)
+			</label>
+			<select
+				id="select-responsable"
+				class="field__select"
+				aria-label="Responsable de la acción"
+			>
+				<option value="">Sin asignar</option>
+			</select>
+		</div>
+
+		<!-- Fecha de vencimiento -->
+		<div class="field">
+			<label class="field__label" for="input-fecha">
+				Fecha límite <abbr title="Requerido">*</abbr>
+			</label>
+			<input
+				id="input-fecha"
+				class="field__date"
+				type="date"
+				aria-required="true"
+			>
+			<!--
+				fecha_vencimiento es TIMESTAMPTZ (verificado MCP).
+				El input date da "YYYY-MM-DD" → se convierte a fin de día
+				en TZ local (T23:59:59 + offset) antes de enviarse.
+				NO usar new Date("YYYY-MM-DD") directamente — bug UTC.
+				Se usa parseLocalDate() de atshel-core.js para validación.
+			-->
+			<div class="field__hint">La acción vence al final del día seleccionado.</div>
+			<div id="error-fecha" class="field__error" aria-live="polite"></div>
+		</div>
+
+	</main>
+
+	<!-- ── Footer ──────────────────────────────────────────── -->
+	<footer class="form-footer" role="contentinfo">
+		<button id="btn-guardar" class="btn-guardar" type="button" aria-label="Guardar acción correctiva">
+			<span id="btn-text">Guardar acción</span>
+			<span id="btn-spinner" class="btn-spinner" hidden aria-hidden="true"></span>
+		</button>
+	</footer>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * accion-nueva.html — nueva acción correctiva.
+	 *
+	 * Columnas verificadas MCP 2026-06-24:
+	 *   acciones_correctivas.incidente_id    UUID NOT NULL FK→incidentes(id)
+	 *   acciones_correctivas.descripcion     TEXT NOT NULL
+	 *   acciones_correctivas.responsable_id  UUID NULL FK→usuarios(id)
+	 *   acciones_correctivas.fecha_vencimiento TIMESTAMPTZ NOT NULL
+	 *   acciones_correctivas.estado          TEXT default 'Pendiente' — no va en INSERT
+	 *   acciones_correctivas.created_by      UUID NULL FK→public.usuarios.id
+	 *   acciones_correctivas.atshel_local_id UNIQUE
+	 *
+	 * fecha_vencimiento es TIMESTAMPTZ (no DATE).
+	 * Input type="date" → parseLocalDate() para validación → fin de día local → toISOString().
+	 * Nunca new Date("YYYY-MM-DD") para construir la fecha → bug UTC.
+	 *
+	 * URL params:
+	 *   ?incidente_id=UUID  → pre-carga contexto del incidente
+	 *   (sin param)         → muestra select con incidentes abiertos
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		generateLocalId,
+		parseLocalDate,
+		formatFechaCorta,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── Params ────────────────────────────────────────────────
+	const _params       = new URLSearchParams(window.location.search);
+	const _incIdFromUrl = _params.get('incidente_id') ?? null;
+
+	// ── Estado ───────────────────────────────────────────────
+	const _localId    = generateLocalId();
+	let _incidenteId  = _incIdFromUrl; // se confirma al cargar o al seleccionar
+	let _usuario      = null;
+	let _submitting   = false;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl            = document.getElementById('btn-back');
+	const incContextLoadedEl   = document.getElementById('inc-context-loaded');
+	const incSelectorEl        = document.getElementById('inc-selector');
+	const ctxNumeroEl          = document.getElementById('ctx-numero');
+	const ctxDescEl            = document.getElementById('ctx-desc');
+	const ctxTipoEl            = document.getElementById('ctx-tipo');
+	const ctxSeveridadEl       = document.getElementById('ctx-severidad');
+	const btnChangeIncEl       = document.getElementById('btn-change-inc');
+	const selectIncidenteEl    = document.getElementById('select-incidente');
+	const errorIncidenteEl     = document.getElementById('error-incidente');
+	const descripcionEl        = document.getElementById('input-descripcion');
+	const errorDescEl          = document.getElementById('error-descripcion');
+	const selectResponsableEl  = document.getElementById('select-responsable');
+	const fechaEl              = document.getElementById('input-fecha');
+	const errorFechaEl         = document.getElementById('error-fecha');
+	const formErrorBannerEl    = document.getElementById('form-error-banner');
+	const formErrorTextEl      = document.getElementById('form-error-text');
+	const btnGuardarEl         = document.getElementById('btn-guardar');
+	const btnTextEl            = document.getElementById('btn-text');
+	const btnSpinnerEl         = document.getElementById('btn-spinner');
+
+	// ── Chips de estado ───────────────────────────────────────
+	const SEV_MAP = {
+		'Leve':         'neutral',
+		'Moderado':     'warning',
+		'Grave':        'danger',
+		'Catastrófico': 'danger',
+	};
+
+	const TIPO_MAP = {
+		'Incidente real':    'danger',
+		'Cuasi-accidente':   'warning',
+		'Acto inseguro':     'neutral',
+		'Condición insegura':'neutral',
+	};
+
+	// ── Helpers ───────────────────────────────────────────────
+	function showFormError(msg) {
+		formErrorTextEl.textContent = msg;
+		formErrorBannerEl.hidden    = false;
+		formErrorBannerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	function hideFormError() {
+		formErrorBannerEl.hidden    = true;
+		formErrorTextEl.textContent = '';
+	}
+
+	function setError(el, errorEl, msg) {
+		errorEl.textContent = msg;
+		if (msg) el.setAttribute('aria-invalid', 'true');
+		else     el.removeAttribute('aria-invalid');
+	}
+
+	function setBtnLoading(loading) {
+		_submitting           = loading;
+		btnGuardarEl.disabled = loading;
+		btnTextEl.hidden      = loading;
+		btnSpinnerEl.hidden   = !loading;
+	}
+
+	// ── Render contexto de incidente pre-cargado ──────────────
+	function renderContexto(inc) {
+		ctxNumeroEl.textContent   = inc.numero || '—';
+		ctxDescEl.textContent     = (inc.descripcion || '').substring(0, 80);
+		ctxTipoEl.textContent     = inc.tipo      || '—';
+		ctxTipoEl.className       = `chip chip--${TIPO_MAP[inc.tipo] || 'neutral'}`;
+		ctxSeveridadEl.textContent = inc.severidad || '—';
+		ctxSeveridadEl.className  = `chip chip--${SEV_MAP[inc.severidad] || 'neutral'}`;
+		incContextLoadedEl.hidden = false;
+		incSelectorEl.hidden      = true;
+		_incidenteId              = inc.id;
+	}
+
+	// ── Cargar incidentes para el select ──────────────────────
+	async function cargarIncidentesSelect() {
+		const { data, error } = await supabase
+			.from('incidentes')
+			.select('id, numero, descripcion, tipo, severidad')
+			.neq('estado', 'Cerrado')
+			.is('deleted_at', null)
+			.order('fecha_hora', { ascending: false })
+			.limit(50);
+
+		if (error || !data?.length) {
+			selectIncidenteEl.innerHTML =
+				'<option value="">No hay incidentes abiertos</option>';
+			return;
+		}
+
+		const opts = data.map(inc =>
+			`<option value="${sanitizeHTML(inc.id)}">
+				${sanitizeHTML(inc.numero || '—')} — ${sanitizeHTML((inc.descripcion || '').substring(0, 60))}
+			</option>`
+		).join('');
+
+		selectIncidenteEl.innerHTML =
+			'<option value="">— Seleccioná un incidente —</option>' + opts;
+	}
+
+	// ── Cargar usuarios para el select de responsable ─────────
+	async function cargarUsuarios() {
+		const { data } = await supabase
+			.from('usuarios')
+			.select('id, nombre_completo, rol')
+			.eq('activo', true)
+			.is('deleted_at', null)
+			.order('nombre_completo', { ascending: true });
+
+		if (!data?.length) return;
+
+		const opts = data.map(u =>
+			`<option value="${sanitizeHTML(u.id)}">
+				${sanitizeHTML(u.nombre_completo || u.id)}
+			</option>`
+		).join('');
+		selectResponsableEl.innerHTML =
+			'<option value="">Sin asignar</option>' + opts;
+
+		// Pre-seleccionar el usuario actual como responsable
+		if (_usuario?.id) {
+			selectResponsableEl.value = _usuario.id;
+		}
+	}
+
+	// ── Convertir fecha "YYYY-MM-DD" a fin de día TIMESTAMPTZ ─
+	/**
+	 * REGLA CRÍTICA: nunca new Date("YYYY-MM-DD") — bug UTC en móviles.
+	 * Usamos parseLocalDate() para obtener la fecha en TZ local,
+	 * luego seteamos las horas a 23:59:59 y convertimos a ISO.
+	 */
+	function fechaAFinDeDia(strDate) {
+		const d = parseLocalDate(strDate); // obtiene medianoche local
+		d.setHours(23, 59, 59, 999);
+		return d.toISOString(); // UTC correcto
+	}
+
+	// ── Validación ────────────────────────────────────────────
+	function validate() {
+		let ok = true;
+		hideFormError();
+
+		// Incidente
+		const incId = _incidenteId || selectIncidenteEl.value;
+		if (!incId) {
+			errorIncidenteEl.textContent = 'Seleccioná el incidente vinculado.';
+			selectIncidenteEl.setAttribute('aria-invalid', 'true');
+			ok = false;
+		} else {
+			errorIncidenteEl.textContent = '';
+			selectIncidenteEl.removeAttribute('aria-invalid');
+		}
+
+		// Descripción
+		const desc = descripcionEl.value.trim();
+		if (!desc) {
+			setError(descripcionEl, errorDescEl, 'Describí la acción a tomar.');
+			ok = false;
+		} else if (desc.length < 10) {
+			setError(descripcionEl, errorDescEl, 'Demasiado corta (mínimo 10 caracteres).');
+			ok = false;
+		} else {
+			setError(descripcionEl, errorDescEl, '');
+		}
+
+		// Fecha — usamos parseLocalDate para validar (regla crítica)
+		const fechaStr = fechaEl.value;
+		if (!fechaStr) {
+			setError(fechaEl, errorFechaEl, 'Indicá la fecha límite.');
+			ok = false;
+		} else {
+			const fechaDate = parseLocalDate(fechaStr);
+			const hoy       = new Date();
+			hoy.setHours(0, 0, 0, 0);
+			if (fechaDate < hoy) {
+				setError(fechaEl, errorFechaEl, 'La fecha límite no puede ser anterior a hoy.');
+				ok = false;
+			} else {
+				setError(fechaEl, errorFechaEl, '');
+			}
+		}
+
+		return ok;
+	}
+
+	// ── Submit ────────────────────────────────────────────────
+	async function handleSubmit() {
+		if (_submitting) return;
+		if (!validate()) {
+			document.querySelector('[aria-invalid="true"]')
+				?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			return;
+		}
+
+		setBtnLoading(true);
+
+		try {
+			const empresaId  = _usuario?.empresa_id ?? await getEmpresaId();
+			const incId      = _incidenteId || selectIncidenteEl.value;
+			const responsable = selectResponsableEl.value || null;
+
+			// Convertir fecha a fin de día TIMESTAMPTZ — sin new Date("YYYY-MM-DD")
+			const fechaVencISO = fechaAFinDeDia(fechaEl.value);
+
+			const payload = {
+				atshel_local_id:   _localId,
+				empresa_id:        empresaId,
+				incidente_id:      incId,
+				descripcion:       descripcionEl.value.trim(),
+				responsable_id:    responsable,
+				fecha_vencimiento: fechaVencISO,
+				created_by:        _usuario?.id ?? null, // → public.usuarios.id
+				// estado omitido — DB default 'Pendiente'
+			};
+
+			const { data, error } = await supabase
+				.from('acciones_correctivas')
+				.insert(payload)
+				.select('id')
+				.single();
+
+			if (error) {
+				if (error.code === '23505') {
+					// Duplicado: buscar el existente y redirigir
+					const { data: existente } = await supabase
+						.from('acciones_correctivas')
+						.select('id')
+						.eq('atshel_local_id', _localId)
+						.is('deleted_at', null)
+						.single();
+					if (existente?.id) {
+						showToast('La acción ya fue guardada.', 'info');
+						window.location.replace(`/accion-detalle.html?id=${existente.id}`);
+						return;
+					}
+				}
+				const isNetwork = !error.code ||
+					error.message?.toLowerCase().includes('network') ||
+					error.message?.toLowerCase().includes('fetch');
+				showFormError(
+					isNetwork
+						? 'Sin conexión. Verificá tu red e intentá de nuevo.'
+						: `Error al guardar (${error.code || 'desconocido'}). Intentá de nuevo.`
+				);
+				return;
+			}
+
+			showToast('Acción correctiva guardada.', 'success');
+			window.location.replace(`/accion-detalle.html?id=${data.id}`);
+
+		} catch (err) {
+			showFormError(err?.message || 'Error inesperado. Intentá de nuevo.');
+		} finally {
+			setBtnLoading(false);
+		}
+	}
+
+	// ── Mostrar u ocultar el selector de incidente ────────────
+	function mostrarSelector() {
+		_incidenteId              = null;
+		incContextLoadedEl.hidden = true;
+		incSelectorEl.hidden      = false;
+		selectIncidenteEl.focus();
+	}
+
+	// ── Fecha default = 30 días desde hoy ────────────────────
+	function setDefaultFecha() {
+		const d = new Date();
+		d.setDate(d.getDate() + 30);
+		const off = d.getTimezoneOffset();
+		fechaEl.value = new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+		// min = hoy
+		const hoy = new Date();
+		const hoyOff = hoy.getTimezoneOffset();
+		fechaEl.min = new Date(hoy.getTime() - hoyOff * 60000).toISOString().slice(0, 10);
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Sesión
+		await requireAuth('/login.html');
+
+		// 2. Usuario
+		_usuario = await getUsuario().catch(() => null);
+
+		// 3. Fecha default
+		setDefaultFecha();
+
+		// 4. Determinar destino del "volver"
+		btnBackEl.addEventListener('click', () => {
+			if (_incIdFromUrl) {
+				window.location.assign(`/incidente-detalle.html?id=${_incIdFromUrl}`);
+			} else {
+				window.location.assign('/incidentes.html');
+			}
+		});
+
+		// 5. Si viene incidente_id por URL: cargar contexto
+		if (_incIdFromUrl) {
+			const { data: inc, error } = await supabase
+				.from('incidentes')
+				.select('id, numero, descripcion, tipo, severidad')
+				.eq('id', _incIdFromUrl)
+				.is('deleted_at', null)
+				.single();
+
+			if (inc && !error) {
+				renderContexto(inc);
+			} else {
+				// ID inválido: mostrar selector
+				mostrarSelector();
+				await cargarIncidentesSelect();
+			}
+		} else {
+			// Sin URL param: mostrar selector
+			incSelectorEl.hidden = false;
+			await cargarIncidentesSelect();
+		}
+
+		// 6. Cargar usuarios para responsable
+		await cargarUsuarios();
+
+		// 7. Event listeners — todos aquí
+		btnChangeIncEl.addEventListener('click', async () => {
+			mostrarSelector();
+			if (!selectIncidenteEl.options.length || selectIncidenteEl.options.length <= 1) {
+				await cargarIncidentesSelect();
+			}
+		});
+
+		selectIncidenteEl.addEventListener('change', () => {
+			_incidenteId = selectIncidenteEl.value || null;
+			errorIncidenteEl.textContent = '';
+			selectIncidenteEl.removeAttribute('aria-invalid');
+		});
+
+		descripcionEl.addEventListener('input',
+			() => setError(descripcionEl, errorDescEl, ''));
+
+		fechaEl.addEventListener('change',
+			() => setError(fechaEl, errorFechaEl, ''));
+
+		btnGuardarEl.addEventListener('click', handleSubmit);
+
+		descripcionEl.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' && e.ctrlKey) handleSubmit();
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
