@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Detalle de acción correctiva">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Acción correctiva — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+			gap:             8px;
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			min-width:   0;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Chip ─────────────────────────────────────────────── */
+		.chip {
+			display:        inline-flex;
+			align-items:    center;
+			padding:        3px 8px;
+			border-radius:  4px;
+			font-size:      10px;
+			font-weight:    700;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			white-space:    nowrap;
+			flex-shrink:    0;
+		}
+		.chip--danger   { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning  { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success  { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--info     { background: var(--color-info-bg);    color: var(--color-info);    }
+		.chip--neutral  { background: var(--surface-04);       color: var(--text-secondary);}
+
+		/* ── Main ─────────────────────────────────────────────── */
+		.detail-main {
+			flex:           1;
+			padding:        16px 16px calc(96px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            14px;
+		}
+
+		/* ── Workflow stepper ─────────────────────────────────── */
+		.workflow {
+			display:       flex;
+			align-items:   center;
+			gap:           0;
+			padding:       14px 16px;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+		}
+
+		.wf-step {
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			gap:            4px;
+			flex:           1;
+		}
+
+		.wf-step__dot {
+			width:           28px;
+			height:          28px;
+			border-radius:   50%;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			font-size:       12px;
+			font-weight:     700;
+			border:          2px solid var(--border-subtle);
+			background:      var(--surface-03);
+			color:           var(--text-tertiary);
+			transition:      all 0.2s ease;
+		}
+		.wf-step--done .wf-step__dot   { background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success); }
+		.wf-step--active .wf-step__dot { background: var(--accent-subtle);    border-color: var(--accent);         color: var(--accent);        }
+
+		.wf-step--vencida .wf-step__dot { background: var(--color-danger-bg); border-color: var(--color-danger); color: var(--color-danger); }
+
+		.wf-step__label {
+			font-size:   9px;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			color:       var(--text-tertiary);
+			text-align:  center;
+			line-height: 1.2;
+		}
+		.wf-step--done .wf-step__label   { color: var(--color-success); }
+		.wf-step--active .wf-step__label  { color: var(--accent); }
+		.wf-step--vencida .wf-step__label { color: var(--color-danger); }
+
+		.wf-line {
+			height:     2px;
+			flex:       0 0 20px;
+			background: var(--border-subtle);
+			margin-bottom: 14px;
+		}
+		.wf-line--done { background: var(--color-success); }
+
+		/* ── Alerta de vencimiento ────────────────────────────── */
+		.venc-alert {
+			display:       flex;
+			align-items:   center;
+			gap:           10px;
+			padding:       12px 14px;
+			border-radius: 8px;
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			line-height:   1.4;
+		}
+		.venc-alert--vencida { background: var(--color-danger-bg);  border: 1px solid var(--color-danger-border); color: var(--color-danger);  }
+		.venc-alert--pronto  { background: var(--color-warning-bg); border: 1px solid var(--color-warning-border); color: var(--color-warning); }
+
+		/* ── Cards ────────────────────────────────────────────── */
+		.card {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			overflow:      hidden;
+		}
+
+		.card__header {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         12px 16px;
+			border-bottom:   1px solid var(--border-subtle);
+		}
+
+		.card__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Data rows ────────────────────────────────────────── */
+		.data-rows { padding: 0 16px; }
+
+		.data-row {
+			display:      flex;
+			gap:          12px;
+			padding:      10px 0;
+			border-bottom: 1px solid var(--border-subtle);
+			align-items:  flex-start;
+		}
+		.data-row:last-child { border-bottom: none; }
+
+		.data-row__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			flex-shrink:    0;
+			width:          90px;
+			padding-top:    2px;
+		}
+
+		.data-row__value {
+			font-size:  var(--text-base);
+			color:      var(--text-primary);
+			line-height: 1.4;
+			flex:       1;
+			min-width:  0;
+		}
+		.data-row__value--mono {
+			font-family: var(--font-mono);
+			font-size:   var(--text-sm);
+		}
+		.data-row__value--desc {
+			white-space: pre-wrap;
+			word-break:  break-word;
+		}
+		.data-row__value--muted { color: var(--text-tertiary); font-style: italic; }
+
+		/* ── Contexto incidente ───────────────────────────────── */
+		.inc-link {
+			display:        flex;
+			align-items:    flex-start;
+			gap:            10px;
+			padding:        12px 14px;
+			background:     var(--surface-03);
+			text-decoration: none;
+			border-radius:  8px;
+			transition:     background 0.15s ease;
+			margin:         12px 16px;
+		}
+		.inc-link:hover  { background: var(--surface-04); }
+		.inc-link:active { background: var(--surface-04); }
+
+		.inc-link__icon { font-size: 18px; flex-shrink: 0; }
+
+		.inc-link__body  { flex: 1; min-width: 0; }
+
+		.inc-link__numero {
+			font-family:  var(--font-mono);
+			font-size:    var(--text-xs);
+			color:        var(--text-tertiary);
+			margin-bottom: 2px;
+		}
+
+		.inc-link__desc {
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			color:         var(--text-primary);
+			line-height:   1.3;
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+		}
+
+		.inc-link__arrow {
+			color:      var(--text-tertiary);
+			font-size:  16px;
+			flex-shrink: 0;
+			margin-top: 2px;
+		}
+
+		/* ── Skeletons ────────────────────────────────────────── */
+		.skeleton-card {
+			height:        100px;
+			border-radius: 10px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		.skeleton-card--lg { height: 160px; }
+
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Error de página ──────────────────────────────────── */
+		.page-error {
+			flex:            1;
+			display:         flex;
+			flex-direction:  column;
+			align-items:     center;
+			justify-content: center;
+			padding:         32px 24px;
+			text-align:      center;
+			gap:             8px;
+		}
+		.page-error__icon  { font-size: 40px; }
+		.page-error__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
+		.page-error__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
+
+		/* ── Footer ───────────────────────────────────────────── */
+		.action-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+			display:        flex;
+			gap:            10px;
+		}
+
+		.btn-action {
+			flex:          1;
+			padding:       13px;
+			border-radius: 10px;
+			border:        none;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   700;
+			cursor:        pointer;
+			transition:    all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			gap:           6px;
+		}
+		.btn-action:active   { transform: scale(0.98); }
+		.btn-action:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-action--primary   { background: var(--accent);           color: #000; }
+		.btn-action--primary:hover { background: var(--accent-hover); }
+
+		.btn-action--success   { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success); }
+		.btn-action--success:hover { background: var(--color-success); color: #fff; }
+
+		.btn-spinner {
+			width:         16px;
+			height:        16px;
+			border:        2px solid rgba(0,0,0,0.2);
+			border-top-color: currentColor;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+			flex-shrink:   0;
+		}
+		@keyframes spin { to { transform: rotate(360deg); } }
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button id="btn-back" class="btn-back" type="button" aria-label="Volver">
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<h1 class="app-header__title">Acción correctiva</h1>
+		</div>
+		<span id="header-chip"></span>
+	</header>
+
+	<!-- ── Main ────────────────────────────────────────────── -->
+	<main class="detail-main" id="main-content" role="main">
+
+		<!-- Skeletons -->
+		<div id="skeleton-area">
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card--lg skeleton-card"></div>
+		</div>
+
+		<!-- Contenido (oculto hasta cargar) -->
+		<div id="content-area" hidden>
+
+			<!-- Workflow stepper -->
+			<div class="workflow" id="workflow" role="progressbar" aria-label="Estado de la acción">
+				<div class="wf-step" id="wf-pendiente">
+					<div class="wf-step__dot">1</div>
+					<div class="wf-step__label">Pendiente</div>
+				</div>
+				<div class="wf-line" id="wf-line-1"></div>
+				<div class="wf-step" id="wf-en-curso">
+					<div class="wf-step__dot">2</div>
+					<div class="wf-step__label">En curso</div>
+				</div>
+				<div class="wf-line" id="wf-line-2"></div>
+				<div class="wf-step" id="wf-completada">
+					<div class="wf-step__dot">3</div>
+					<div class="wf-step__label">Completada</div>
+				</div>
+			</div>
+
+			<!-- Alerta de vencimiento (condicional) -->
+			<div id="venc-alert" hidden></div>
+
+			<!-- Datos principales -->
+			<div class="card">
+				<div class="card__header">
+					<span class="card__title">Detalle de la acción</span>
+				</div>
+				<div class="data-rows">
+					<div class="data-row">
+						<span class="data-row__label">Descripción</span>
+						<span id="val-desc" class="data-row__value data-row__value--desc"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Responsable</span>
+						<span id="val-responsable" class="data-row__value"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Vence</span>
+						<span id="val-vencimiento" class="data-row__value data-row__value--mono"></span>
+					</div>
+					<div class="data-row" id="row-cierre" hidden>
+						<span class="data-row__label">Cerrada</span>
+						<span id="val-cierre" class="data-row__value data-row__value--mono"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Creada</span>
+						<span id="val-creada" class="data-row__value data-row__value--mono"></span>
+					</div>
+					<div class="data-row" id="row-createdby" hidden>
+						<span class="data-row__label">Por</span>
+						<span id="val-createdby" class="data-row__value"></span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Incidente vinculado -->
+			<div class="card" id="card-incidente">
+				<div class="card__header">
+					<span class="card__title">Incidente vinculado</span>
+				</div>
+				<a id="inc-link" href="#" class="inc-link" aria-label="Ver incidente">
+					<span class="inc-link__icon" aria-hidden="true">⚠️</span>
+					<div class="inc-link__body">
+						<div id="inc-numero" class="inc-link__numero">—</div>
+						<div id="inc-desc"   class="inc-link__desc">—</div>
+					</div>
+					<span class="inc-link__arrow" aria-hidden="true">›</span>
+				</a>
+			</div>
+
+		</div><!-- /#content-area -->
+
+		<!-- Error de página -->
+		<div id="page-error" class="page-error" hidden>
+			<div class="page-error__icon">⚡</div>
+			<div class="page-error__title">No se pudo cargar</div>
+			<div id="page-error-sub" class="page-error__sub"></div>
+		</div>
+
+	</main>
+
+	<!-- ── Footer de acciones ──────────────────────────────── -->
+	<footer id="action-footer" class="action-footer" role="contentinfo" hidden></footer>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * accion-detalle.html — detalle y gestión de acción correctiva.
+	 *
+	 * Columnas verificadas MCP 2026-06-24:
+	 *   acciones_correctivas.estado          : 'Pendiente'|'En curso'|'Completada'|'Vencida'
+	 *   acciones_correctivas.fecha_vencimiento: TIMESTAMPTZ (no DATE)
+	 *   acciones_correctivas.fecha_cierre    : TIMESTAMPTZ NULL — se fija al completar
+	 *   acciones_correctivas.version         : control de concurrencia
+	 *   acciones_correctivas.responsable_id  : → public.usuarios.id ON DELETE SET NULL
+	 *   acciones_correctivas.created_by      : → public.usuarios.id ON DELETE SET NULL
+	 *
+	 * Triggers en acciones_correctivas:
+	 *   BEFORE UPDATE: trg_updated_at_acciones (fn_set_updated_at) — sin bloqueo
+	 *   AFTER  INSERT/UPDATE: trg_auditar_acciones — auditoría en auditoria_global
+	 *
+	 * No hay trigger de bloqueo de estado → el UPDATE es libre.
+	 * Control de concurrencia: UPDATE ... WHERE version = _accion.version
+	 *   si retorna 0 filas → alguien actualizó antes.
+	 *
+	 * Fechas: fecha_vencimiento y fecha_cierre son TIMESTAMPTZ.
+	 * Se muestran con formatFecha() — nunca parseLocalDate (que es para DATE).
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		formatFecha,
+		formatFechaCorta,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── ID desde URL ─────────────────────────────────────────
+	const _accionId = new URLSearchParams(window.location.search).get('id');
+
+	// ── Estado ───────────────────────────────────────────────
+	let _accion      = null;
+	let _incidente   = null;
+	let _usuario     = null;
+	let _submitting  = false;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl       = document.getElementById('btn-back');
+	const headerChipEl    = document.getElementById('header-chip');
+	const skeletonAreaEl  = document.getElementById('skeleton-area');
+	const contentAreaEl   = document.getElementById('content-area');
+	const pageErrorEl     = document.getElementById('page-error');
+	const pageErrorSubEl  = document.getElementById('page-error-sub');
+	const actionFooterEl  = document.getElementById('action-footer');
+	const vencAlertEl     = document.getElementById('venc-alert');
+
+	// Workflow steps
+	const wfPendienteEl   = document.getElementById('wf-pendiente');
+	const wfEnCursoEl     = document.getElementById('wf-en-curso');
+	const wfCompletadaEl  = document.getElementById('wf-completada');
+	const wfLine1El       = document.getElementById('wf-line-1');
+	const wfLine2El       = document.getElementById('wf-line-2');
+
+	// Datos
+	const valDescEl       = document.getElementById('val-desc');
+	const valResponsableEl= document.getElementById('val-responsable');
+	const valVencimientoEl= document.getElementById('val-vencimiento');
+	const valCierreEl     = document.getElementById('val-cierre');
+	const rowCierreEl     = document.getElementById('row-cierre');
+	const valCreadaEl     = document.getElementById('val-creada');
+	const valCreatedByEl  = document.getElementById('val-createdby');
+	const rowCreatedByEl  = document.getElementById('row-createdby');
+	const incLinkEl       = document.getElementById('inc-link');
+	const incNumeroEl     = document.getElementById('inc-numero');
+	const incDescEl       = document.getElementById('inc-desc');
+
+	// ── Chips de estado ───────────────────────────────────────
+	const ESTADO_CHIP = {
+		'Pendiente': ['neutral',  'Pendiente'],
+		'En curso':  ['info',     'En curso'],
+		'Completada':['success',  'Completada'],
+		'Vencida':   ['danger',   'Vencida'],
+	};
+
+	const SEV_MAP = {
+		'Leve':         'neutral',
+		'Moderado':     'warning',
+		'Grave':        'danger',
+		'Catastrófico': 'danger',
+	};
+
+	// ── Calcular días a vencimiento ───────────────────────────
+	/**
+	 * fecha_vencimiento es TIMESTAMPTZ → se puede usar directamente con new Date()
+	 * (no es el bug de date-only "YYYY-MM-DD")
+	 */
+	function diasAVencimiento(fechaISO) {
+		const vence = new Date(fechaISO).getTime();
+		const ahora = Date.now();
+		return Math.ceil((vence - ahora) / (1000 * 60 * 60 * 24));
+	}
+
+	// ── Render: workflow stepper ──────────────────────────────
+	function renderWorkflow(estado) {
+		// Reset
+		[wfPendienteEl, wfEnCursoEl, wfCompletadaEl].forEach(el => {
+			el.className = 'wf-step';
+		});
+		wfLine1El.className = 'wf-line';
+		wfLine2El.className = 'wf-line';
+
+		if (estado === 'Vencida') {
+			wfPendienteEl.classList.add('wf-step--vencida');
+			return;
+		}
+
+		if (estado === 'Pendiente') {
+			wfPendienteEl.classList.add('wf-step--active');
+		} else if (estado === 'En curso') {
+			wfPendienteEl.classList.add('wf-step--done');
+			wfLine1El.classList.add('wf-line--done');
+			wfEnCursoEl.classList.add('wf-step--active');
+		} else if (estado === 'Completada') {
+			wfPendienteEl.classList.add('wf-step--done');
+			wfLine1El.classList.add('wf-line--done');
+			wfEnCursoEl.classList.add('wf-step--done');
+			wfLine2El.classList.add('wf-line--done');
+			wfCompletadaEl.classList.add('wf-step--done');
+		}
+	}
+
+	// ── Render: alerta de vencimiento ─────────────────────────
+	function renderAlertaVencimiento(accion) {
+		if (accion.estado === 'Completada') return;
+
+		const dias = diasAVencimiento(accion.fecha_vencimiento);
+
+		if (accion.estado === 'Vencida' || dias < 0) {
+			const diasStr = Math.abs(dias);
+			vencAlertEl.className = 'venc-alert venc-alert--vencida';
+			vencAlertEl.innerHTML = `
+				<span aria-hidden="true">🔴</span>
+				<span>Vencida hace ${sanitizeHTML(String(diasStr))} día${diasStr !== 1 ? 's' : ''}. Requiere atención inmediata.</span>`;
+			vencAlertEl.hidden = false;
+		} else if (dias <= 7) {
+			vencAlertEl.className = 'venc-alert venc-alert--pronto';
+			vencAlertEl.innerHTML = `
+				<span aria-hidden="true">⏰</span>
+				<span>Vence en ${sanitizeHTML(String(dias))} día${dias !== 1 ? 's' : ''}. Priorizá esta acción.</span>`;
+			vencAlertEl.hidden = false;
+		}
+	}
+
+	// ── Render: datos principales ─────────────────────────────
+	function renderDatos(accion, responsableNombre, creadorNombre) {
+		// Header chip
+		const [cls, label] = ESTADO_CHIP[accion.estado] || ['neutral', accion.estado];
+		headerChipEl.innerHTML = `<span class="chip chip--${cls}">${sanitizeHTML(label)}</span>`;
+
+		// Datos
+		valDescEl.textContent         = accion.descripcion || '—';
+		valResponsableEl.textContent  = responsableNombre || '— Sin asignar';
+		if (!responsableNombre) valResponsableEl.classList.add('data-row__value--muted');
+
+		// fecha_vencimiento es TIMESTAMPTZ → formatFecha() (no parseLocalDate)
+		valVencimientoEl.textContent  = accion.fecha_vencimiento
+			? formatFecha(accion.fecha_vencimiento)
+			: '—';
+
+		if (accion.fecha_cierre) {
+			valCierreEl.textContent = formatFecha(accion.fecha_cierre);
+			rowCierreEl.hidden = false;
+		}
+
+		valCreadaEl.textContent = accion.created_at
+			? formatFechaCorta(accion.created_at)
+			: '—';
+
+		if (creadorNombre) {
+			valCreatedByEl.textContent = creadorNombre;
+			rowCreatedByEl.hidden      = false;
+		}
+	}
+
+	// ── Render: incidente vinculado ───────────────────────────
+	function renderIncidente(inc) {
+		if (!inc) {
+			document.getElementById('card-incidente').hidden = true;
+			return;
+		}
+		incNumeroEl.textContent = inc.numero || '—';
+		incDescEl.textContent   = (inc.descripcion || '').substring(0, 80);
+		incLinkEl.href          = `/incidente-detalle.html?id=${sanitizeHTML(inc.id)}`;
+	}
+
+	// ── Render: footer de acciones ────────────────────────────
+	function renderFooter(estado) {
+		if (estado === 'Completada' || estado === 'Vencida') {
+			// Solo mostrar el footer si está vencida para ofrecer "Marcar completada"
+			if (estado === 'Vencida') {
+				actionFooterEl.innerHTML = `
+				<button id="btn-completar" class="btn-action btn-action--success" type="button">
+					✓ Marcar como completada
+				</button>`;
+				actionFooterEl.hidden = false;
+				document.getElementById('btn-completar')
+					.addEventListener('click', () => handleUpdateEstado('Completada'));
+			}
+			return;
+		}
+
+		if (estado === 'Pendiente') {
+			actionFooterEl.innerHTML = `
+			<button id="btn-iniciar" class="btn-action btn-action--primary" type="button">
+				▶ Iniciar acción
+			</button>`;
+			actionFooterEl.hidden = false;
+			document.getElementById('btn-iniciar')
+				.addEventListener('click', () => handleUpdateEstado('En curso'));
+		} else if (estado === 'En curso') {
+			actionFooterEl.innerHTML = `
+			<button id="btn-completar" class="btn-action btn-action--success" type="button">
+				✓ Marcar como completada
+			</button>`;
+			actionFooterEl.hidden = false;
+			document.getElementById('btn-completar')
+				.addEventListener('click', () => handleUpdateEstado('Completada'));
+		}
+	}
+
+	// ── Actualizar estado ─────────────────────────────────────
+	async function handleUpdateEstado(nuevoEstado) {
+		if (_submitting || !_accion) return;
+		_submitting = true;
+
+		// Deshabilitar botones del footer
+		actionFooterEl.querySelectorAll('button').forEach(btn => {
+			btn.disabled = true;
+			const text = btn.querySelector('.btn-text') || btn;
+			const spinner = document.createElement('span');
+			spinner.className = 'btn-spinner';
+			btn.innerHTML = '';
+			btn.appendChild(spinner);
+		});
+
+		try {
+			const updates = {
+				estado:  nuevoEstado,
+				version: _accion.version + 1,
+			};
+
+			// Al completar: fijar fecha_cierre con hora actual (TIMESTAMPTZ)
+			if (nuevoEstado === 'Completada') {
+				updates.fecha_cierre = new Date().toISOString();
+			}
+
+			const { data: updated, error } = await supabase
+				.from('acciones_correctivas')
+				.update(updates)
+				.eq('id', _accionId)
+				.eq('version', _accion.version) // control de concurrencia
+				.select('id, estado, version, fecha_cierre')
+				.single();
+
+			if (error) throw error;
+
+			if (!updated) {
+				// 0 filas afectadas = conflicto de versión
+				throw new Error('Esta acción fue modificada por otra persona. Recargá e intentá de nuevo.');
+			}
+
+			showToast(
+				nuevoEstado === 'Completada' ? 'Acción completada correctamente.' : 'Acción iniciada.',
+				'success'
+			);
+			window.location.reload();
+
+		} catch (err) {
+			showToast(err.message || 'Error al actualizar. Intentá de nuevo.', 'error');
+			// Recargar el footer con los botones restaurados
+			renderFooter(_accion.estado);
+		} finally {
+			_submitting = false;
+		}
+	}
+
+	// ── Carga de datos ────────────────────────────────────────
+	async function cargarDatos() {
+		if (!_accionId) {
+			showPageError('ID de acción inválido.');
+			return;
+		}
+
+		// Carga en paralelo: acción + incidente (la acción es necesaria primero para el incidente)
+		const { data: accion, error: accionError } = await supabase
+			.from('acciones_correctivas')
+			.select('*')
+			.eq('id', _accionId)
+			.is('deleted_at', null)
+			.single();
+
+		if (accionError || !accion) {
+			showPageError(
+				accionError?.code === 'PGRST116'
+					? 'Acción no encontrada o sin acceso.'
+					: (accionError?.message || 'No se pudo cargar la acción.')
+			);
+			return;
+		}
+
+		_accion = accion;
+
+		// Carga paralela de datos relacionados
+		const [incResult, respResult, creadorResult] = await Promise.allSettled([
+
+			supabase.from('incidentes')
+				.select('id, numero, descripcion, tipo, severidad, estado')
+				.eq('id', accion.incidente_id)
+				.is('deleted_at', null)
+				.single(),
+
+			accion.responsable_id
+				? supabase.from('usuarios')
+					.select('id, nombre_completo, rol')
+					.eq('id', accion.responsable_id)
+					.is('deleted_at', null)
+					.single()
+				: Promise.resolve({ value: { data: null } }),
+
+			accion.created_by
+				? supabase.from('usuarios')
+					.select('nombre_completo')
+					.eq('id', accion.created_by)
+					.is('deleted_at', null)
+					.single()
+				: Promise.resolve({ value: { data: null } }),
+		]);
+
+		_incidente = incResult.value?.data ?? null;
+		const responsable = respResult.value?.data ?? null;
+		const creador     = creadorResult.value?.data ?? null;
+
+		// Ocultar skeletons, mostrar contenido
+		skeletonAreaEl.hidden = true;
+		contentAreaEl.hidden  = false;
+
+		// Renderizar todo
+		renderWorkflow(_accion.estado);
+		renderAlertaVencimiento(_accion);
+		renderDatos(_accion, responsable?.nombre_completo ?? null, creador?.nombre_completo ?? null);
+		renderIncidente(_incidente);
+		renderFooter(_accion.estado);
+	}
+
+	// ── Error de página ───────────────────────────────────────
+	function showPageError(msg) {
+		skeletonAreaEl.hidden  = true;
+		pageErrorSubEl.textContent = msg;
+		pageErrorEl.hidden     = false;
+	}
+
+	// ── Destino del botón volver ──────────────────────────────
+	function getBackUrl() {
+		const ref = new URLSearchParams(window.location.search).get('from');
+		if (ref === 'incidente' && _accion?.incidente_id) {
+			return `/incidente-detalle.html?id=${_accion.incidente_id}`;
+		}
+		return '/incidentes.html';
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Sesión
+		await requireAuth('/login.html');
+
+		// 2. Usuario (para contexto de permisos futuros)
+		_usuario = await getUsuario().catch(() => null);
+
+		// 3. Cargar datos
+		await cargarDatos();
+
+		// 4. Event listeners — todos aquí
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign(getBackUrl());
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
