@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Revisión y firma de ATS">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Revisar ATS — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+			gap:             8px;
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			min-width:   0;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:   var(--font-condensed);
+			font-size:     var(--text-xl);
+			font-weight:   700;
+			color:         var(--text-primary);
+			line-height:   1;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+			white-space:   nowrap;
+		}
+
+		/* ── Chip ─────────────────────────────────────────────── */
+		.chip {
+			display:        inline-flex;
+			align-items:    center;
+			padding:        3px 8px;
+			border-radius:  4px;
+			font-size:      10px;
+			font-weight:    700;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			white-space:    nowrap;
+			flex-shrink:    0;
+		}
+		.chip--danger  { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--info    { background: var(--color-info-bg);    color: var(--color-info);    }
+		.chip--neutral { background: var(--surface-04);       color: var(--text-secondary);}
+
+		/* ── Main ─────────────────────────────────────────────── */
+		.detail-main {
+			flex:           1;
+			padding:        16px 16px 40px;
+			display:        flex;
+			flex-direction: column;
+			gap:            16px;
+		}
+
+		/* ── Cards ────────────────────────────────────────────── */
+		.card {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			overflow:      hidden;
+		}
+
+		.card__header {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         12px 16px;
+			border-bottom:   1px solid var(--border-subtle);
+		}
+
+		.card__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Data rows ────────────────────────────────────────── */
+		.data-rows { padding: 0 16px; }
+
+		.data-row {
+			display:       flex;
+			gap:           12px;
+			padding:       10px 0;
+			border-bottom: 1px solid var(--border-subtle);
+			align-items:   flex-start;
+		}
+		.data-row:last-child { border-bottom: none; }
+
+		.data-row__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			flex-shrink:    0;
+			width:          90px;
+			padding-top:    2px;
+		}
+
+		.data-row__value {
+			font-size:  var(--text-sm);
+			color:      var(--text-primary);
+			line-height: 1.4;
+			flex:       1;
+			min-width:  0;
+			word-break: break-word;
+		}
+		.data-row__value--mono { font-family: var(--font-mono); font-size: var(--text-xs); }
+
+		/* ── IPERC items (read-only) ──────────────────────────── */
+		.iperc-ro {
+			padding:       12px 16px;
+			border-bottom: 1px solid var(--border-subtle);
+		}
+		.iperc-ro:last-child { border-bottom: none; }
+
+		.iperc-ro__num {
+			font-family:   var(--font-condensed);
+			font-size:     var(--text-base);
+			font-weight:   700;
+			color:         var(--text-secondary);
+			margin-bottom: 8px;
+		}
+
+		.iperc-ro__grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 6px;
+		}
+		.iperc-ro__field { grid-column: span 2; }
+		.iperc-ro__half  { }
+
+		.iperc-ro__label {
+			font-size:      9px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		.iperc-ro__val {
+			font-size:  var(--text-sm);
+			color:      var(--text-primary);
+			margin-top: 2px;
+			line-height: 1.4;
+		}
+
+		/* ── Charla pre-trabajo ───────────────────────────────── */
+		.charla-item {
+			padding:       12px 16px;
+			border-bottom: 1px solid var(--border-subtle);
+		}
+		.charla-item:last-child { border-bottom: none; }
+
+		.charla-item__header {
+			display:         flex;
+			justify-content: space-between;
+			align-items:     center;
+			margin-bottom:   6px;
+		}
+
+		.charla-item__tipo {
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			color:       var(--text-primary);
+		}
+
+		.charla-item__meta {
+			font-size:   var(--text-xs);
+			color:       var(--text-tertiary);
+			font-family: var(--font-mono);
+		}
+
+		.asistente-list {
+			display:    flex;
+			flex-wrap:  wrap;
+			gap:        4px;
+			margin-top: 6px;
+		}
+
+		.asistente-pill {
+			padding:       2px 8px;
+			border-radius: 10px;
+			background:    var(--surface-04);
+			font-size:     11px;
+			font-weight:   600;
+			color:         var(--text-secondary);
+		}
+
+		/* ── Inline form para nueva charla ────────────────────── */
+		.charla-form {
+			padding: 14px 16px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+			border-top: 1px solid var(--border-subtle);
+			background: var(--surface-03);
+		}
+
+		.field {
+			display:        flex;
+			flex-direction: column;
+			gap:            5px;
+		}
+
+		.field__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.field__label abbr { text-decoration: none; color: var(--color-danger); margin-left: 2px; }
+
+		.field__input,
+		.field__textarea,
+		.field__select {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       10px 12px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__textarea { resize: vertical; min-height: 60px; }
+		.field__select option { background: var(--surface-02); }
+		.field__input:focus,
+		.field__textarea:focus,
+		.field__select:focus  { border-color: var(--accent); }
+		.field__input::placeholder,
+		.field__textarea::placeholder { color: var(--text-tertiary); }
+		.field__input[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		.field__row-2 {
+			display:               grid;
+			grid-template-columns: 2fr 1fr;
+			gap:                   8px;
+		}
+
+		.asistente-checkboxes {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+			max-height:     160px;
+			overflow-y:     auto;
+		}
+
+		.asistente-check {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			padding:     8px 10px;
+			background:  var(--surface-02);
+			border-radius: 6px;
+			cursor:      pointer;
+		}
+
+		.asistente-check input[type="checkbox"] {
+			width:         18px;
+			height:        18px;
+			accent-color:  var(--accent);
+			flex-shrink:   0;
+		}
+
+		.asistente-check__name {
+			font-size:   var(--text-sm);
+			color:       var(--text-primary);
+			font-weight: 500;
+		}
+
+		.charla-form__actions {
+			display: flex;
+			gap:     8px;
+		}
+
+		.btn-cancelar-charla {
+			flex:          0 0 auto;
+			padding:       10px 16px;
+			border-radius: 8px;
+			background:    var(--surface-04);
+			border:        1px solid var(--border-subtle);
+			color:         var(--text-secondary);
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			cursor:        pointer;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		.btn-guardar-charla {
+			flex:          1;
+			padding:       10px;
+			border-radius: 8px;
+			background:    var(--accent);
+			border:        none;
+			color:         #000;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   700;
+			cursor:        pointer;
+			transition:    background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar-charla:hover    { background: var(--accent-hover); }
+		.btn-guardar-charla:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		.btn-add-charla {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             6px;
+			padding:         10px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          1px dashed var(--border-subtle);
+			color:           var(--text-secondary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			width:           100%;
+			-webkit-tap-highlight-color: transparent;
+			transition:      all 0.15s ease;
+		}
+		.btn-add-charla:hover { border-color: var(--accent); color: var(--accent); }
+
+		/* ── Sección de firma ─────────────────────────────────── */
+		.firma-section {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			overflow:      hidden;
+		}
+
+		.firma-section__header {
+			padding:         12px 16px;
+			border-bottom:   1px solid var(--border-subtle);
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+		}
+
+		.firma-section__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* Bloqueo informativo */
+		.firma-bloqueada {
+			padding:       16px;
+			text-align:    center;
+			display:       flex;
+			flex-direction: column;
+			align-items:   center;
+			gap:           8px;
+			color:         var(--text-secondary);
+			font-size:     var(--text-sm);
+			line-height:   1.5;
+		}
+		.firma-bloqueada__icon { font-size: 28px; }
+
+		.prereq-list {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+			width:          100%;
+			text-align:     left;
+		}
+
+		.prereq-item {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			padding:     8px 10px;
+			border-radius: 6px;
+			font-size:   var(--text-sm);
+			font-weight: 600;
+		}
+		.prereq-item--ok      { background: var(--color-success-bg); color: var(--color-success);  }
+		.prereq-item--pending { background: var(--surface-03);       color: var(--text-secondary); }
+		.prereq-item--error   { background: var(--color-danger-bg);  color: var(--color-danger);   }
+
+		/* PIN keypad */
+		.pin-wrap {
+			padding: 16px;
+			display: flex;
+			flex-direction: column;
+			gap: 14px;
+		}
+
+		.pin-label {
+			font-size:   var(--text-sm);
+			color:       var(--text-secondary);
+			text-align:  center;
+			font-weight: 600;
+		}
+
+		.pin-input-wrap {
+			position:   relative;
+			max-width:  200px;
+			margin:     0 auto;
+			width:      100%;
+		}
+
+		.pin-input {
+			width:            100%;
+			box-sizing:       border-box;
+			background:       var(--surface-03);
+			border:           2px solid var(--border-subtle);
+			border-radius:    10px;
+			padding:          14px;
+			font-family:      var(--font-mono);
+			font-size:        24px;
+			font-weight:      700;
+			color:            var(--text-primary);
+			text-align:       center;
+			letter-spacing:   0.3em;
+			outline:          none;
+			transition:       border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.pin-input:focus        { border-color: var(--accent); }
+		.pin-input[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		.pin-error {
+			font-size:   var(--text-sm);
+			color:       var(--color-danger);
+			font-weight: 600;
+			text-align:  center;
+			min-height:  18px;
+		}
+
+		.btn-firmar {
+			width:           100%;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             8px;
+			padding:         14px;
+			border-radius:   10px;
+			background:      var(--color-success);
+			border:          none;
+			color:           #fff;
+			font-family:     var(--font-sans);
+			font-size:       var(--text-base);
+			font-weight:     700;
+			cursor:          pointer;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-firmar:hover    { filter: brightness(1.1); }
+		.btn-firmar:active   { transform: scale(0.99); }
+		.btn-firmar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-spinner {
+			width:         16px;
+			height:        16px;
+			border:        2px solid rgba(255,255,255,0.3);
+			border-top-color: #fff;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+		}
+		@keyframes spin { to { transform: rotate(360deg); } }
+
+		/* Firma completada */
+		.firma-ok {
+			padding:        20px 16px;
+			text-align:     center;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			gap:            8px;
+			color:          var(--color-success);
+		}
+		.firma-ok__icon  { font-size: 36px; }
+		.firma-ok__title { font-family: var(--font-condensed); font-size: var(--text-2xl); font-weight: 800; }
+		.firma-ok__meta  { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-tertiary); }
+
+		/* ── Skeletons ────────────────────────────────────────── */
+		.skeleton-card {
+			height: 100px; border-radius: 10px;
+			background: var(--surface-02);
+			animation: shimmer 1.5s ease-in-out infinite;
+		}
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Empty / error ────────────────────────────────────── */
+		.empty-note { font-size: var(--text-sm); color: var(--text-tertiary); padding: 12px 16px; font-style: italic; }
+
+		.page-error {
+			flex: 1; display: flex; flex-direction: column; align-items: center;
+			justify-content: center; padding: 32px 24px; text-align: center; gap: 8px;
+		}
+		.page-error__icon  { font-size: 40px; }
+		.page-error__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
+		.page-error__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button id="btn-back" class="btn-back" type="button" aria-label="Volver">
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<h1 id="header-title" class="app-header__title">Revisar ATS</h1>
+		</div>
+		<span id="header-chip"></span>
+	</header>
+
+	<!-- ── Main ────────────────────────────────────────────── -->
+	<main class="detail-main" id="main-content" role="main">
+
+		<!-- Skeletons -->
+		<div id="skeleton-area">
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+		</div>
+
+		<!-- Contenido -->
+		<div id="content-area" hidden>
+
+			<!-- Datos del ATS -->
+			<div class="card">
+				<div class="card__header">
+					<span class="card__title">Datos del ATS</span>
+				</div>
+				<div class="data-rows">
+					<div class="data-row">
+						<span class="data-row__label">Plantilla</span>
+						<span id="val-plantilla" class="data-row__value"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Tipo de trabajo</span>
+						<span id="val-tipo" class="data-row__value"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Creado por</span>
+						<span id="val-creador" class="data-row__value"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Fecha</span>
+						<span id="val-fecha" class="data-row__value data-row__value--mono"></span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Campos respondidos -->
+			<div class="card" id="card-campos">
+				<div class="card__header">
+					<span class="card__title">Datos completados</span>
+				</div>
+				<div class="data-rows" id="campos-respondidos"></div>
+			</div>
+
+			<!-- IPERC -->
+			<div class="card" id="card-iperc">
+				<div class="card__header">
+					<span class="card__title">IPERC</span>
+					<span id="iperc-count" class="chip chip--neutral"></span>
+				</div>
+				<div id="iperc-lista"></div>
+			</div>
+
+			<!-- Charla pre-trabajo -->
+			<div class="card" id="card-charla">
+				<div class="card__header">
+					<span class="card__title">Charla pre-trabajo</span>
+					<span id="charla-count" class="chip chip--neutral">0</span>
+				</div>
+				<div id="charla-lista"></div>
+
+				<!-- Form nueva charla (toggle) -->
+				<div id="charla-form-wrap" hidden>
+					<div class="charla-form">
+						<div class="field">
+							<label class="field__label" for="charla-tipo">Tipo <abbr title="Requerido">*</abbr></label>
+							<select id="charla-tipo" class="field__select">
+								<option value="Charla_pre_trabajo">Charla pre-trabajo</option>
+								<option value="Induccion">Inducción</option>
+								<option value="Capacitacion">Capacitación</option>
+							</select>
+						</div>
+						<div class="field">
+							<label class="field__label" for="charla-temas">Temas tratados</label>
+							<textarea id="charla-temas" class="field__textarea" rows="2"
+							          placeholder="Ej: Riesgos específicos de la tarea, EPP requerido..."></textarea>
+						</div>
+						<div class="field__row-2">
+							<div class="field">
+								<label class="field__label" for="charla-duracion">Duración (min) <abbr title="Requerido">*</abbr></label>
+								<input id="charla-duracion" class="field__input" type="number" min="1" value="15"
+								       aria-required="true" inputmode="numeric">
+							</div>
+						</div>
+						<div class="field">
+							<div class="field__label">Asistentes <abbr title="Al menos 1">*</abbr></div>
+							<div id="asistente-checkboxes" class="asistente-checkboxes">
+								<!-- Se puebla con usuarios de la empresa -->
+							</div>
+						</div>
+						<div id="charla-error" style="font-size:var(--text-xs);color:var(--color-danger);font-weight:600;min-height:16px" aria-live="polite"></div>
+						<div class="charla-form__actions">
+							<button id="btn-cancelar-charla" class="btn-cancelar-charla" type="button">Cancelar</button>
+							<button id="btn-guardar-charla" class="btn-guardar-charla" type="button">Guardar charla</button>
+						</div>
+					</div>
+				</div>
+
+				<div style="padding:12px 16px" id="btn-add-charla-wrap">
+					<button id="btn-add-charla" class="btn-add-charla" type="button">
+						<span aria-hidden="true">+</span> Registrar charla pre-trabajo
+					</button>
+				</div>
+			</div>
+
+			<!-- Firma digital -->
+			<div class="firma-section" id="firma-section">
+				<div class="firma-section__header">
+					<span class="firma-section__title">Firma digital</span>
+					<span id="firma-estado-chip"></span>
+				</div>
+				<div id="firma-body"></div>
+			</div>
+
+		</div><!-- /#content-area -->
+
+		<!-- Error de página -->
+		<div id="page-error" class="page-error" hidden>
+			<div class="page-error__icon">⚡</div>
+			<div class="page-error__title">No se pudo cargar</div>
+			<div id="page-error-sub" class="page-error__sub"></div>
+		</div>
+
+	</main>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * ats-supervisor.html — revisión, charla pre-trabajo y firma PIN.
+	 *
+	 * Funciones RPC verificadas MCP 2026-06-24:
+	 *   fn_verificar_pin(p_usuario_id uuid, p_pin text) → boolean
+	 *   fn_crear_nonce(p_usuario_id uuid) → uuid (anti-replay)
+	 *
+	 * Errores del trigger fn_bloqueo_ats_instancias (ERRCODE P0001):
+	 *   ERR_HSE_04: induccion_completada = false
+	 *   ERR_HSE_05: no charla pre-trabajo para esta instancia
+	 *   ERR_HSE_06: firmante no figura como asistente
+	 *   ATS_LOCK:   ATS ya bloqueado/firmado
+	 *
+	 * ats_capacitacion_asistentes: sin deleted_at (no soft-delete)
+	 *   eficacia: 'Bueno'|'Regular'|'Malo' (nullable)
+	 *
+	 * Flujo de firma:
+	 *   1. fn_crear_nonce(usuario.id) → nonce UUID (anti-replay)
+	 *   2. fn_verificar_pin(usuario.id, pin) → boolean
+	 *   3. Si true: UPDATE ats_instancias SET estado='Firmado', version=v+1
+	 *      Trigger sets: bloqueado=true, firmado_en=now(), fecha_hora_firma=now()
+	 *   4. INSERT ats_firmas
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+		crearNonce,
+		verificarPin,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		generateLocalId,
+		formatFecha,
+		formatFechaCorta,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── ID desde URL ─────────────────────────────────────────
+	const _instanciaId = new URLSearchParams(window.location.search).get('id');
+
+	// ── Estado ───────────────────────────────────────────────
+	let _instancia    = null;
+	let _plantilla    = null;
+	let _respuestas   = [];
+	let _campos       = [];
+	let _charlas      = [];
+	let _firmantes    = [];  // ats_firmas
+	let _usuario      = null;
+	let _usuarios     = [];  // todos los usuarios de la empresa
+	let _submitting   = false;
+	let _pinIntentos  = 0;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl          = document.getElementById('btn-back');
+	const headerTitleEl      = document.getElementById('header-title');
+	const headerChipEl       = document.getElementById('header-chip');
+	const skeletonAreaEl     = document.getElementById('skeleton-area');
+	const contentAreaEl      = document.getElementById('content-area');
+	const pageErrorEl        = document.getElementById('page-error');
+	const pageErrorSubEl     = document.getElementById('page-error-sub');
+	const camposRespondidosEl= document.getElementById('campos-respondidos');
+	const ipercListaEl       = document.getElementById('iperc-lista');
+	const ipercCountEl       = document.getElementById('iperc-count');
+	const charlasListaEl     = document.getElementById('charla-lista');
+	const charlasCountEl     = document.getElementById('charla-count');
+	const charlaFormWrapEl   = document.getElementById('charla-form-wrap');
+	const btnAddCharlaWrap   = document.getElementById('btn-add-charla-wrap');
+	const asistentesWrapEl   = document.getElementById('asistente-checkboxes');
+	const charlaDurEl        = document.getElementById('charla-duracion');
+	const charlaTemasEl      = document.getElementById('charla-temas');
+	const charlaTipoEl       = document.getElementById('charla-tipo');
+	const charlaErrorEl      = document.getElementById('charla-error');
+	const btnAddCharlaEl     = document.getElementById('btn-add-charla');
+	const btnCancelarCharlaEl= document.getElementById('btn-cancelar-charla');
+	const btnGuardarCharlaEl = document.getElementById('btn-guardar-charla');
+	const firmaBodyEl        = document.getElementById('firma-body');
+	const firmaEstadoChipEl  = document.getElementById('firma-estado-chip');
+
+	// ── Chips de estado ───────────────────────────────────────
+	const ESTADO_CHIP = {
+		'Borrador':   ['neutral', 'Borrador'],
+		'En_curso':   ['warning', 'En curso'],
+		'Completado': ['info',    'Completado'],
+		'Firmado':    ['success', 'Firmado'],
+		'Cancelado':  ['neutral', 'Cancelado'],
+	};
+
+	// ── Render: header chip ────────────────────────────────────
+	function renderHeader(instancia, plantilla) {
+		const nombre = plantilla?.nombre_ats || 'ATS';
+		headerTitleEl.textContent = nombre;
+		const [cls, label] = ESTADO_CHIP[instancia.estado] || ['neutral', instancia.estado];
+		headerChipEl.innerHTML = `<span class="chip chip--${cls}">${sanitizeHTML(label)}</span>`;
+	}
+
+	// ── Render: datos del ATS ─────────────────────────────────
+	function renderDatos(instancia, plantilla, creadorNombre) {
+		document.getElementById('val-plantilla').textContent = plantilla?.nombre_ats || '—';
+		document.getElementById('val-tipo').textContent      = plantilla?.tipo_trabajo || '—';
+		document.getElementById('val-creador').textContent   = creadorNombre || '—';
+		document.getElementById('val-fecha').textContent     = instancia.created_at
+			? formatFechaCorta(instancia.created_at) : '—';
+	}
+
+	// ── Render: campos respondidos (read-only) ────────────────
+	function renderCampos(campos, respuestas) {
+		if (!campos.length && !respuestas.length) {
+			camposRespondidosEl.innerHTML = `<p class="empty-note">Sin campos en esta plantilla.</p>`;
+			return;
+		}
+
+		const respMap = {};
+		respuestas.forEach(r => { respMap[r.campo_id] = r.valor; });
+
+		const items = campos.map(c => {
+			const valor = respMap[c.id] ?? '—';
+			const display = c.tipo_campo === 'booleano'
+				? (valor === 'true' ? 'Sí ✓' : 'No')
+				: sanitizeHTML(valor);
+			return `
+			<div class="data-row">
+				<span class="data-row__label">${sanitizeHTML(c.etiqueta)}</span>
+				<span class="data-row__value">${display}</span>
+			</div>`;
+		}).join('');
+
+		camposRespondidosEl.innerHTML = items || `<p class="empty-note">Sin respuestas registradas.</p>`;
+	}
+
+	// ── Render: IPERC ─────────────────────────────────────────
+	function renderIperc(riesgos) {
+		const arr = Array.isArray(riesgos) ? riesgos : [];
+		ipercCountEl.textContent = arr.length;
+		ipercCountEl.className   = arr.length > 0 ? 'chip chip--warning' : 'chip chip--neutral';
+
+		if (!arr.length) {
+			ipercListaEl.innerHTML = `<p class="empty-note">Sin ítems de IPERC registrados.</p>`;
+			return;
+		}
+
+		ipercListaEl.innerHTML = arr.map((item, i) => `
+		<div class="iperc-ro">
+			<div class="iperc-ro__num">Riesgo #${i + 1}</div>
+			<div class="iperc-ro__grid">
+				<div class="iperc-ro__field">
+					<div class="iperc-ro__label">Tarea</div>
+					<div class="iperc-ro__val">${sanitizeHTML(item.tarea || '—')}</div>
+				</div>
+				<div class="iperc-ro__field">
+					<div class="iperc-ro__label">Peligro</div>
+					<div class="iperc-ro__val">${sanitizeHTML(item.peligro || '—')}</div>
+				</div>
+				<div class="iperc-ro__half">
+					<div class="iperc-ro__label">Riesgo inherente</div>
+					<div class="iperc-ro__val">${sanitizeHTML(item.riesgo_inherente || '—')}</div>
+				</div>
+				<div class="iperc-ro__half">
+					<div class="iperc-ro__label">Riesgo residual</div>
+					<div class="iperc-ro__val">${sanitizeHTML(item.riesgo_residual || '—')}</div>
+				</div>
+				<div class="iperc-ro__field">
+					<div class="iperc-ro__label">Controles</div>
+					<div class="iperc-ro__val">${sanitizeHTML(item.controles || '—')}</div>
+				</div>
+			</div>
+		</div>`).join('');
+	}
+
+	// ── Render: charlas ───────────────────────────────────────
+	function renderCharlas(charlas) {
+		charlasCountEl.textContent = charlas.length;
+		charlasCountEl.className   = charlas.length > 0 ? 'chip chip--success' : 'chip chip--neutral';
+
+		if (!charlas.length) {
+			charlasListaEl.innerHTML = `<p class="empty-note">Sin charlas registradas. Registrá una antes de firmar.</p>`;
+			return;
+		}
+
+		charlasListaEl.innerHTML = charlas.map(ch => {
+			const tipoLabel = { Charla_pre_trabajo: 'Charla pre-trabajo', Induccion: 'Inducción', Capacitacion: 'Capacitación' };
+			const asistentes = (ch.ats_capacitacion_asistentes ?? [])
+				.map(a => a.nombre_completo || a.trabajador_id?.substring(0, 8) || '—')
+				.filter(Boolean);
+
+			return `
+			<div class="charla-item">
+				<div class="charla-item__header">
+					<span class="charla-item__tipo">${sanitizeHTML(tipoLabel[ch.tipo] || ch.tipo)}</span>
+					<span class="charla-item__meta">${sanitizeHTML(formatFechaCorta(ch.fecha_hora))}</span>
+				</div>
+				${ch.temas ? `<div style="font-size:var(--text-xs);color:var(--text-secondary)">${sanitizeHTML(ch.temas)}</div>` : ''}
+				${ch.duracion_minutos ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:2px">${ch.duracion_minutos} min</div>` : ''}
+				${asistentes.length > 0 ? `
+				<div class="asistente-list">
+					${asistentes.map(n => `<span class="asistente-pill">${sanitizeHTML(n)}</span>`).join('')}
+				</div>` : ''}
+			</div>`;
+		}).join('');
+	}
+
+	// ── Render: sección de firma ──────────────────────────────
+	function renderFirma(instancia, charlas) {
+		// Si ya está firmado
+		if (instancia.estado === 'Firmado') {
+			firmaEstadoChipEl.innerHTML = '<span class="chip chip--success">Firmado</span>';
+			firmaBodyEl.innerHTML = `
+			<div class="firma-ok">
+				<div class="firma-ok__icon">✅</div>
+				<div class="firma-ok__title">ATS Firmado</div>
+				<div class="firma-ok__meta">${sanitizeHTML(instancia.firmado_en ? formatFecha(instancia.firmado_en) : '—')}</div>
+			</div>`;
+			return;
+		}
+
+		// Si está cancelado
+		if (instancia.estado === 'Cancelado') {
+			firmaBodyEl.innerHTML = `<p class="empty-note" style="text-align:center;padding:20px">ATS cancelado — no se puede firmar.</p>`;
+			return;
+		}
+
+		// Verificar pre-requisitos para firma
+		const tieneCharla    = charlas.length > 0;
+		const esAsistente    = charlas.some(ch =>
+			(ch.ats_capacitacion_asistentes ?? []).some(a => a.trabajador_id === _usuario?.id)
+		);
+		const tieneInduccion = _usuario?.induccion_completada === true;
+		const puedeFiremar   = tieneCharla && esAsistente && tieneInduccion;
+
+		// Mostrar estado de pre-requisitos
+		const prereqs = `
+		<div class="firma-bloqueada">
+			<div class="firma-bloqueada__icon" aria-hidden="true">🔏</div>
+			<div class="prereq-list">
+				<div class="prereq-item prereq-item--${tieneInduccion ? 'ok' : 'error'}">
+					<span>${tieneInduccion ? '✓' : '✕'}</span>
+					Inducción general completada
+				</div>
+				<div class="prereq-item prereq-item--${tieneCharla ? 'ok' : 'pending'}">
+					<span>${tieneCharla ? '✓' : '○'}</span>
+					Charla pre-trabajo registrada
+				</div>
+				<div class="prereq-item prereq-item--${esAsistente ? 'ok' : 'pending'}">
+					<span>${esAsistente ? '✓' : '○'}</span>
+					Firmante figura como asistente
+				</div>
+			</div>
+		</div>`;
+
+		if (!puedeFiremar) {
+			firmaBodyEl.innerHTML = prereqs;
+			firmaEstadoChipEl.innerHTML = '<span class="chip chip--warning">Pendiente</span>';
+			return;
+		}
+
+		firmaEstadoChipEl.innerHTML = '<span class="chip chip--info">Listo para firmar</span>';
+
+		// Mostrar prereqs + input PIN
+		firmaBodyEl.innerHTML = `
+		${prereqs}
+		<div class="pin-wrap">
+			<div class="pin-label">Ingresá tu PIN para firmar</div>
+			<div class="pin-input-wrap">
+				<input
+					id="pin-input"
+					class="pin-input"
+					type="password"
+					inputmode="numeric"
+					pattern="[0-9]*"
+					maxlength="6"
+					placeholder="••••••"
+					autocomplete="current-password"
+					aria-label="PIN de firma"
+					aria-required="true"
+				>
+			</div>
+			<div id="pin-error" class="pin-error" aria-live="polite"></div>
+			<button id="btn-firmar" class="btn-firmar" type="button" aria-label="Firmar ATS con PIN">
+				<span id="btn-firmar-text">✍️ Firmar ATS</span>
+				<span id="btn-firmar-spinner" class="btn-spinner" hidden aria-hidden="true"></span>
+			</button>
+		</div>`;
+
+		// Agregar listener del PIN inmediatamente (no en init, porque este DOM se crea ahora)
+		const pinInputEl  = document.getElementById('pin-input');
+		const pinErrorEl  = document.getElementById('pin-error');
+		const btnFirmarEl = document.getElementById('btn-firmar');
+
+		pinInputEl.addEventListener('input', () => {
+			pinErrorEl.textContent = '';
+			pinInputEl.removeAttribute('aria-invalid');
+		});
+
+		btnFirmarEl.addEventListener('click', () => handleFirmar(pinInputEl, pinErrorEl, btnFirmarEl));
+
+		pinInputEl.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') handleFirmar(pinInputEl, pinErrorEl, btnFirmarEl);
+		});
+
+		// Focus automático al PIN
+		setTimeout(() => pinInputEl.focus(), 100);
+	}
+
+	// ── Guardar charla pre-trabajo ────────────────────────────
+	async function handleGuardarCharla() {
+		charlaErrorEl.textContent = '';
+		btnGuardarCharlaEl.disabled = true;
+
+		try {
+			const duracion = parseInt(charlaDurEl.value, 10);
+			if (!duracion || duracion < 1) {
+				charlaErrorEl.textContent = 'La duración debe ser mayor a 0 minutos.';
+				return;
+			}
+
+			// Recoger asistentes seleccionados
+			const seleccionados = Array.from(
+				asistentesWrapEl.querySelectorAll('input[type="checkbox"]:checked')
+			).map(cb => cb.value);
+
+			if (seleccionados.length === 0) {
+				charlaErrorEl.textContent = 'Seleccioná al menos un asistente.';
+				return;
+			}
+
+			const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
+
+			const { data: charla, error: charlaErr } = await supabase
+				.from('ats_capacitaciones_pre_trabajo')
+				.insert({
+					ats_instancia_id:  _instanciaId,
+					empresa_id:        empresaId,
+					dictada_por:       _usuario?.id,
+					tipo:              charlaTipoEl.value,    // 'Charla_pre_trabajo'|'Induccion'|'Capacitacion'
+					temas:             charlaTemasEl.value.trim() || null,
+					duracion_minutos:  duracion,
+					fecha_hora:        new Date().toISOString(),
+				})
+				.select('id')
+				.single();
+
+			if (charlaErr) {
+				charlaErrorEl.textContent = `Error: ${charlaErr.message || 'No se pudo guardar la charla.'}`;
+				return;
+			}
+
+			// Insertar asistentes (sin soft-delete en esta tabla)
+			const asistentesPayload = seleccionados.map(trabajadorId => ({
+				capacitacion_id: charla.id,
+				trabajador_id:   trabajadorId,
+				empresa_id:      empresaId,
+				confirmado:      trabajadorId === _usuario?.id,
+				confirmado_en:   trabajadorId === _usuario?.id ? new Date().toISOString() : null,
+			}));
+
+			await supabase.from('ats_capacitacion_asistentes').insert(asistentesPayload);
+
+			showToast('Charla registrada correctamente.', 'success');
+			cerrarFormCharla();
+			// Recargar charlas y actualizar firma
+			await recargarCharlas();
+
+		} catch (err) {
+			charlaErrorEl.textContent = err.message || 'Error inesperado.';
+		} finally {
+			btnGuardarCharlaEl.disabled = false;
+		}
+	}
+
+	async function recargarCharlas() {
+		const { data } = await supabase
+			.from('ats_capacitaciones_pre_trabajo')
+			.select(`
+				id, tipo, temas, duracion_minutos, fecha_hora,
+				ats_capacitacion_asistentes(trabajador_id, confirmado, usuarios(nombre_completo))
+			`)
+			.eq('ats_instancia_id', _instanciaId)
+			.order('fecha_hora', { ascending: false });
+
+		// Normalizar nombres de asistentes
+		_charlas = (data ?? []).map(ch => ({
+			...ch,
+			ats_capacitacion_asistentes: (ch.ats_capacitacion_asistentes ?? []).map(a => ({
+				...a,
+				nombre_completo: a.usuarios?.nombre_completo ?? null,
+			})),
+		}));
+
+		renderCharlas(_charlas);
+		renderFirma(_instancia, _charlas);
+	}
+
+	function abrirFormCharla() {
+		charlaFormWrapEl.hidden  = false;
+		btnAddCharlaWrap.hidden  = true;
+		charlaDurEl.value        = '15';
+		charlaTemasEl.value      = '';
+		charlaErrorEl.textContent = '';
+
+		// Popular checkboxes con usuarios
+		asistentesWrapEl.innerHTML = _usuarios.map(u => `
+		<label class="asistente-check">
+			<input type="checkbox" value="${sanitizeHTML(u.id)}"
+			       ${u.id === _usuario?.id ? 'checked' : ''}
+			       aria-label="${sanitizeHTML(u.nombre_completo || u.id)}">
+			<span class="asistente-check__name">${sanitizeHTML(u.nombre_completo || u.id)}</span>
+		</label>`).join('');
+	}
+
+	function cerrarFormCharla() {
+		charlaFormWrapEl.hidden = true;
+		btnAddCharlaWrap.hidden = false;
+	}
+
+	// ── Firmar con PIN ────────────────────────────────────────
+	async function handleFirmar(pinInputEl, pinErrorEl, btnFirmarEl) {
+		if (_submitting) return;
+
+		const pin = pinInputEl.value.trim();
+		if (!pin) {
+			pinErrorEl.textContent = 'Ingresá tu PIN.';
+			pinInputEl.setAttribute('aria-invalid', 'true');
+			pinInputEl.focus();
+			return;
+		}
+		if (!/^\d+$/.test(pin)) {
+			pinErrorEl.textContent = 'El PIN debe contener solo números.';
+			pinInputEl.setAttribute('aria-invalid', 'true');
+			return;
+		}
+
+		_submitting               = true;
+		btnFirmarEl.disabled      = true;
+		document.getElementById('btn-firmar-text').hidden    = true;
+		document.getElementById('btn-firmar-spinner').hidden = false;
+
+		try {
+			// 1. Crear nonce anti-replay
+			await crearNonce(_usuario.id);
+
+			// 2. Verificar PIN
+			const { data: esValido, error: pinErr } = await supabase.rpc('fn_verificar_pin', {
+				p_usuario_id: _usuario.id,
+				p_pin:        pin,
+			});
+
+			if (pinErr) {
+				const msg = pinErr.message?.toLowerCase().includes('bloquea')
+					? 'Cuenta bloqueada por múltiples intentos fallidos. Esperá 15 minutos.'
+					: `Error al verificar PIN: ${pinErr.message}`;
+				pinErrorEl.textContent = msg;
+				pinInputEl.setAttribute('aria-invalid', 'true');
+				return;
+			}
+
+			if (!esValido) {
+				_pinIntentos++;
+				const restantes = Math.max(0, 5 - _pinIntentos);
+				pinErrorEl.textContent = restantes > 0
+					? `PIN incorrecto. ${restantes} intento${restantes !== 1 ? 's' : ''} restante${restantes !== 1 ? 's' : ''}.`
+					: 'PIN incorrecto. Cuenta bloqueada por 15 minutos.';
+				pinInputEl.setAttribute('aria-invalid', 'true');
+				pinInputEl.value = '';
+				pinInputEl.focus();
+				return;
+			}
+
+			_pinIntentos = 0;
+
+			// 3. UPDATE ats_instancias SET estado='Firmado'
+			// Trigger fn_bloqueo_ats_instancias valida inducción + charla + asistente
+			const { data: updated, error: updateErr } = await supabase
+				.from('ats_instancias')
+				.update({
+					estado:  'Firmado',
+					version: _instancia.version + 1,
+				})
+				.eq('id', _instanciaId)
+				.eq('version', _instancia.version)
+				.select('id, estado, firmado_en, version')
+				.single();
+
+			if (updateErr) {
+				// Mapear errores del trigger
+				const msg = updateErr.message || '';
+				if (msg.includes('ERR_HSE_04')) {
+					pinErrorEl.textContent = 'Tu inducción general no está completa. Completala antes de firmar.';
+				} else if (msg.includes('ERR_HSE_05')) {
+					pinErrorEl.textContent = 'Registrá una charla pre-trabajo antes de firmar.';
+				} else if (msg.includes('ERR_HSE_06')) {
+					pinErrorEl.textContent = 'Debés figurar como asistente en la charla pre-trabajo.';
+				} else if (msg.includes('ATS_LOCK')) {
+					pinErrorEl.textContent = 'Este ATS ya fue firmado.';
+				} else {
+					pinErrorEl.textContent = `Error al firmar: ${msg || 'Intentá de nuevo.'}`;
+				}
+				return;
+			}
+
+			if (!updated) {
+				pinErrorEl.textContent = 'Conflicto de versión. Recargá la página e intentá de nuevo.';
+				return;
+			}
+
+			// 4. INSERT ats_firmas (registro del evento de firma)
+			const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
+			await supabase.from('ats_firmas').insert({
+				atshel_local_id:     generateLocalId(),
+				instancia_id:        _instanciaId,
+				usuario_id:          _usuario.id,
+				empresa_id:          empresaId,
+				fecha_firma_local:   new Date().toISOString(),
+			});
+
+			showToast('¡ATS firmado correctamente!', 'success');
+			// Recargar la página para mostrar estado Firmado
+			window.location.reload();
+
+		} catch (err) {
+			pinErrorEl.textContent = err.message || 'Error inesperado al firmar.';
+		} finally {
+			_submitting = false;
+			if (btnFirmarEl) {
+				btnFirmarEl.disabled = false;
+				const t = document.getElementById('btn-firmar-text');
+				const s = document.getElementById('btn-firmar-spinner');
+				if (t) t.hidden = false;
+				if (s) s.hidden = true;
+			}
+		}
+	}
+
+	// ── Carga de datos ────────────────────────────────────────
+	async function cargarDatos() {
+		if (!_instanciaId) {
+			showPageError('ID de ATS inválido.');
+			return;
+		}
+
+		const [instResult, charlasResult, usuariosResult] = await Promise.allSettled([
+
+			supabase.from('ats_instancias')
+				.select(`
+					id, plantilla_id, empresa_id, creado_por, estado,
+					riesgos_evaluacion, bloqueado, firmado_en, version, created_at,
+					plantillas_ats!ats_instancias_plantilla_id_fkey(nombre_ats, tipo_trabajo),
+					ats_respuestas!ats_respuestas_instancia_id_fkey(
+						id, campo_id, valor, deleted_at
+					)
+				`)
+				.eq('id', _instanciaId)
+				.is('deleted_at', null)
+				.single(),
+
+			supabase.from('ats_capacitaciones_pre_trabajo')
+				.select(`
+					id, tipo, temas, duracion_minutos, fecha_hora, dictada_por,
+					ats_capacitacion_asistentes(
+						trabajador_id, confirmado, eficacia,
+						usuarios!ats_capacitacion_asistentes_trabajador_id_fkey(nombre_completo)
+					)
+				`)
+				.eq('ats_instancia_id', _instanciaId)
+				.order('fecha_hora', { ascending: false }),
+
+			supabase.from('usuarios')
+				.select('id, nombre_completo, rol, induccion_completada')
+				.eq('activo', true)
+				.is('deleted_at', null)
+				.order('nombre_completo', { ascending: true }),
+		]);
+
+		if (instResult.status === 'rejected' || instResult.value?.error) {
+			showPageError(instResult.value?.error?.code === 'PGRST116'
+				? 'ATS no encontrado o sin acceso.'
+				: (instResult.value?.error?.message || 'No se pudo cargar el ATS.'));
+			return;
+		}
+
+		_instancia  = instResult.value.data;
+		_plantilla  = _instancia.plantillas_ats ?? null;
+		_respuestas = (_instancia.ats_respuestas ?? []).filter(r => !r.deleted_at);
+		_usuarios   = usuariosResult.value?.data ?? [];
+
+		// Normalizar charlas con nombres de asistentes
+		const charlasRaw = charlasResult.value?.data ?? [];
+		_charlas = charlasRaw.map(ch => ({
+			...ch,
+			ats_capacitacion_asistentes: (ch.ats_capacitacion_asistentes ?? []).map(a => ({
+				...a,
+				nombre_completo: a.usuarios?.nombre_completo ?? null,
+			})),
+		}));
+
+		// Cargar campos de la plantilla
+		if (_instancia.plantilla_id) {
+			const { data: campos } = await supabase
+				.from('campos_plantilla')
+				.select('id, etiqueta, tipo_campo, orden')
+				.eq('plantilla_id', _instancia.plantilla_id)
+				.is('deleted_at', null)
+				.order('orden', { ascending: true });
+			_campos = campos ?? [];
+		}
+
+		// Cargar creador
+		let creadorNombre = null;
+		if (_instancia.creado_por) {
+			const { data: creador } = await supabase
+				.from('usuarios')
+				.select('nombre_completo')
+				.eq('id', _instancia.creado_por)
+				.single();
+			creadorNombre = creador?.nombre_completo ?? null;
+		}
+
+		// Ocultar skeleton, mostrar contenido
+		skeletonAreaEl.hidden = true;
+		contentAreaEl.hidden  = false;
+
+		// Renderizar todo
+		renderHeader(_instancia, _plantilla);
+		renderDatos(_instancia, _plantilla, creadorNombre);
+		renderCampos(_campos, _respuestas);
+		renderIperc(_instancia.riesgos_evaluacion ?? []);
+		renderCharlas(_charlas);
+		renderFirma(_instancia, _charlas);
+	}
+
+	// ── Error de página ───────────────────────────────────────
+	function showPageError(msg) {
+		skeletonAreaEl.hidden      = true;
+		pageErrorSubEl.textContent = msg;
+		pageErrorEl.hidden         = false;
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Sesión
+		await requireAuth('/login.html');
+
+		// 2. Usuario + datos del instancia
+		_usuario = await getUsuario().catch(() => null);
+
+		// 3. Cargar datos
+		await cargarDatos();
+
+		// 4. Event listeners — los del PIN se registran en renderFirma al crear el DOM
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign('/ats-nuevo.html');
+		});
+
+		btnAddCharlaEl.addEventListener('click', abrirFormCharla);
+		btnCancelarCharlaEl.addEventListener('click', cerrarFormCharla);
+		btnGuardarCharlaEl.addEventListener('click', handleGuardarCharla);
+
+		charlaDurEl.addEventListener('input', () => {
+			charlaErrorEl.textContent = '';
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
