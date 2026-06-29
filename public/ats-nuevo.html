@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Nuevo ATS">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Nuevo ATS — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__row {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			gap:             8px;
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			min-width:   0;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Step indicator ───────────────────────────────────── */
+		.step-bar {
+			display:     flex;
+			align-items: center;
+			padding:     10px 16px;
+			gap:         0;
+		}
+
+		.step-pill {
+			display:        flex;
+			align-items:    center;
+			gap:            6px;
+			flex:           1;
+			position:       relative;
+		}
+
+		.step-pill:not(:last-child)::after {
+			content:    '';
+			flex:       1;
+			height:     2px;
+			background: var(--border-subtle);
+			margin:     0 4px;
+		}
+		.step-pill.is-done:not(:last-child)::after {
+			background: var(--color-success);
+		}
+
+		.step-pill__num {
+			width:           24px;
+			height:          24px;
+			border-radius:   50%;
+			background:      var(--surface-04);
+			border:          2px solid var(--border-subtle);
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			font-family:     var(--font-condensed);
+			font-size:       11px;
+			font-weight:     800;
+			color:           var(--text-tertiary);
+			flex-shrink:     0;
+			transition:      all 0.2s ease;
+		}
+		.step-pill.is-active .step-pill__num {
+			background:   var(--accent-subtle);
+			border-color: var(--accent);
+			color:        var(--accent);
+		}
+		.step-pill.is-done .step-pill__num {
+			background:   var(--color-success-bg);
+			border-color: var(--color-success);
+			color:        var(--color-success);
+		}
+
+		.step-pill__label {
+			font-size:   9px;
+			font-weight: 700;
+			color:       var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			white-space: nowrap;
+		}
+		.step-pill.is-active .step-pill__label { color: var(--accent); }
+		.step-pill.is-done   .step-pill__label { color: var(--color-success); }
+
+		/* ── Contenido principal ──────────────────────────────── */
+		.step-content {
+			flex:           1;
+			padding:        20px 16px calc(96px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            16px;
+			animation:      slide-up 0.25s ease both;
+		}
+		@keyframes slide-up {
+			from { opacity: 0; transform: translateY(8px); }
+			to   { opacity: 1; transform: translateY(0); }
+		}
+
+		/* ── Sección ──────────────────────────────────────────── */
+		.section-title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+		.section-hint {
+			font-size:  var(--text-sm);
+			color:      var(--text-tertiary);
+			margin-top: -8px;
+		}
+
+		/* ── Cards de plantilla ───────────────────────────────── */
+		.plantilla-grid {
+			display:        flex;
+			flex-direction: column;
+			gap:            8px;
+		}
+
+		.plantilla-card {
+			display:       flex;
+			align-items:   flex-start;
+			gap:           12px;
+			padding:       14px;
+			background:    var(--surface-02);
+			border:        2px solid var(--border-subtle);
+			border-radius: 10px;
+			cursor:        pointer;
+			transition:    all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			user-select:   none;
+		}
+		.plantilla-card:hover  { background: var(--surface-03); }
+		.plantilla-card:active { transform: scale(0.99); }
+		.plantilla-card.is-selected {
+			border-color: var(--accent);
+			background:   var(--accent-subtle);
+		}
+
+		.plantilla-card__icon {
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      var(--surface-04);
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			font-size:       18px;
+			flex-shrink:     0;
+		}
+		.plantilla-card.is-selected .plantilla-card__icon {
+			background: var(--accent-subtle-hover);
+		}
+
+		.plantilla-card__body { flex: 1; min-width: 0; }
+
+		.plantilla-card__name {
+			font-size:   var(--text-base);
+			font-weight: 700;
+			color:       var(--text-primary);
+			line-height: 1.2;
+		}
+		.plantilla-card.is-selected .plantilla-card__name { color: var(--accent); }
+
+		.plantilla-card__tipo {
+			font-size:   var(--text-sm);
+			color:       var(--text-secondary);
+			margin-top:  2px;
+		}
+
+		.plantilla-card__check {
+			font-size:  18px;
+			color:      var(--accent);
+			flex-shrink: 0;
+			opacity:    0;
+			transition: opacity 0.15s ease;
+		}
+		.plantilla-card.is-selected .plantilla-card__check { opacity: 1; }
+
+		/* ── Campos dinámicos ─────────────────────────────────── */
+		.campo-group {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
+
+		.campo-group__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.campo-group__label abbr { text-decoration: none; color: var(--color-danger); margin-left: 2px; }
+
+		.campo-input,
+		.campo-textarea,
+		.campo-date,
+		.campo-number,
+		.campo-select {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       11px 14px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.campo-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+		.campo-date     { color-scheme: dark; }
+		.campo-select option { background: var(--surface-02); }
+
+		.campo-input:focus,
+		.campo-textarea:focus,
+		.campo-date:focus,
+		.campo-number:focus,
+		.campo-select:focus  { border-color: var(--accent); }
+
+		.campo-input::placeholder,
+		.campo-textarea::placeholder { color: var(--text-tertiary); }
+
+		.campo-input[aria-invalid="true"],
+		.campo-textarea[aria-invalid="true"],
+		.campo-date[aria-invalid="true"],
+		.campo-number[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		/* Toggle para booleano */
+		.campo-toggle-wrap {
+			display:     flex;
+			align-items: center;
+			gap:         10px;
+		}
+
+		.campo-toggle {
+			width:            44px;
+			height:           24px;
+			border-radius:    12px;
+			background:       var(--surface-04);
+			position:         relative;
+			cursor:           pointer;
+			transition:       background 0.2s ease;
+			flex-shrink:      0;
+			border:           none;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.campo-toggle.is-on { background: var(--accent); }
+		.campo-toggle::after {
+			content:       '';
+			position:      absolute;
+			top:           2px;
+			left:          2px;
+			width:         20px;
+			height:        20px;
+			border-radius: 50%;
+			background:    #fff;
+			transition:    transform 0.2s ease;
+			box-shadow:    0 1px 3px rgba(0,0,0,0.3);
+		}
+		.campo-toggle.is-on::after { transform: translateX(20px); }
+
+		.campo-toggle-label {
+			font-size:   var(--text-sm);
+			color:       var(--text-secondary);
+		}
+
+		/* Placeholders para firma y foto */
+		.campo-placeholder {
+			display:      flex;
+			align-items:  center;
+			gap:          8px;
+			padding:      12px 14px;
+			background:   var(--surface-03);
+			border:       1px dashed var(--border-subtle);
+			border-radius: 8px;
+			font-size:    var(--text-sm);
+			color:        var(--text-tertiary);
+			font-style:   italic;
+		}
+
+		.campo-error {
+			font-size:   var(--text-xs);
+			color:       var(--color-danger);
+			font-weight: 600;
+			min-height:  14px;
+		}
+
+		/* ── IPERC table ──────────────────────────────────────── */
+		.iperc-item {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			overflow:      hidden;
+			margin-bottom: 8px;
+		}
+
+		.iperc-item__header {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         10px 14px;
+			background:      var(--surface-03);
+			border-bottom:   1px solid var(--border-subtle);
+		}
+
+		.iperc-item__num {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-base);
+			font-weight:  700;
+			color:        var(--text-secondary);
+		}
+
+		.btn-remove-iperc {
+			width:           28px;
+			height:          28px;
+			border-radius:   6px;
+			background:      var(--color-danger-bg);
+			border:          none;
+			color:           var(--color-danger);
+			font-size:       14px;
+			cursor:          pointer;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-remove-iperc:hover { background: var(--color-danger); color: #fff; }
+
+		.iperc-item__fields {
+			display:        flex;
+			flex-direction: column;
+			gap:            10px;
+			padding:        12px 14px;
+		}
+
+		.iperc-field__label {
+			font-size:      9px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			margin-bottom:  4px;
+		}
+		.iperc-field__label abbr { text-decoration: none; color: var(--color-danger); }
+
+		.iperc-row-2 {
+			display:               grid;
+			grid-template-columns: 1fr 1fr;
+			gap:                   8px;
+		}
+
+		.btn-add-iperc {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             6px;
+			padding:         11px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          1px dashed var(--border-subtle);
+			color:           var(--text-secondary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			width:           100%;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-add-iperc:hover { border-color: var(--accent); color: var(--accent); }
+
+		/* ── Banner de error ──────────────────────────────────── */
+		.form-error-banner {
+			padding:       12px 14px;
+			border-radius: 8px;
+			background:    var(--color-danger-bg);
+			border:        1px solid var(--color-danger-border);
+			color:         var(--color-danger);
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+		}
+
+		/* ── Empty state plantillas ───────────────────────────── */
+		.empty-state {
+			padding:        32px 16px;
+			text-align:     center;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			gap:            8px;
+		}
+		.empty-state__icon  { font-size: 32px; }
+		.empty-state__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
+		.empty-state__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
+
+		/* ── Footer ───────────────────────────────────────────── */
+		.form-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+			display:        flex;
+			gap:            10px;
+		}
+
+		.btn-anterior {
+			flex:          0 0 auto;
+			padding:       13px 20px;
+			border-radius: 10px;
+			background:    var(--surface-03);
+			border:        1px solid var(--border-subtle);
+			color:         var(--text-secondary);
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   600;
+			cursor:        pointer;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-anterior:hover { background: var(--surface-04); }
+
+		.btn-siguiente {
+			flex:          1;
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			gap:           6px;
+			padding:       13px;
+			border-radius: 10px;
+			background:    var(--accent);
+			border:        none;
+			color:         #000;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   700;
+			cursor:        pointer;
+			-webkit-tap-highlight-color: transparent;
+			transition:    all 0.15s ease;
+		}
+		.btn-siguiente:hover    { background: var(--accent-hover); }
+		.btn-siguiente:active   { transform: scale(0.99); }
+		.btn-siguiente:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-spinner {
+			width:         16px;
+			height:        16px;
+			border:        2px solid rgba(0,0,0,0.25);
+			border-top-color: #000;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+			flex-shrink:   0;
+		}
+		@keyframes spin { to { transform: rotate(360deg); } }
+
+		/* ── Skeleton ─────────────────────────────────────────── */
+		.skeleton-card {
+			height:        80px;
+			border-radius: 10px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__row">
+			<div class="app-header__left">
+				<button id="btn-back" class="btn-back" type="button" aria-label="Volver">
+					<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+						<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+					</svg>
+				</button>
+				<h1 class="app-header__title">Nuevo ATS</h1>
+			</div>
+		</div>
+
+		<!-- Step indicator -->
+		<div class="step-bar" role="progressbar" aria-label="Paso actual" aria-valuemin="1" aria-valuemax="3" id="step-bar">
+			<div class="step-pill is-active" id="sp-1">
+				<div class="step-pill__num">1</div>
+				<div class="step-pill__label">Plantilla</div>
+			</div>
+			<!-- connector injected via CSS ::after -->
+			<div class="step-pill" id="sp-2">
+				<div class="step-pill__num">2</div>
+				<div class="step-pill__label">Datos</div>
+			</div>
+			<div class="step-pill" id="sp-3">
+				<div class="step-pill__num">3</div>
+				<div class="step-pill__label">IPERC</div>
+			</div>
+		</div>
+	</header>
+
+	<!-- ── Steps ───────────────────────────────────────────── -->
+
+	<!-- Step 1: Selección de plantilla -->
+	<div id="step-1" class="step-content" role="main">
+		<div class="section-title">Seleccioná una plantilla</div>
+		<div class="section-hint">Elegí el tipo de trabajo que vas a analizar.</div>
+
+		<div id="form-error-1" class="form-error-banner" role="alert" hidden>
+			<span id="error-1-text"></span>
+		</div>
+
+		<div id="plantillas-list">
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+		</div>
+	</div>
+
+	<!-- Step 2: Campos dinámicos -->
+	<div id="step-2" class="step-content" role="main" hidden>
+		<div class="section-title" id="step2-titulo">Datos del trabajo</div>
+		<div class="section-hint">Completá todos los campos requeridos.</div>
+
+		<div id="form-error-2" class="form-error-banner" role="alert" hidden>
+			<span id="error-2-text"></span>
+		</div>
+
+		<div id="campos-list"></div>
+	</div>
+
+	<!-- Step 3: IPERC -->
+	<div id="step-3" class="step-content" role="main" hidden>
+		<div class="section-title">Identificación de Peligros (IPERC)</div>
+		<div class="section-hint">
+			Para cada tarea, identificá el peligro, evaluá el riesgo y definí los controles.
+			El array vacío es válido — podés agregar riesgos después.
+		</div>
+
+		<div id="form-error-3" class="form-error-banner" role="alert" hidden>
+			<span id="error-3-text"></span>
+		</div>
+
+		<div id="iperc-list"></div>
+
+		<button id="btn-add-iperc" class="btn-add-iperc" type="button" aria-label="Agregar ítem de riesgo">
+			<span aria-hidden="true">+</span> Agregar ítem de riesgo
+		</button>
+	</div>
+
+	<!-- ── Footer de navegación ────────────────────────────── -->
+	<footer class="form-footer" role="contentinfo">
+		<button id="btn-anterior" class="btn-anterior" type="button" hidden aria-label="Paso anterior">
+			← Anterior
+		</button>
+		<button id="btn-siguiente" class="btn-siguiente" type="button" aria-label="Siguiente paso">
+			<span id="btn-sig-text">Siguiente</span>
+			<span id="btn-sig-spinner" class="btn-spinner" hidden aria-hidden="true"></span>
+		</button>
+	</footer>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * ats-nuevo.html — wizard 3 pasos para crear ATS con IPERC.
+	 *
+	 * Tablas verificadas MCP 2026-06-24:
+	 *   plantillas_ats   → activa=true, deleted_at IS NULL
+	 *   campos_plantilla → tipo_campo: 'texto'|'numero'|'fecha'|'booleano'|'lista'|'firma'|'foto'
+	 *   ats_instancias   → estado: 'Borrador'|'En_curso'|'Completado'|'Firmado'|'Cancelado'
+	 *                    → riesgos_evaluacion JSONB CHECK fn_validar_riesgos_iperc:
+	 *                       cada item debe tener: tarea, peligro, riesgo_inherente, controles, riesgo_residual
+	 *   ats_respuestas   → instancia_id, campo_id, valor (TEXT nullable), empresa_id
+	 *   creado_por       → public.usuarios.id (NO auth.uid())
+	 *
+	 * Firma NO se hace aquí. El trigger fn_bloqueo_ats_instancias requiere:
+	 *   1. usuarios.induccion_completada = true
+	 *   2. ats_capacitaciones_pre_trabajo existente para esta instancia
+	 *   3. firmante en ats_capacitacion_asistentes
+	 *   → Todo eso se gestiona en ats-supervisor.html
+	 *
+	 * Al guardar: INSERT ats_instancias (estado='En_curso') + INSERT ats_respuestas
+	 *   → redirect a /ats-supervisor.html?id={instanciaId}
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		generateLocalId,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── Estado global ─────────────────────────────────────────
+	const _instanciaLocalId = generateLocalId();
+
+	let _currentStep    = 1;
+	let _usuario        = null;
+	let _plantillas     = [];
+	let _selectedPl     = null;   // plantilla seleccionada
+	let _campos         = [];     // campos_plantilla de la plantilla
+	let _respuestas     = {};     // Map<campoId, valor>
+	let _ipercs         = [];     // array de items IPERC
+	let _ipercCount     = 0;
+	let _submitting     = false;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl        = document.getElementById('btn-back');
+	const btnAnteriorEl    = document.getElementById('btn-anterior');
+	const btnSiguienteEl   = document.getElementById('btn-siguiente');
+	const btnSigTextEl     = document.getElementById('btn-sig-text');
+	const btnSigSpinnerEl  = document.getElementById('btn-sig-spinner');
+	const plantillasListEl = document.getElementById('plantillas-list');
+	const camposListEl     = document.getElementById('campos-list');
+	const ipercListEl      = document.getElementById('iperc-list');
+	const btnAddIpercEl    = document.getElementById('btn-add-iperc');
+
+	// Step elements
+	const stepEls = {
+		1: document.getElementById('step-1'),
+		2: document.getElementById('step-2'),
+		3: document.getElementById('step-3'),
+	};
+
+	// Step pill elements
+	const spEls = {
+		1: document.getElementById('sp-1'),
+		2: document.getElementById('sp-2'),
+		3: document.getElementById('sp-3'),
+	};
+
+	// Error banners
+	const errorEls = {
+		1: { banner: document.getElementById('form-error-1'), text: document.getElementById('error-1-text') },
+		2: { banner: document.getElementById('form-error-2'), text: document.getElementById('error-2-text') },
+		3: { banner: document.getElementById('form-error-3'), text: document.getElementById('error-3-text') },
+	};
+
+	// ── Helpers ───────────────────────────────────────────────
+	function showStepError(step, msg) {
+		const { banner, text } = errorEls[step];
+		text.textContent  = msg;
+		banner.hidden     = false;
+		banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	function hideStepError(step) {
+		errorEls[step].banner.hidden = true;
+		errorEls[step].text.textContent = '';
+	}
+
+	function setBtnLoading(loading) {
+		_submitting             = loading;
+		btnSiguienteEl.disabled = loading;
+		btnSigTextEl.hidden     = loading;
+		btnSigSpinnerEl.hidden  = !loading;
+	}
+
+	// ── Navegación entre pasos ────────────────────────────────
+	function goToStep(n) {
+		// Ocultar step actual
+		if (stepEls[_currentStep]) stepEls[_currentStep].hidden = true;
+
+		// Actualizar pills
+		for (let i = 1; i <= 3; i++) {
+			spEls[i].className = 'step-pill';
+			if (i < n) spEls[i].classList.add('is-done');
+			if (i === n) spEls[i].classList.add('is-active');
+		}
+
+		_currentStep = n;
+		stepEls[n].hidden = false;
+
+		// Re-trigger animation
+		stepEls[n].style.animation = 'none';
+		requestAnimationFrame(() => {
+			stepEls[n].style.animation = '';
+		});
+
+		// Botón anterior
+		btnAnteriorEl.hidden = n === 1;
+
+		// Texto botón siguiente
+		btnSigTextEl.textContent = n === 3 ? 'Guardar ATS' : 'Siguiente →';
+
+		// Scroll al top
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+
+		document.getElementById('step-bar')?.setAttribute('aria-valuenow', n);
+	}
+
+	// ── Step 1: Cargar y renderizar plantillas ────────────────
+	async function cargarPlantillas() {
+		const { data, error } = await supabase
+			.from('plantillas_ats')
+			.select('id, nombre_ats, tipo_trabajo')
+			.eq('activa', true)
+			.is('deleted_at', null)
+			.order('nombre_ats', { ascending: true });
+
+		if (error || !data?.length) {
+			plantillasListEl.innerHTML = `
+			<div class="empty-state">
+				<div class="empty-state__icon">📋</div>
+				<div class="empty-state__title">Sin plantillas disponibles</div>
+				<div class="empty-state__sub">
+					El administrador debe cargar plantillas ATS activas.<br>
+					Ir a <a href="/plantillas-admin.html" style="color:var(--accent)">Administración de plantillas</a>.
+				</div>
+			</div>`;
+			return;
+		}
+
+		_plantillas = data;
+
+		plantillasListEl.innerHTML = data.map(p => `
+		<div
+			class="plantilla-card"
+			role="radio"
+			aria-checked="false"
+			data-id="${sanitizeHTML(p.id)}"
+			tabindex="0"
+			aria-label="Plantilla: ${sanitizeHTML(p.nombre_ats)}"
+		>
+			<div class="plantilla-card__icon" aria-hidden="true">📋</div>
+			<div class="plantilla-card__body">
+				<div class="plantilla-card__name">${sanitizeHTML(p.nombre_ats)}</div>
+				<div class="plantilla-card__tipo">${sanitizeHTML(p.tipo_trabajo)}</div>
+			</div>
+			<span class="plantilla-card__check" aria-hidden="true">✓</span>
+		</div>`).join('');
+	}
+
+	function selectPlantilla(id) {
+		_selectedPl = _plantillas.find(p => p.id === id) ?? null;
+		plantillasListEl.querySelectorAll('.plantilla-card').forEach(card => {
+			const sel = card.dataset.id === id;
+			card.classList.toggle('is-selected', sel);
+			card.setAttribute('aria-checked', String(sel));
+		});
+		hideStepError(1);
+	}
+
+	// ── Step 2: Cargar y renderizar campos ────────────────────
+	async function cargarCampos(plantillaId) {
+		const { data, error } = await supabase
+			.from('campos_plantilla')
+			.select('id, etiqueta, tipo_campo, orden, requerido, opciones')
+			.eq('plantilla_id', plantillaId)
+			.is('deleted_at', null)
+			.order('orden', { ascending: true });
+
+		if (error) {
+			showStepError(2, 'No se pudieron cargar los campos de la plantilla.');
+			return;
+		}
+
+		_campos = data ?? [];
+
+		if (!_campos.length) {
+			camposListEl.innerHTML = `
+			<div class="empty-state">
+				<div class="empty-state__icon">📄</div>
+				<div class="empty-state__title">Plantilla sin campos</div>
+				<div class="empty-state__sub">Esta plantilla no tiene campos configurados. Podés continuar al IPERC.</div>
+			</div>`;
+			return;
+		}
+
+		document.getElementById('step2-titulo').textContent =
+			_selectedPl?.nombre_ats || 'Datos del trabajo';
+
+		camposListEl.innerHTML = _campos.map(campo => {
+			const requerido = campo.requerido
+				? '<abbr title="Requerido">*</abbr>'
+				: '';
+			const campoId = sanitizeHTML(campo.id);
+
+			let inputHTML = '';
+
+			switch (campo.tipo_campo) {
+				case 'texto':
+					inputHTML = `<textarea
+						id="c-${campoId}"
+						class="campo-textarea"
+						rows="2"
+						aria-required="${campo.requerido}"
+						data-campo="${campoId}"
+					></textarea>`;
+					break;
+
+				case 'numero':
+					inputHTML = `<input
+						id="c-${campoId}"
+						class="campo-number"
+						type="number"
+						step="any"
+						aria-required="${campo.requerido}"
+						data-campo="${campoId}"
+					>`;
+					break;
+
+				case 'fecha':
+					inputHTML = `<input
+						id="c-${campoId}"
+						class="campo-date"
+						type="date"
+						aria-required="${campo.requerido}"
+						data-campo="${campoId}"
+					>`;
+					break;
+
+				case 'booleano':
+					inputHTML = `<div class="campo-toggle-wrap">
+						<button
+							id="c-${campoId}"
+							class="campo-toggle"
+							type="button"
+							role="switch"
+							aria-checked="false"
+							data-campo="${campoId}"
+							aria-label="${sanitizeHTML(campo.etiqueta)}"
+						></button>
+						<span class="campo-toggle-label" aria-hidden="true">No / Sí</span>
+					</div>`;
+					break;
+
+				case 'lista': {
+					const opts = Array.isArray(campo.opciones) ? campo.opciones : [];
+					const optHTML = opts.map(o =>
+						`<option value="${sanitizeHTML(String(o))}">${sanitizeHTML(String(o))}</option>`
+					).join('');
+					inputHTML = `<select
+						id="c-${campoId}"
+						class="campo-select"
+						aria-required="${campo.requerido}"
+						data-campo="${campoId}"
+					>
+						<option value="">— Seleccioná —</option>
+						${optHTML}
+					</select>`;
+					break;
+				}
+
+				case 'firma':
+					inputHTML = `<div class="campo-placeholder">
+						✍️ La firma se registra al finalizar el ATS (paso de supervisor).
+					</div>`;
+					break;
+
+				case 'foto':
+					inputHTML = `<div class="campo-placeholder">
+						📷 La foto se puede adjuntar desde el detalle del ATS.
+					</div>`;
+					break;
+
+				default:
+					inputHTML = `<input
+						id="c-${campoId}"
+						class="campo-input"
+						type="text"
+						data-campo="${campoId}"
+					>`;
+			}
+
+			return `
+			<div class="campo-group">
+				<label class="campo-group__label" for="c-${campoId}">
+					${sanitizeHTML(campo.etiqueta)} ${requerido}
+				</label>
+				${inputHTML}
+				<div id="ce-${campoId}" class="campo-error" aria-live="polite"></div>
+			</div>`;
+		}).join('');
+	}
+
+	// Leer valores del formulario de campos
+	function leerRespuestas() {
+		_respuestas = {};
+		_campos.forEach(campo => {
+			const el = document.getElementById(`c-${campo.id}`);
+			if (!el) return;
+
+			if (campo.tipo_campo === 'booleano') {
+				_respuestas[campo.id] = el.getAttribute('aria-checked') === 'true' ? 'true' : 'false';
+			} else if (campo.tipo_campo === 'firma' || campo.tipo_campo === 'foto') {
+				// Omitir — se gestionan fuera de este formulario
+			} else {
+				_respuestas[campo.id] = el.value ?? '';
+			}
+		});
+	}
+
+	// Validar step 2
+	function validarCampos() {
+		let ok = true;
+		hideStepError(2);
+
+		_campos.forEach(campo => {
+			if (!campo.requerido) return;
+			if (campo.tipo_campo === 'firma' || campo.tipo_campo === 'foto') return;
+
+			const el      = document.getElementById(`c-${campo.id}`);
+			const errorEl = document.getElementById(`ce-${campo.id}`);
+			if (!el || !errorEl) return;
+
+			const valor = campo.tipo_campo === 'booleano'
+				? el.getAttribute('aria-checked')
+				: el.value?.trim();
+
+			if (!valor) {
+				errorEl.textContent = 'Este campo es requerido.';
+				el.setAttribute('aria-invalid', 'true');
+				ok = false;
+			} else {
+				errorEl.textContent = '';
+				el.removeAttribute('aria-invalid');
+			}
+		});
+
+		return ok;
+	}
+
+	// ── Step 3: IPERC ─────────────────────────────────────────
+	function addIpercItem(data = {}) {
+		_ipercCount++;
+		const rowId = `ipr-${_ipercCount}`;
+
+		const card = document.createElement('div');
+		card.className  = 'iperc-item';
+		card.dataset.id = rowId;
+
+		card.innerHTML = `
+		<div class="iperc-item__header">
+			<span class="iperc-item__num">Riesgo #${_ipercCount}</span>
+			<button class="btn-remove-iperc" type="button"
+			        data-remove="${rowId}" aria-label="Eliminar riesgo ${_ipercCount}">✕</button>
+		</div>
+		<div class="iperc-item__fields">
+			<div>
+				<div class="iperc-field__label">Tarea <abbr title="Requerido">*</abbr></div>
+				<textarea id="${rowId}-tarea" class="campo-textarea" rows="1"
+				          placeholder="Ej: Izaje de carga con grúa..."
+				          data-field="tarea">${sanitizeHTML(data.tarea || '')}</textarea>
+			</div>
+			<div>
+				<div class="iperc-field__label">Peligro identificado <abbr title="Requerido">*</abbr></div>
+				<textarea id="${rowId}-peligro" class="campo-textarea" rows="1"
+				          placeholder="Ej: Caída de carga..."
+				          data-field="peligro">${sanitizeHTML(data.peligro || '')}</textarea>
+			</div>
+			<div class="iperc-row-2">
+				<div>
+					<div class="iperc-field__label">Riesgo inherente <abbr title="Requerido">*</abbr></div>
+					<textarea id="${rowId}-ri" class="campo-textarea" rows="1"
+					          placeholder="Alto / Medio / Bajo"
+					          data-field="riesgo_inherente">${sanitizeHTML(data.riesgo_inherente || '')}</textarea>
+				</div>
+				<div>
+					<div class="iperc-field__label">Riesgo residual <abbr title="Requerido">*</abbr></div>
+					<textarea id="${rowId}-rr" class="campo-textarea" rows="1"
+					          placeholder="Bajo / Tolerable"
+					          data-field="riesgo_residual">${sanitizeHTML(data.riesgo_residual || '')}</textarea>
+				</div>
+			</div>
+			<div>
+				<div class="iperc-field__label">Controles propuestos <abbr title="Requerido">*</abbr></div>
+				<textarea id="${rowId}-ctrl" class="campo-textarea" rows="2"
+				          placeholder="Ej: Señalización del área, EPP específico, procedimiento de bloqueo..."
+				          data-field="controles">${sanitizeHTML(data.controles || '')}</textarea>
+			</div>
+		</div>`;
+
+		ipercListEl.appendChild(card);
+	}
+
+	function removeIpercItem(rowId) {
+		const card = ipercListEl.querySelector(`[data-id="${rowId}"]`);
+		if (card) card.remove();
+	}
+
+	// Leer IPERC del DOM
+	function leerIperc() {
+		return Array.from(ipercListEl.querySelectorAll('.iperc-item')).map(card => {
+			const g = (f) => card.querySelector(`[data-field="${f}"]`)?.value.trim() ?? '';
+			return {
+				tarea:            g('tarea'),
+				peligro:          g('peligro'),
+				riesgo_inherente: g('riesgo_inherente'),
+				riesgo_residual:  g('riesgo_residual'),
+				controles:        g('controles'),
+			};
+		});
+	}
+
+	// Validar step 3
+	function validarIperc() {
+		hideStepError(3);
+		const items = leerIperc();
+		if (items.length === 0) return true; // array vacío es válido según DB
+
+		for (const item of items) {
+			if (!item.tarea || !item.peligro || !item.riesgo_inherente
+				|| !item.controles || !item.riesgo_residual) {
+				showStepError(3, 'Completá todos los campos de cada ítem de riesgo, o eliminá los vacíos.');
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// ── Guardar ATS ───────────────────────────────────────────
+	async function guardarATS() {
+		setBtnLoading(true);
+
+		try {
+			leerRespuestas();
+			const riesgos = leerIperc();
+			const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
+
+			// 1. INSERT ats_instancias
+			const instanciaPayload = {
+				atshel_local_id:    _instanciaLocalId,
+				plantilla_id:       _selectedPl.id,
+				empresa_id:         empresaId,
+				creado_por:         _usuario?.id ?? null, // → public.usuarios.id
+				estado:             'En_curso',
+				riesgos_evaluacion: riesgos, // [] válido, con items debe cumplir fn_validar_riesgos_iperc
+			};
+
+			const { data: instancia, error: instError } = await supabase
+				.from('ats_instancias')
+				.insert(instanciaPayload)
+				.select('id')
+				.single();
+
+			if (instError) {
+				if (instError.code === '23505') {
+					// Duplicado — buscar y redirigir
+					const { data: ex } = await supabase
+						.from('ats_instancias')
+						.select('id')
+						.eq('atshel_local_id', _instanciaLocalId)
+						.is('deleted_at', null)
+						.single();
+					if (ex?.id) {
+						showToast('ATS ya existente, abriendo...', 'info');
+						window.location.replace(`/ats-supervisor.html?id=${ex.id}`);
+						return;
+					}
+				}
+
+				// Mapear errores del trigger de bloqueo o validación
+				const errMsg = instError.message || '';
+				if (errMsg.includes('fn_validar_riesgos_iperc') || errMsg.includes('violates check')) {
+					showStepError(3, 'Los datos del IPERC son inválidos. Verificá que todos los campos estén completos.');
+				} else {
+					showStepError(3, `Error al crear el ATS: ${errMsg || 'Intentá de nuevo.'}`);
+				}
+				return;
+			}
+
+			const instanciaId = instancia.id;
+
+			// 2. INSERT ats_respuestas (solo campos con valor y que no sean firma/foto)
+			const respuestasPayload = Object.entries(_respuestas)
+				.filter(([, v]) => v !== '' && v !== null)
+				.map(([campoId, valor]) => ({
+					atshel_local_id: generateLocalId(),
+					instancia_id:    instanciaId,
+					campo_id:        campoId,
+					valor:           String(valor),
+					empresa_id:      empresaId,
+				}));
+
+			if (respuestasPayload.length > 0) {
+				const { error: respError } = await supabase
+					.from('ats_respuestas')
+					.insert(respuestasPayload);
+
+				if (respError) {
+					// No bloquear — las respuestas se pueden agregar después
+					console.warn('Error al guardar respuestas:', respError.message);
+				}
+			}
+
+			showToast('ATS creado. Completá la charla y firmá.', 'success');
+			window.location.replace(`/ats-supervisor.html?id=${instanciaId}`);
+
+		} catch (err) {
+			showStepError(3, err?.message || 'Error inesperado. Intentá de nuevo.');
+		} finally {
+			setBtnLoading(false);
+		}
+	}
+
+	// ── Navegación: siguiente paso ────────────────────────────
+	async function handleSiguiente() {
+		if (_submitting) return;
+
+		if (_currentStep === 1) {
+			if (!_selectedPl) {
+				showStepError(1, 'Seleccioná una plantilla para continuar.');
+				return;
+			}
+			// Cargar campos de la plantilla seleccionada
+			await cargarCampos(_selectedPl.id);
+			goToStep(2);
+
+		} else if (_currentStep === 2) {
+			if (!validarCampos()) {
+				document.querySelector('[aria-invalid="true"]')
+					?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				return;
+			}
+			leerRespuestas();
+			goToStep(3);
+
+		} else if (_currentStep === 3) {
+			if (!validarIperc()) return;
+			await guardarATS();
+		}
+	}
+
+	function handleAnterior() {
+		if (_currentStep > 1) goToStep(_currentStep - 1);
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Sesión
+		await requireAuth('/login.html');
+
+		// 2. Usuario
+		_usuario = await getUsuario().catch(() => null);
+
+		// 3. Cargar plantillas
+		await cargarPlantillas();
+
+		// 4. Event listeners — todos aquí
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign('/dashboard.html');
+		});
+
+		btnSiguienteEl.addEventListener('click', handleSiguiente);
+		btnAnteriorEl.addEventListener('click', handleAnterior);
+
+		// Selección de plantilla — event delegation
+		plantillasListEl.addEventListener('click', (e) => {
+			const card = e.target.closest('.plantilla-card[data-id]');
+			if (card) selectPlantilla(card.dataset.id);
+		});
+
+		// Teclado en cards de plantilla
+		plantillasListEl.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				const card = e.target.closest('.plantilla-card[data-id]');
+				if (card) { e.preventDefault(); selectPlantilla(card.dataset.id); }
+			}
+		});
+
+		// Toggle booleano — event delegation en campos
+		camposListEl.addEventListener('click', (e) => {
+			const toggle = e.target.closest('.campo-toggle[data-campo]');
+			if (!toggle) return;
+			const isOn = toggle.getAttribute('aria-checked') === 'true';
+			toggle.setAttribute('aria-checked', String(!isOn));
+			toggle.classList.toggle('is-on', !isOn);
+		});
+
+		// Limpiar errores de campo al escribir — event delegation
+		camposListEl.addEventListener('input', (e) => {
+			const el = e.target.closest('[data-campo]');
+			if (!el) return;
+			const campoId = el.dataset.campo;
+			const errorEl = document.getElementById(`ce-${campoId}`);
+			if (errorEl) errorEl.textContent = '';
+			el.removeAttribute('aria-invalid');
+		});
+
+		// IPERC: agregar ítem
+		btnAddIpercEl.addEventListener('click', () => addIpercItem());
+
+		// IPERC: eliminar ítem — event delegation
+		ipercListEl.addEventListener('click', (e) => {
+			const btn = e.target.closest('.btn-remove-iperc[data-remove]');
+			if (btn) removeIpercItem(btn.dataset.remove);
+		});
+
+		// Ctrl+Enter en cualquier textarea = siguiente paso
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' && e.ctrlKey && !_submitting) {
+				handleSiguiente();
+			}
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
