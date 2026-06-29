@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Estado de sincronización">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Sincronización — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.btn-refresh {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			font-size:       18px;
+			-webkit-tap-highlight-color: transparent;
+			transition:      transform 0.3s ease;
+		}
+		.btn-refresh:active { background: var(--surface-04); }
+		.btn-refresh.spinning { animation: spin-icon 0.8s linear infinite; }
+
+		@keyframes spin-icon { to { transform: rotate(360deg); } }
+
+		/* ── Main ─────────────────────────────────────────────── */
+		.main {
+			flex:           1;
+			padding:        16px 16px calc(32px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            16px;
+		}
+
+		/* ── Banner de estado de red ──────────────────────────── */
+		.net-banner {
+			display:       flex;
+			align-items:   center;
+			gap:           10px;
+			padding:       12px 14px;
+			border-radius: 10px;
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			line-height:   1.4;
+		}
+		.net-banner--online  { background: var(--color-success-bg); border: 1px solid var(--color-success-bg); color: var(--color-success); }
+		.net-banner--offline { background: var(--color-danger-bg);  border: 1px solid var(--color-danger-border); color: var(--color-danger); }
+
+		.net-banner__dot {
+			width:         10px;
+			height:        10px;
+			border-radius: 50%;
+			background:    currentColor;
+			flex-shrink:   0;
+		}
+		.net-banner--online .net-banner__dot {
+			animation: pulse-dot 2s ease-in-out infinite;
+		}
+		@keyframes pulse-dot {
+			0%, 100% { opacity: 1; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Cards de sección ─────────────────────────────────── */
+		.card {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			overflow:      hidden;
+		}
+
+		.card__header {
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         12px 16px;
+			border-bottom:   1px solid var(--border-subtle);
+		}
+
+		.card__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.card__badge {
+			font-family:   var(--font-mono);
+			font-size:     11px;
+			font-weight:   700;
+			padding:       2px 8px;
+			border-radius: 10px;
+		}
+		.card__badge--ok      { background: var(--color-success-bg); color: var(--color-success); }
+		.card__badge--warning { background: var(--color-warning-bg); color: var(--color-warning); }
+		.card__badge--danger  { background: var(--color-danger-bg);  color: var(--color-danger);  }
+
+		/* ── Items de conflicto / cola ────────────────────────── */
+		.sync-item {
+			display:       flex;
+			align-items:   flex-start;
+			gap:           12px;
+			padding:       12px 16px;
+			border-bottom: 1px solid var(--border-subtle);
+		}
+		.sync-item:last-child { border-bottom: none; }
+
+		.sync-item__icon {
+			width:           32px;
+			height:          32px;
+			border-radius:   8px;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			font-size:       14px;
+			flex-shrink:     0;
+		}
+		.sync-item__icon--ok      { background: var(--color-success-bg); }
+		.sync-item__icon--error   { background: var(--color-danger-bg);  }
+		.sync-item__icon--pending { background: var(--color-warning-bg); }
+
+		.sync-item__body  { flex: 1; min-width: 0; }
+
+		.sync-item__title {
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			color:         var(--text-primary);
+			line-height:   1.3;
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+		}
+
+		.sync-item__meta {
+			display:     flex;
+			gap:         6px;
+			margin-top:  3px;
+			align-items: center;
+			flex-wrap:   wrap;
+		}
+
+		.sync-item__tabla {
+			font-family:    var(--font-mono);
+			font-size:      10px;
+			color:          var(--text-tertiary);
+			background:     var(--surface-04);
+			padding:        1px 5px;
+			border-radius:  3px;
+		}
+
+		.sync-item__time {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+			font-family: var(--font-mono);
+		}
+
+		.sync-item__error {
+			font-size:   var(--text-xs);
+			color:       var(--color-danger);
+			margin-top:  4px;
+			line-height: 1.3;
+		}
+
+		.btn-dismiss {
+			padding:       4px 8px;
+			border-radius: 4px;
+			background:    var(--surface-04);
+			border:        none;
+			color:         var(--text-secondary);
+			font-size:     11px;
+			font-weight:   600;
+			cursor:        pointer;
+			flex-shrink:   0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-dismiss:hover { background: var(--color-danger-bg); color: var(--color-danger); }
+
+		/* ── Registros verificados ────────────────────────────── */
+		.verified-item {
+			display:       flex;
+			align-items:   center;
+			gap:           10px;
+			padding:       10px 16px;
+			border-bottom: 1px solid var(--border-subtle);
+		}
+		.verified-item:last-child { border-bottom: none; }
+
+		.verified-item__indicator {
+			width:         8px;
+			height:        8px;
+			border-radius: 50%;
+			flex-shrink:   0;
+		}
+		.verified-item__indicator--ok      { background: var(--color-success); }
+		.verified-item__indicator--missing { background: var(--color-danger);  }
+
+		.verified-item__body { flex: 1; min-width: 0; }
+
+		.verified-item__label {
+			font-size:   var(--text-sm);
+			font-weight: 600;
+			color:       var(--text-primary);
+			line-height: 1.2;
+		}
+
+		.verified-item__tabla {
+			font-family: var(--font-mono);
+			font-size:   10px;
+			color:       var(--text-tertiary);
+			margin-top:  1px;
+		}
+
+		.verified-item__date {
+			font-family: var(--font-mono);
+			font-size:   10px;
+			color:       var(--text-tertiary);
+		}
+
+		/* ── Botón limpiar cola ───────────────────────────────── */
+		.btn-clear-all {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             6px;
+			width:           100%;
+			padding:         11px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          1px solid var(--color-danger-border);
+			color:           var(--color-danger);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			-webkit-tap-highlight-color: transparent;
+			transition:      all 0.15s ease;
+		}
+		.btn-clear-all:hover { background: var(--color-danger-bg); }
+
+		/* ── Estado vacío ─────────────────────────────────────── */
+		.empty-state {
+			padding:        24px 16px;
+			text-align:     center;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			gap:            6px;
+		}
+		.empty-state__icon  { font-size: 28px; }
+		.empty-state__label {
+			font-size:  var(--text-sm);
+			color:      var(--text-tertiary);
+			font-weight: 500;
+		}
+
+		/* ── Skeleton ─────────────────────────────────────────── */
+		.skeleton-row {
+			height:        52px;
+			border-bottom: 1px solid var(--border-subtle);
+			background:    var(--surface-03);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		.skeleton-row:last-child { border-bottom: none; }
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.7; }
+			50%       { opacity: 0.3; }
+		}
+
+		/* ── Info pill ────────────────────────────────────────── */
+		.info-pill {
+			display:       flex;
+			align-items:   center;
+			gap:           8px;
+			padding:       10px 14px;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			font-size:     var(--text-xs);
+			color:         var(--text-tertiary);
+			line-height:   1.4;
+		}
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button id="btn-back" class="btn-back" type="button" aria-label="Volver al panel">
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<h1 class="app-header__title">Sincronización</h1>
+		</div>
+		<button id="btn-refresh" class="btn-refresh" type="button" aria-label="Actualizar estado de sincronización">
+			↻
+		</button>
+	</header>
+
+	<!-- ── Main ────────────────────────────────────────────── -->
+	<main class="main" id="main-content" role="main">
+
+		<!-- Estado de red -->
+		<div id="net-banner" class="net-banner net-banner--offline" aria-live="polite">
+			<span class="net-banner__dot" aria-hidden="true"></span>
+			<span id="net-text">Verificando conexión...</span>
+		</div>
+
+		<!-- Conflictos detectados -->
+		<div class="card">
+			<div class="card__header">
+				<span class="card__title">Conflictos detectados</span>
+				<span id="conflicts-badge" class="card__badge card__badge--ok">0</span>
+			</div>
+			<div id="conflicts-list">
+				<div class="empty-state">
+					<div class="empty-state__icon">✅</div>
+					<div class="empty-state__label">Sin conflictos detectados</div>
+				</div>
+			</div>
+			<div id="btn-clear-conflicts-wrap" hidden style="padding:12px 16px">
+				<button id="btn-clear-conflicts" class="btn-clear-all" type="button">
+					🗑 Limpiar todos los conflictos
+				</button>
+			</div>
+		</div>
+
+		<!-- Cola de sincronización pendiente -->
+		<div class="card">
+			<div class="card__header">
+				<span class="card__title">Cola de sincronización</span>
+				<span id="queue-badge" class="card__badge card__badge--ok">0</span>
+			</div>
+			<div id="queue-list">
+				<div class="empty-state">
+					<div class="empty-state__icon">🟢</div>
+					<div class="empty-state__label">Cola vacía — todo sincronizado</div>
+				</div>
+			</div>
+			<div id="btn-clear-queue-wrap" hidden style="padding:12px 16px">
+				<button id="btn-clear-queue" class="btn-clear-all" type="button">
+					🗑 Limpiar cola
+				</button>
+			</div>
+		</div>
+
+		<!-- Verificación de registros recientes -->
+		<div class="card">
+			<div class="card__header">
+				<span class="card__title">Registros recientes verificados</span>
+				<span id="verified-badge" class="card__badge card__badge--ok"></span>
+			</div>
+			<div id="verified-list">
+				<div class="skeleton-row"></div>
+				<div class="skeleton-row"></div>
+				<div class="skeleton-row"></div>
+			</div>
+		</div>
+
+		<!-- Info sobre PowerSync -->
+		<div class="info-pill" aria-label="Información sobre sincronización">
+			<span aria-hidden="true">ℹ️</span>
+			<span>
+				La sincronización automática en segundo plano se activa cuando PowerSync está configurado.
+				Mientras tanto, los datos se sincronizan al conectarse.
+			</span>
+		</div>
+
+	</main>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * conflictos.html — estado de sincronización y conflictos offline.
+	 *
+	 * Fuentes de datos:
+	 *   1. localStorage['atshel_conflicts']  — conflictos de versión logueados por otras páginas
+	 *      Formato: [{ id, tabla, descripcion, error, timestamp }]
+	 *   2. localStorage['atshel_sync_queue'] — operaciones pendientes de sincronización
+	 *      Formato: [{ localId, tabla, operacion, payload, timestamp, intentos }]
+	 *   3. Supabase — últimos 10 registros del usuario actual (verificación de sync)
+	 *      Tablas: incidentes, acciones_correctivas, investigaciones_causa_raiz
+	 *
+	 * Las otras páginas pueden registrar conflictos con:
+	 *   import { logConflicto, logSyncQueue } from esta página (ver utilidades al final)
+	 *
+	 * Los registros verificados confirman que los datos creados offline
+	 * efectivamente llegaron al servidor.
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		formatFechaCorta,
+	} from '/js/atshel-core.js';
+
+	// ── Claves de localStorage ────────────────────────────────
+	const LS_CONFLICTS  = 'atshel_conflicts';
+	const LS_SYNC_QUEUE = 'atshel_sync_queue';
+
+	// ── Estado ───────────────────────────────────────────────
+	let _usuario    = null;
+	let _refreshing = false;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl              = document.getElementById('btn-back');
+	const btnRefreshEl           = document.getElementById('btn-refresh');
+	const netBannerEl            = document.getElementById('net-banner');
+	const netTextEl              = document.getElementById('net-text');
+	const conflictsListEl        = document.getElementById('conflicts-list');
+	const conflictsBadgeEl       = document.getElementById('conflicts-badge');
+	const btnClearConflictsWrap  = document.getElementById('btn-clear-conflicts-wrap');
+	const btnClearConflictsEl    = document.getElementById('btn-clear-conflicts');
+	const queueListEl            = document.getElementById('queue-list');
+	const queueBadgeEl           = document.getElementById('queue-badge');
+	const btnClearQueueWrap      = document.getElementById('btn-clear-queue-wrap');
+	const btnClearQueueEl        = document.getElementById('btn-clear-queue');
+	const verifiedListEl         = document.getElementById('verified-list');
+	const verifiedBadgeEl        = document.getElementById('verified-badge');
+
+	// ── Banner de red ─────────────────────────────────────────
+	function updateNetBanner() {
+		const online = navigator.onLine;
+		netBannerEl.className = `net-banner net-banner--${online ? 'online' : 'offline'}`;
+		netTextEl.textContent = online
+			? 'Conectado — los datos se sincronizan automáticamente.'
+			: 'Sin conexión — los datos se guardan localmente hasta reconectar.';
+	}
+
+	// ── Helpers de localStorage ───────────────────────────────
+	function getConflicts() {
+		try {
+			return JSON.parse(localStorage.getItem(LS_CONFLICTS) || '[]');
+		} catch { return []; }
+	}
+
+	function getSyncQueue() {
+		try {
+			return JSON.parse(localStorage.getItem(LS_SYNC_QUEUE) || '[]');
+		} catch { return []; }
+	}
+
+	function saveConflicts(data) {
+		localStorage.setItem(LS_CONFLICTS, JSON.stringify(data));
+	}
+
+	function saveSyncQueue(data) {
+		localStorage.setItem(LS_SYNC_QUEUE, JSON.stringify(data));
+	}
+
+	// ── Nombres amigables para tablas ─────────────────────────
+	const TABLA_LABELS = {
+		incidentes:                  'Incidente',
+		acciones_correctivas:        'Acción correctiva',
+		investigaciones_causa_raiz:  'Investigación',
+		soluciones_incidentes:       'Solución',
+		near_miss:                   'Near miss',
+	};
+
+	function tablaLabel(tabla) {
+		return TABLA_LABELS[tabla] || tabla;
+	}
+
+	// ── Render: conflictos ────────────────────────────────────
+	function renderConflicts() {
+		const conflicts = getConflicts();
+
+		conflictsBadgeEl.textContent = conflicts.length;
+		conflictsBadgeEl.className   =
+			conflicts.length > 0 ? 'card__badge card__badge--danger' : 'card__badge card__badge--ok';
+
+		if (conflicts.length === 0) {
+			conflictsListEl.innerHTML = `
+			<div class="empty-state">
+				<div class="empty-state__icon">✅</div>
+				<div class="empty-state__label">Sin conflictos detectados</div>
+			</div>`;
+			btnClearConflictsWrap.hidden = true;
+			return;
+		}
+
+		btnClearConflictsWrap.hidden = false;
+
+		conflictsListEl.innerHTML = conflicts.map((c, i) => `
+		<div class="sync-item" data-conflict-idx="${i}">
+			<div class="sync-item__icon sync-item__icon--error" aria-hidden="true">⚠️</div>
+			<div class="sync-item__body">
+				<div class="sync-item__title">${sanitizeHTML(c.descripcion || 'Registro sin descripción')}</div>
+				<div class="sync-item__meta">
+					<span class="sync-item__tabla">${sanitizeHTML(tablaLabel(c.tabla || '—'))}</span>
+					<span class="sync-item__time">${sanitizeHTML(c.timestamp ? formatFechaCorta(c.timestamp) : '—')}</span>
+				</div>
+				${c.error ? `<div class="sync-item__error">${sanitizeHTML(c.error)}</div>` : ''}
+			</div>
+			<button class="btn-dismiss" data-dismiss-conflict="${i}" aria-label="Descartar conflicto">
+				✕
+			</button>
+		</div>`).join('');
+	}
+
+	// ── Render: cola de sincronización ────────────────────────
+	function renderQueue() {
+		const queue = getSyncQueue();
+
+		queueBadgeEl.textContent = queue.length;
+		queueBadgeEl.className   =
+			queue.length > 0 ? 'card__badge card__badge--warning' : 'card__badge card__badge--ok';
+
+		if (queue.length === 0) {
+			queueListEl.innerHTML = `
+			<div class="empty-state">
+				<div class="empty-state__icon">🟢</div>
+				<div class="empty-state__label">Cola vacía — todo sincronizado</div>
+			</div>`;
+			btnClearQueueWrap.hidden = true;
+			return;
+		}
+
+		btnClearQueueWrap.hidden = false;
+
+		queueListEl.innerHTML = queue.map((q, i) => {
+			const iconCls  = q.intentos > 2 ? 'error' : 'pending';
+			const iconEmoji= q.intentos > 2 ? '🔴' : '🟡';
+			return `
+			<div class="sync-item">
+				<div class="sync-item__icon sync-item__icon--${iconCls}" aria-hidden="true">${iconEmoji}</div>
+				<div class="sync-item__body">
+					<div class="sync-item__title">
+						${sanitizeHTML(tablaLabel(q.tabla || '—'))} — ${sanitizeHTML(q.operacion || 'insert')}
+					</div>
+					<div class="sync-item__meta">
+						<span class="sync-item__tabla">${sanitizeHTML(q.localId ? q.localId.substring(0, 8) + '…' : '—')}</span>
+						<span class="sync-item__time">
+							${sanitizeHTML(q.timestamp ? formatFechaCorta(q.timestamp) : '—')}
+							${q.intentos > 0 ? `· ${q.intentos} intento${q.intentos !== 1 ? 's' : ''}` : ''}
+						</span>
+					</div>
+					${q.intentos > 2
+						? `<div class="sync-item__error">Falló ${q.intentos} veces. Verificá tu conexión.</div>`
+						: ''}
+				</div>
+			</div>`;
+		}).join('');
+	}
+
+	// ── Render: registros verificados ─────────────────────────
+	async function renderVerified() {
+		if (!_usuario) {
+			verifiedListEl.innerHTML = `
+			<div class="empty-state">
+				<div class="empty-state__icon">⚡</div>
+				<div class="empty-state__label">No se pudo obtener el usuario actual</div>
+			</div>`;
+			return;
+		}
+
+		// Consultar últimos registros del usuario en tablas principales
+		const [incResult, accionResult, invResult] = await Promise.allSettled([
+
+			supabase.from('incidentes')
+				.select('id, numero, descripcion, created_at')
+				.eq('created_by', _usuario.id)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: false })
+				.limit(4),
+
+			supabase.from('acciones_correctivas')
+				.select('id, descripcion, created_at')
+				.eq('created_by', _usuario.id)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: false })
+				.limit(3),
+
+			supabase.from('investigaciones_causa_raiz')
+				.select('id, porque_1, created_at')
+				.eq('auditor_id', _usuario.id)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: false })
+				.limit(3),
+		]);
+
+		const items = [];
+
+		const incidentes = incResult.value?.data ?? [];
+		incidentes.forEach(r => items.push({
+			tabla:   'incidentes',
+			label:   r.numero
+				? `Incidente ${r.numero}`
+				: (r.descripcion || 'Incidente sin descripción').substring(0, 50),
+			fecha:   r.created_at,
+			ok:      true,
+		}));
+
+		const acciones = accionResult.value?.data ?? [];
+		acciones.forEach(r => items.push({
+			tabla:   'acciones_correctivas',
+			label:   (r.descripcion || 'Acción sin descripción').substring(0, 50),
+			fecha:   r.created_at,
+			ok:      true,
+		}));
+
+		const invs = invResult.value?.data ?? [];
+		invs.forEach(r => items.push({
+			tabla:   'investigaciones_causa_raiz',
+			label:   (r.porque_1 || 'Investigación').substring(0, 50),
+			fecha:   r.created_at,
+			ok:      true,
+		}));
+
+		// Ordenar por fecha descendente
+		items.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+		const total      = items.length;
+		const sincronizados = items.filter(i => i.ok).length;
+
+		verifiedBadgeEl.textContent = `${sincronizados}/${total}`;
+		verifiedBadgeEl.className   =
+			sincronizados === total && total > 0
+				? 'card__badge card__badge--ok'
+				: 'card__badge card__badge--warning';
+
+		if (items.length === 0) {
+			verifiedListEl.innerHTML = `
+			<div class="empty-state">
+				<div class="empty-state__icon">📋</div>
+				<div class="empty-state__label">Sin registros recientes de este usuario</div>
+			</div>`;
+			return;
+		}
+
+		verifiedListEl.innerHTML = items.map(item => `
+		<div class="verified-item">
+			<div class="verified-item__indicator verified-item__indicator--${item.ok ? 'ok' : 'missing'}"
+			     aria-hidden="true"></div>
+			<div class="verified-item__body">
+				<div class="verified-item__label">${sanitizeHTML(item.label)}</div>
+				<div class="verified-item__tabla">${sanitizeHTML(tablaLabel(item.tabla))}</div>
+			</div>
+			<div class="verified-item__date">
+				${sanitizeHTML(item.fecha ? formatFechaCorta(item.fecha) : '—')}
+			</div>
+		</div>`).join('');
+	}
+
+	// ── Refresh completo ──────────────────────────────────────
+	async function refresh() {
+		if (_refreshing) return;
+		_refreshing = true;
+		btnRefreshEl.classList.add('spinning');
+
+		updateNetBanner();
+		renderConflicts();
+		renderQueue();
+		await renderVerified();
+
+		btnRefreshEl.classList.remove('spinning');
+		_refreshing = false;
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Sesión
+		await requireAuth('/login.html');
+
+		// 2. Usuario
+		_usuario = await getUsuario().catch(() => null);
+
+		// 3. Carga inicial
+		await refresh();
+
+		// 4. Event listeners — todos aquí
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign('/dashboard.html');
+		});
+
+		btnRefreshEl.addEventListener('click', () => refresh());
+
+		// Descartar conflicto individual — event delegation
+		conflictsListEl.addEventListener('click', (e) => {
+			const btn = e.target.closest('[data-dismiss-conflict]');
+			if (!btn) return;
+			const idx       = parseInt(btn.dataset.dismissConflict, 10);
+			const conflicts = getConflicts();
+			conflicts.splice(idx, 1);
+			saveConflicts(conflicts);
+			renderConflicts();
+		});
+
+		// Limpiar todos los conflictos
+		btnClearConflictsEl.addEventListener('click', () => {
+			saveConflicts([]);
+			renderConflicts();
+		});
+
+		// Limpiar cola
+		btnClearQueueEl.addEventListener('click', () => {
+			saveSyncQueue([]);
+			renderQueue();
+		});
+
+		// Escuchar cambios de red
+		window.addEventListener('online',  () => { updateNetBanner(); refresh(); });
+		window.addEventListener('offline', () => updateNetBanner());
+
+		// Actualizar cada 30 segundos si está online
+		setInterval(() => {
+			if (navigator.onLine && !_refreshing) refresh();
+		}, 30000);
+	}
+
+	init();
+</script>
+</body>
+</html>
