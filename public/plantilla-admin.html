@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Administración de plantillas ATS">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Plantillas ATS — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__left { display: flex; align-items: center; gap: 8px; }
+
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		/* ── Main ─────────────────────────────────────────────── */
+		.main {
+			flex:           1;
+			padding:        16px 16px calc(32px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            12px;
+		}
+
+		/* ── Rol badge ────────────────────────────────────────── */
+		.rol-notice {
+			display:       flex;
+			align-items:   center;
+			gap:           8px;
+			padding:       10px 14px;
+			background:    var(--color-info-bg);
+			border:        1px solid var(--color-info-bg);
+			border-radius: 8px;
+			font-size:     var(--text-sm);
+			color:         var(--color-info);
+			font-weight:   600;
+		}
+
+		/* ── Botón nueva plantilla ────────────────────────────── */
+		.btn-nueva {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             6px;
+			padding:         12px;
+			border-radius:   10px;
+			background:      var(--accent);
+			border:          none;
+			color:           #000;
+			font-family:     var(--font-sans);
+			font-size:       var(--text-base);
+			font-weight:     700;
+			cursor:          pointer;
+			width:           100%;
+			transition:      background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-nueva:hover    { background: var(--accent-hover); }
+		.btn-nueva:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		/* ── Formulario nueva plantilla ───────────────────────── */
+		.nueva-form {
+			background:    var(--surface-02);
+			border:        1px solid var(--accent);
+			border-radius: 10px;
+			overflow:      hidden;
+		}
+
+		.nueva-form__header {
+			padding:         10px 14px;
+			background:      var(--accent-subtle);
+			border-bottom:   1px solid var(--accent-subtle-hover);
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+		}
+
+		.nueva-form__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--accent);
+		}
+
+		.nueva-form__body {
+			padding: 14px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+
+		/* ── Campos genéricos ─────────────────────────────────── */
+		.field { display: flex; flex-direction: column; gap: 5px; }
+
+		.field__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.field__label abbr { text-decoration: none; color: var(--color-danger); margin-left: 2px; }
+
+		.field__input,
+		.field__select,
+		.field__textarea {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-03);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       10px 12px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__textarea { resize: vertical; min-height: 56px; }
+		.field__select option { background: var(--surface-02); }
+		.field__input:focus,
+		.field__select:focus,
+		.field__textarea:focus { border-color: var(--accent); }
+		.field__input::placeholder,
+		.field__textarea::placeholder { color: var(--text-tertiary); }
+		.field__input[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		.field__error {
+			font-size:   var(--text-xs);
+			color:       var(--color-danger);
+			font-weight: 600;
+			min-height:  14px;
+		}
+
+		.form-actions { display: flex; gap: 8px; }
+
+		.btn-cancelar {
+			flex:          0 0 auto;
+			padding:       10px 16px;
+			border-radius: 8px;
+			background:    var(--surface-04);
+			border:        1px solid var(--border-subtle);
+			color:         var(--text-secondary);
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			cursor:        pointer;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		.btn-guardar-form {
+			flex:          1;
+			padding:       10px;
+			border-radius: 8px;
+			background:    var(--accent);
+			border:        none;
+			color:         #000;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   700;
+			cursor:        pointer;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar-form:hover    { background: var(--accent-hover); }
+		.btn-guardar-form:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		/* ── Plantilla card ───────────────────────────────────── */
+		.plantilla-card {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			overflow:      hidden;
+		}
+
+		.plantilla-card--inactiva { opacity: 0.65; }
+
+		.plantilla-card__header {
+			display:         flex;
+			align-items:     center;
+			gap:             10px;
+			padding:         12px 14px;
+			cursor:          pointer;
+			-webkit-tap-highlight-color: transparent;
+			user-select:     none;
+		}
+
+		.plantilla-card__icon {
+			font-size:   20px;
+			flex-shrink: 0;
+		}
+
+		.plantilla-card__body { flex: 1; min-width: 0; }
+
+		.plantilla-card__nombre {
+			font-size:   var(--text-base);
+			font-weight: 700;
+			color:       var(--text-primary);
+			line-height: 1.2;
+			white-space: nowrap;
+			overflow:    hidden;
+			text-overflow: ellipsis;
+		}
+
+		.plantilla-card__tipo {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+			margin-top: 2px;
+		}
+
+		.plantilla-card__chevron {
+			color:      var(--text-tertiary);
+			font-size:  18px;
+			flex-shrink: 0;
+			transition: transform 0.2s ease;
+		}
+		.plantilla-card.is-open .plantilla-card__chevron { transform: rotate(90deg); }
+
+		.plantilla-card__meta {
+			display:     flex;
+			align-items: center;
+			gap:         6px;
+			flex-shrink: 0;
+		}
+
+		/* Toggle activa/inactiva */
+		.toggle-activa {
+			width:         40px;
+			height:        22px;
+			border-radius: 11px;
+			background:    var(--surface-04);
+			position:      relative;
+			cursor:        pointer;
+			border:        none;
+			transition:    background 0.2s ease;
+			flex-shrink:   0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.toggle-activa.is-on { background: var(--color-success); }
+		.toggle-activa::after {
+			content:       '';
+			position:      absolute;
+			top:           2px;
+			left:          2px;
+			width:         18px;
+			height:        18px;
+			border-radius: 50%;
+			background:    #fff;
+			transition:    transform 0.2s ease;
+			box-shadow:    0 1px 2px rgba(0,0,0,0.3);
+		}
+		.toggle-activa.is-on::after { transform: translateX(18px); }
+
+		.btn-eliminar-pl {
+			width:           28px;
+			height:          28px;
+			border-radius:   6px;
+			background:      var(--color-danger-bg);
+			border:          none;
+			color:           var(--color-danger);
+			font-size:       14px;
+			cursor:          pointer;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-eliminar-pl:hover { background: var(--color-danger); color: #fff; }
+
+		/* ── Panel de campos ──────────────────────────────────── */
+		.campos-panel {
+			border-top: 1px solid var(--border-subtle);
+			background:  var(--surface-base);
+			padding:     12px 14px;
+			display:     flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.campo-row {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+			padding:     8px 10px;
+			background:  var(--surface-02);
+			border-radius: 6px;
+		}
+
+		.campo-row__drag {
+			color:      var(--text-tertiary);
+			font-size:  16px;
+			flex-shrink: 0;
+		}
+
+		.campo-row__body { flex: 1; min-width: 0; }
+
+		.campo-row__etiqueta {
+			font-size:   var(--text-sm);
+			font-weight: 600;
+			color:       var(--text-primary);
+			white-space: nowrap;
+			overflow:    hidden;
+			text-overflow: ellipsis;
+		}
+
+		.campo-row__tipo {
+			font-family: var(--font-mono);
+			font-size:   10px;
+			color:       var(--text-tertiary);
+			margin-top:  1px;
+		}
+
+		.chip-req {
+			padding:       2px 5px;
+			border-radius: 3px;
+			font-size:     9px;
+			font-weight:   700;
+			text-transform: uppercase;
+		}
+		.chip-req--si { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip-req--no { background: var(--surface-04);       color: var(--text-tertiary);  }
+
+		.btn-delete-campo {
+			width:           24px;
+			height:          24px;
+			border-radius:   4px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-tertiary);
+			font-size:       14px;
+			cursor:          pointer;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-delete-campo:hover { background: var(--color-danger-bg); color: var(--color-danger); }
+
+		/* Formulario nuevo campo */
+		.nuevo-campo-form {
+			background:    var(--surface-03);
+			border:        1px dashed var(--border-subtle);
+			border-radius: 8px;
+			padding:       12px;
+			display:       flex;
+			flex-direction: column;
+			gap:           8px;
+		}
+
+		.campo-form-row {
+			display:               grid;
+			grid-template-columns: 2fr 1fr;
+			gap:                   6px;
+		}
+
+		.btn-add-campo-trigger {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             4px;
+			padding:         8px;
+			border-radius:   6px;
+			background:      transparent;
+			border:          1px dashed var(--border-subtle);
+			color:           var(--text-tertiary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			width:           100%;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-add-campo-trigger:hover { border-color: var(--accent); color: var(--accent); }
+
+		.campo-form-actions { display: flex; gap: 6px; }
+
+		.btn-campo-cancel,
+		.btn-campo-save {
+			flex:          1;
+			padding:       8px;
+			border-radius: 6px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-sm);
+			font-weight:   600;
+			cursor:        pointer;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-campo-cancel { background: var(--surface-04); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
+		.btn-campo-save   { background: var(--accent);     border: none; color: #000; }
+		.btn-campo-save:hover    { background: var(--accent-hover); }
+		.btn-campo-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		/* ── Error global ─────────────────────────────────────── */
+		.error-banner {
+			padding:       10px 14px;
+			border-radius: 8px;
+			background:    var(--color-danger-bg);
+			border:        1px solid var(--color-danger-border);
+			color:         var(--color-danger);
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+		}
+
+		/* ── Empty state ──────────────────────────────────────── */
+		.empty-state {
+			padding:        32px 16px;
+			text-align:     center;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			gap:            8px;
+		}
+		.empty-state__icon  { font-size: 32px; }
+		.empty-state__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
+		.empty-state__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
+
+		/* ── Skeleton ─────────────────────────────────────────── */
+		.skeleton-card {
+			height:        72px;
+			border-radius: 10px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button id="btn-back" class="btn-back" type="button" aria-label="Volver">
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<h1 class="app-header__title">Plantillas ATS</h1>
+		</div>
+	</header>
+
+	<!-- ── Main ────────────────────────────────────────────── -->
+	<main class="main" id="main-content" role="main">
+
+		<!-- Skeletons -->
+		<div id="skeleton-area">
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+		</div>
+
+		<!-- Contenido -->
+		<div id="content-area" hidden>
+
+			<!-- Notice de rol (para no-admin) -->
+			<div id="rol-notice" class="rol-notice" hidden>
+				<span aria-hidden="true">ℹ️</span>
+				<span>Modo solo lectura. Solo los administradores pueden crear o editar plantillas.</span>
+			</div>
+
+			<!-- Error global -->
+			<div id="error-banner" class="error-banner" role="alert" aria-live="assertive" hidden>
+				<span id="error-text"></span>
+			</div>
+
+			<!-- Botón nueva plantilla (solo admin) -->
+			<button id="btn-nueva" class="btn-nueva" type="button" hidden aria-label="Crear nueva plantilla ATS">
+				+ Nueva plantilla ATS
+			</button>
+
+			<!-- Formulario nueva plantilla (toggle) -->
+			<div id="nueva-form" class="nueva-form" hidden>
+				<div class="nueva-form__header">
+					<span class="nueva-form__title">Nueva plantilla</span>
+					<button id="btn-cancelar-nueva" class="btn-back" type="button" aria-label="Cancelar">✕</button>
+				</div>
+				<div class="nueva-form__body">
+					<div class="field">
+						<label class="field__label" for="nf-nombre">Nombre de la plantilla <abbr title="Requerido">*</abbr></label>
+						<input id="nf-nombre" class="field__input" type="text"
+						       placeholder="Ej: Trabajo en Altura, Trabajo Eléctrico..."
+						       aria-required="true" maxlength="200">
+						<div id="nf-nombre-error" class="field__error" aria-live="polite"></div>
+					</div>
+					<div class="field">
+						<label class="field__label" for="nf-tipo">Tipo de trabajo <abbr title="Requerido">*</abbr></label>
+						<input id="nf-tipo" class="field__input" type="text"
+						       placeholder="Ej: Izaje, Excavación, Trabajo en altura..."
+						       aria-required="true" maxlength="200">
+						<div id="nf-tipo-error" class="field__error" aria-live="polite"></div>
+					</div>
+					<div class="form-actions">
+						<button id="btn-cancel-nueva-form" class="btn-cancelar" type="button">Cancelar</button>
+						<button id="btn-guardar-nueva" class="btn-guardar-form" type="button">Crear plantilla</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Lista de plantillas -->
+			<div id="plantillas-list"></div>
+
+		</div><!-- /#content-area -->
+
+	</main>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * plantillas-admin.html — gestión de plantillas ATS.
+	 *
+	 * Tablas verificadas MCP 2026-06-24:
+	 *   plantillas_ats:
+	 *     nombre_ats TEXT NOT NULL, tipo_trabajo TEXT NOT NULL
+	 *     activa BOOL default true, deleted_at (soft-delete), version
+	 *   campos_plantilla:
+	 *     plantilla_id UUID NOT NULL, etiqueta TEXT NOT NULL
+	 *     tipo_campo: 'texto'|'numero'|'fecha'|'booleano'|'lista'|'firma'|'foto'
+	 *     orden INT default 0, requerido BOOL default true
+	 *     opciones JSONB NULL (solo para 'lista')
+	 *     empresa_id UUID NOT NULL, deleted_at (soft-delete)
+	 *
+	 * Control de acceso:
+	 *   administrador → CRUD completo
+	 *   supervisor / hse → solo lectura
+	 *
+	 * Todos los writes usan empresa_id del usuario autenticado.
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getRol,
+		getEmpresaId,
+	} from '/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		showToast,
+	} from '/js/atshel-core.js';
+
+	// ── Estado ───────────────────────────────────────────────
+	let _usuario      = null;
+	let _esAdmin      = false;
+	let _empresaId    = null;
+	let _plantillas   = [];
+	let _campos       = {};   // Map<plantillaId, campo[]>
+	let _openPl       = null; // plantillaId con panel abierto
+	let _submitting   = false;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl          = document.getElementById('btn-back');
+	const skeletonAreaEl     = document.getElementById('skeleton-area');
+	const contentAreaEl      = document.getElementById('content-area');
+	const rolNoticeEl        = document.getElementById('rol-notice');
+	const errorBannerEl      = document.getElementById('error-banner');
+	const errorTextEl        = document.getElementById('error-text');
+	const btnNuevaEl         = document.getElementById('btn-nueva');
+	const nuevaFormEl        = document.getElementById('nueva-form');
+	const btnCancelarNuevaEl = document.getElementById('btn-cancelar-nueva');
+	const btnCancelNuevaFEl  = document.getElementById('btn-cancel-nueva-form');
+	const btnGuardarNuevaEl  = document.getElementById('btn-guardar-nueva');
+	const nfNombreEl         = document.getElementById('nf-nombre');
+	const nfTipoEl           = document.getElementById('nf-tipo');
+	const nfNombreErrorEl    = document.getElementById('nf-nombre-error');
+	const nfTipoErrorEl      = document.getElementById('nf-tipo-error');
+	const plantillasListEl   = document.getElementById('plantillas-list');
+
+	// ── Tipos de campo disponibles ────────────────────────────
+	const TIPO_CAMPO_OPTS = [
+		{ value: 'texto',    label: 'Texto libre' },
+		{ value: 'numero',   label: 'Número' },
+		{ value: 'fecha',    label: 'Fecha' },
+		{ value: 'booleano', label: 'Sí / No' },
+		{ value: 'lista',    label: 'Lista de opciones' },
+		{ value: 'firma',    label: 'Firma' },
+		{ value: 'foto',     label: 'Foto' },
+	];
+
+	const TIPO_CAMPO_SELECT_HTML = TIPO_CAMPO_OPTS
+		.map(t => `<option value="${t.value}">${t.label}</option>`)
+		.join('');
+
+	// ── Helpers ───────────────────────────────────────────────
+	function showError(msg) {
+		errorTextEl.textContent  = msg;
+		errorBannerEl.hidden     = false;
+	}
+
+	function hideError() {
+		errorBannerEl.hidden     = true;
+		errorTextEl.textContent  = '';
+	}
+
+	// ── Cargar campos de una plantilla ────────────────────────
+	async function cargarCampos(plantillaId) {
+		if (_campos[plantillaId]) return; // ya cargados
+
+		const { data, error } = await supabase
+			.from('campos_plantilla')
+			.select('id, etiqueta, tipo_campo, orden, requerido, opciones')
+			.eq('plantilla_id', plantillaId)
+			.is('deleted_at', null)
+			.order('orden', { ascending: true });
+
+		if (error) {
+			showToast('No se pudieron cargar los campos.', 'error');
+			_campos[plantillaId] = [];
+		} else {
+			_campos[plantillaId] = data ?? [];
+		}
+	}
+
+	// ── Render: lista de plantillas ───────────────────────────
+	function renderPlantillas(plantillas) {
+		if (!plantillas.length) {
+			plantillasListEl.innerHTML = `
+			<div class="empty-state">
+				<div class="empty-state__icon">📋</div>
+				<div class="empty-state__title">Sin plantillas</div>
+				<div class="empty-state__sub">
+					${_esAdmin ? 'Creá la primera plantilla ATS.' : 'El administrador debe crear plantillas.'}
+				</div>
+			</div>`;
+			return;
+		}
+
+		// Render cards sin los campos (se cargan al expandir)
+		plantillasListEl.innerHTML = plantillas.map(pl => {
+			const activa = pl.activa !== false;
+			return `
+			<div class="plantilla-card${activa ? '' : ' plantilla-card--inactiva'}" id="plcard-${sanitizeHTML(pl.id)}">
+				<div class="plantilla-card__header" data-toggle-pl="${sanitizeHTML(pl.id)}" role="button"
+				     tabindex="0" aria-expanded="false" aria-label="Plantilla: ${sanitizeHTML(pl.nombre_ats)}">
+					<span class="plantilla-card__icon" aria-hidden="true">📋</span>
+					<div class="plantilla-card__body">
+						<div class="plantilla-card__nombre">${sanitizeHTML(pl.nombre_ats)}</div>
+						<div class="plantilla-card__tipo">${sanitizeHTML(pl.tipo_trabajo)}</div>
+					</div>
+					<div class="plantilla-card__meta">
+						${_esAdmin ? `
+						<button
+							class="toggle-activa${activa ? ' is-on' : ''}"
+							type="button"
+							data-toggle-activa="${sanitizeHTML(pl.id)}"
+							data-activa="${activa}"
+							aria-label="${activa ? 'Activa — clic para desactivar' : 'Inactiva — clic para activar'}"
+							aria-pressed="${activa}"
+						></button>
+						<button
+							class="btn-eliminar-pl"
+							type="button"
+							data-eliminar-pl="${sanitizeHTML(pl.id)}"
+							data-nombre="${sanitizeHTML(pl.nombre_ats)}"
+							aria-label="Eliminar plantilla ${sanitizeHTML(pl.nombre_ats)}"
+						>🗑</button>` : ''}
+					</div>
+					<span class="plantilla-card__chevron" aria-hidden="true">›</span>
+				</div>
+				<!-- Panel de campos (se inserta al expandir) -->
+				<div id="plpanel-${sanitizeHTML(pl.id)}" hidden></div>
+			</div>`;
+		}).join('');
+	}
+
+	// ── Render: panel de campos ───────────────────────────────
+	function renderCamposPanel(plantillaId) {
+		const campos   = _campos[plantillaId] ?? [];
+		const panelEl  = document.getElementById(`plpanel-${plantillaId}`);
+		if (!panelEl) return;
+
+		const camposHTML = campos.length > 0
+			? campos.map((c, i) => `
+			<div class="campo-row" data-campo-id="${sanitizeHTML(c.id)}" data-plantilla="${sanitizeHTML(plantillaId)}">
+				<span class="campo-row__drag" aria-hidden="true">⠿</span>
+				<div class="campo-row__body">
+					<div class="campo-row__etiqueta">${sanitizeHTML(c.etiqueta)}</div>
+					<div class="campo-row__tipo">${sanitizeHTML(c.tipo_campo)}${c.tipo_campo === 'lista' && c.opciones ? ` · ${Array.isArray(c.opciones) ? c.opciones.length : 0} opciones` : ''}</div>
+				</div>
+				<span class="chip-req ${c.requerido ? 'chip-req--si' : 'chip-req--no'}">${c.requerido ? 'REQ' : 'OPC'}</span>
+				${_esAdmin ? `
+				<button class="btn-delete-campo" type="button"
+				        data-del-campo="${sanitizeHTML(c.id)}"
+				        data-plantilla="${sanitizeHTML(plantillaId)}"
+				        aria-label="Eliminar campo ${sanitizeHTML(c.etiqueta)}">✕</button>` : ''}
+			</div>`).join('')
+			: `<p style="font-size:var(--text-sm);color:var(--text-tertiary);font-style:italic">Sin campos configurados.</p>`;
+
+		const addFormHTML = _esAdmin ? `
+		<!-- Formulario para agregar campo -->
+		<div id="addcampo-form-${sanitizeHTML(plantillaId)}" class="nuevo-campo-form" hidden>
+			<div class="campo-form-row">
+				<div class="field">
+					<div class="field__label">Etiqueta <abbr title="Requerido">*</abbr></div>
+					<input id="nc-etiqueta-${sanitizeHTML(plantillaId)}" class="field__input"
+					       type="text" placeholder="Nombre del campo..." maxlength="200"
+					       aria-required="true">
+				</div>
+				<div class="field">
+					<div class="field__label">Tipo <abbr title="Requerido">*</abbr></div>
+					<select id="nc-tipo-${sanitizeHTML(plantillaId)}" class="field__select">
+						${TIPO_CAMPO_SELECT_HTML}
+					</select>
+				</div>
+			</div>
+			<div id="nc-opciones-wrap-${sanitizeHTML(plantillaId)}" hidden>
+				<div class="field">
+					<div class="field__label">Opciones (una por línea)</div>
+					<textarea id="nc-opciones-${sanitizeHTML(plantillaId)}" class="field__textarea"
+					          rows="3" placeholder="Opción 1&#10;Opción 2&#10;Opción 3"></textarea>
+				</div>
+			</div>
+			<div style="display:flex;align-items:center;gap:8px">
+				<label style="display:flex;align-items:center;gap:6px;font-size:var(--text-sm);color:var(--text-secondary)">
+					<input id="nc-requerido-${sanitizeHTML(plantillaId)}" type="checkbox" checked
+					       style="accent-color:var(--accent);width:16px;height:16px">
+					Requerido
+				</label>
+			</div>
+			<div id="nc-error-${sanitizeHTML(plantillaId)}" class="field__error" aria-live="polite"></div>
+			<div class="campo-form-actions">
+				<button class="btn-campo-cancel" type="button"
+				        data-cancel-addcampo="${sanitizeHTML(plantillaId)}">Cancelar</button>
+				<button class="btn-campo-save" type="button"
+				        data-save-campo="${sanitizeHTML(plantillaId)}">Guardar campo</button>
+			</div>
+		</div>
+		<button class="btn-add-campo-trigger" type="button"
+		        id="btn-addcampo-${sanitizeHTML(plantillaId)}"
+		        data-open-addcampo="${sanitizeHTML(plantillaId)}">
+			<span>+</span> Agregar campo
+		</button>` : '';
+
+		panelEl.innerHTML = `
+		<div class="campos-panel">
+			${camposHTML}
+			${addFormHTML}
+		</div>`;
+	}
+
+	// ── Toggle panel de campos ────────────────────────────────
+	async function togglePanel(plantillaId) {
+		const card     = document.getElementById(`plcard-${plantillaId}`);
+		const header   = card?.querySelector(`[data-toggle-pl="${plantillaId}"]`);
+		const panelEl  = document.getElementById(`plpanel-${plantillaId}`);
+		if (!card || !panelEl) return;
+
+		const isOpen = !panelEl.hidden;
+
+		if (isOpen) {
+			panelEl.hidden = true;
+			card.classList.remove('is-open');
+			header?.setAttribute('aria-expanded', 'false');
+			_openPl = null;
+		} else {
+			// Cerrar el panel abierto anterior
+			if (_openPl && _openPl !== plantillaId) {
+				const prevPanel = document.getElementById(`plpanel-${_openPl}`);
+				const prevCard  = document.getElementById(`plcard-${_openPl}`);
+				if (prevPanel) prevPanel.hidden = true;
+				prevCard?.classList.remove('is-open');
+				prevCard?.querySelector(`[data-toggle-pl="${_openPl}"]`)?.setAttribute('aria-expanded', 'false');
+			}
+
+			// Cargar campos si no están cacheados
+			await cargarCampos(plantillaId);
+			renderCamposPanel(plantillaId);
+
+			panelEl.hidden = false;
+			card.classList.add('is-open');
+			header?.setAttribute('aria-expanded', 'true');
+			_openPl = plantillaId;
+		}
+	}
+
+	// ── Toggle activa/inactiva ────────────────────────────────
+	async function toggleActiva(plantillaId, activa) {
+		const pl      = _plantillas.find(p => p.id === plantillaId);
+		if (!pl) return;
+
+		const nuevaActiva = !activa;
+
+		const { error } = await supabase
+			.from('plantillas_ats')
+			.update({ activa: nuevaActiva, version: pl.version + 1 })
+			.eq('id', plantillaId)
+			.eq('version', pl.version)
+			.is('deleted_at', null);
+
+		if (error) {
+			showToast('No se pudo actualizar el estado.', 'error');
+			return;
+		}
+
+		pl.activa    = nuevaActiva;
+		pl.version  += 1;
+
+		// Actualizar UI del toggle
+		const btn = document.querySelector(`[data-toggle-activa="${plantillaId}"]`);
+		if (btn) {
+			btn.classList.toggle('is-on', nuevaActiva);
+			btn.setAttribute('aria-pressed', String(nuevaActiva));
+			btn.setAttribute('aria-label', nuevaActiva ? 'Activa — clic para desactivar' : 'Inactiva — clic para activar');
+			btn.dataset.activa = String(nuevaActiva);
+		}
+		const card = document.getElementById(`plcard-${plantillaId}`);
+		card?.classList.toggle('plantilla-card--inactiva', !nuevaActiva);
+
+		showToast(`Plantilla ${nuevaActiva ? 'activada' : 'desactivada'}.`, 'success');
+	}
+
+	// ── Eliminar plantilla (soft delete) ─────────────────────
+	async function eliminarPlantilla(plantillaId, nombre) {
+		if (!confirm(`¿Eliminar la plantilla "${nombre}"?\nEsta acción no se puede deshacer fácilmente.`)) {
+			return;
+		}
+
+		const pl = _plantillas.find(p => p.id === plantillaId);
+		if (!pl) return;
+
+		const { error } = await supabase
+			.from('plantillas_ats')
+			.update({ deleted_at: new Date().toISOString(), version: pl.version + 1 })
+			.eq('id', plantillaId)
+			.eq('version', pl.version);
+
+		if (error) {
+			showToast('No se pudo eliminar la plantilla.', 'error');
+			return;
+		}
+
+		_plantillas = _plantillas.filter(p => p.id !== plantillaId);
+		renderPlantillas(_plantillas);
+		showToast('Plantilla eliminada.', 'info');
+	}
+
+	// ── Crear nueva plantilla ─────────────────────────────────
+	async function handleGuardarNueva() {
+		if (_submitting) return;
+
+		nfNombreErrorEl.textContent = '';
+		nfTipoErrorEl.textContent   = '';
+
+		const nombre = nfNombreEl.value.trim();
+		const tipo   = nfTipoEl.value.trim();
+		let ok = true;
+
+		if (!nombre) {
+			nfNombreErrorEl.textContent = 'El nombre es requerido.';
+			nfNombreEl.setAttribute('aria-invalid', 'true');
+			ok = false;
+		}
+		if (!tipo) {
+			nfTipoErrorEl.textContent = 'El tipo de trabajo es requerido.';
+			nfTipoEl.setAttribute('aria-invalid', 'true');
+			ok = false;
+		}
+		if (!ok) return;
+
+		_submitting = true;
+		btnGuardarNuevaEl.disabled = true;
+
+		try {
+			const { data, error } = await supabase
+				.from('plantillas_ats')
+				.insert({
+					empresa_id:  _empresaId,
+					nombre_ats:  nombre,
+					tipo_trabajo: tipo,
+					activa:      true,
+				})
+				.select('id, nombre_ats, tipo_trabajo, activa, version')
+				.single();
+
+			if (error) throw error;
+
+			_plantillas.unshift(data);
+			renderPlantillas(_plantillas);
+			cerrarFormNueva();
+			showToast('Plantilla creada correctamente.', 'success');
+			// Abrir el panel para agregar campos
+			setTimeout(() => togglePanel(data.id), 200);
+
+		} catch (err) {
+			showError(`Error al crear: ${err.message || 'Intentá de nuevo.'}`);
+		} finally {
+			_submitting = false;
+			btnGuardarNuevaEl.disabled = false;
+		}
+	}
+
+	// ── Agregar campo a una plantilla ─────────────────────────
+	async function handleGuardarCampo(plantillaId) {
+		const etiquetaEl = document.getElementById(`nc-etiqueta-${plantillaId}`);
+		const tipoEl     = document.getElementById(`nc-tipo-${plantillaId}`);
+		const requeridoEl= document.getElementById(`nc-requerido-${plantillaId}`);
+		const opcionesEl = document.getElementById(`nc-opciones-${plantillaId}`);
+		const errorEl    = document.getElementById(`nc-error-${plantillaId}`);
+		const saveBtn    = document.querySelector(`[data-save-campo="${plantillaId}"]`);
+
+		if (!etiquetaEl || !tipoEl) return;
+		errorEl.textContent = '';
+
+		const etiqueta = etiquetaEl.value.trim();
+		const tipo     = tipoEl.value;
+
+		if (!etiqueta) {
+			errorEl.textContent = 'La etiqueta es requerida.';
+			etiquetaEl.setAttribute('aria-invalid', 'true');
+			return;
+		}
+
+		let opciones = null;
+		if (tipo === 'lista' && opcionesEl) {
+			const lineas = opcionesEl.value.split('\n').map(l => l.trim()).filter(Boolean);
+			if (lineas.length < 2) {
+				errorEl.textContent = 'La lista debe tener al menos 2 opciones.';
+				return;
+			}
+			opciones = lineas;
+		}
+
+		if (saveBtn) saveBtn.disabled = true;
+
+		try {
+			// Orden = campos actuales + 1
+			const ordenActual = (_campos[plantillaId] ?? []).length;
+
+			const { data, error } = await supabase
+				.from('campos_plantilla')
+				.insert({
+					plantilla_id: plantillaId,
+					empresa_id:   _empresaId,
+					etiqueta:     etiqueta,
+					tipo_campo:   tipo,   // 'texto'|'numero'|'fecha'|'booleano'|'lista'|'firma'|'foto'
+					orden:        ordenActual,
+					requerido:    requeridoEl?.checked ?? true,
+					opciones:     opciones,
+				})
+				.select('id, etiqueta, tipo_campo, orden, requerido, opciones')
+				.single();
+
+			if (error) throw error;
+
+			_campos[plantillaId] = [...(_campos[plantillaId] ?? []), data];
+			renderCamposPanel(plantillaId);
+			showToast('Campo agregado.', 'success');
+
+		} catch (err) {
+			if (errorEl) errorEl.textContent = err.message || 'Error al guardar el campo.';
+		} finally {
+			if (saveBtn) saveBtn.disabled = false;
+		}
+	}
+
+	// ── Eliminar campo (soft delete) ──────────────────────────
+	async function eliminarCampo(campoId, plantillaId) {
+		const { error } = await supabase
+			.from('campos_plantilla')
+			.update({ deleted_at: new Date().toISOString() })
+			.eq('id', campoId)
+			.is('deleted_at', null);
+
+		if (error) {
+			showToast('No se pudo eliminar el campo.', 'error');
+			return;
+		}
+
+		_campos[plantillaId] = (_campos[plantillaId] ?? []).filter(c => c.id !== campoId);
+		renderCamposPanel(plantillaId);
+		showToast('Campo eliminado.', 'info');
+	}
+
+	// ── Mostrar/ocultar form nueva plantilla ─────────────────
+	function abrirFormNueva() {
+		nuevaFormEl.hidden  = false;
+		btnNuevaEl.hidden   = true;
+		nfNombreEl.value    = '';
+		nfTipoEl.value      = '';
+		nfNombreErrorEl.textContent = '';
+		nfTipoErrorEl.textContent   = '';
+		nfNombreEl.removeAttribute('aria-invalid');
+		nfTipoEl.removeAttribute('aria-invalid');
+		nfNombreEl.focus();
+	}
+
+	function cerrarFormNueva() {
+		nuevaFormEl.hidden = true;
+		btnNuevaEl.hidden  = false;
+	}
+
+	// ── Cargar datos ──────────────────────────────────────────
+	async function cargarDatos() {
+		const { data, error } = await supabase
+			.from('plantillas_ats')
+			.select('id, nombre_ats, tipo_trabajo, activa, version, created_at')
+			.eq('empresa_id', _empresaId)
+			.is('deleted_at', null)
+			.order('nombre_ats', { ascending: true });
+
+		if (error) {
+			showError('No se pudieron cargar las plantillas.');
+			skeletonAreaEl.hidden = true;
+			contentAreaEl.hidden  = false;
+			return;
+		}
+
+		_plantillas = data ?? [];
+		skeletonAreaEl.hidden = true;
+		contentAreaEl.hidden  = false;
+
+		if (!_esAdmin) {
+			rolNoticeEl.hidden = false;
+		} else {
+			btnNuevaEl.hidden = false;
+		}
+
+		renderPlantillas(_plantillas);
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Sesión
+		await requireAuth('/login.html');
+
+		// 2. Usuario y rol
+		_usuario   = await getUsuario().catch(() => null);
+		const rol  = _usuario?.rol ?? await getRol().catch(() => 'hse');
+		_esAdmin   = rol === 'administrador';
+		_empresaId = _usuario?.empresa_id ?? await getEmpresaId();
+
+		// 3. Cargar datos
+		await cargarDatos();
+
+		// 4. Event listeners — TODOS aquí, event delegation para contenido dinámico
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign('/dashboard.html');
+		});
+
+		// Nueva plantilla
+		if (_esAdmin) {
+			btnNuevaEl.addEventListener('click', abrirFormNueva);
+			btnCancelarNuevaEl.addEventListener('click', cerrarFormNueva);
+			btnCancelNuevaFEl.addEventListener('click', cerrarFormNueva);
+			btnGuardarNuevaEl.addEventListener('click', handleGuardarNueva);
+			nfNombreEl.addEventListener('input', () => {
+				nfNombreErrorEl.textContent = '';
+				nfNombreEl.removeAttribute('aria-invalid');
+			});
+			nfTipoEl.addEventListener('input', () => {
+				nfTipoErrorEl.textContent = '';
+				nfTipoEl.removeAttribute('aria-invalid');
+			});
+			nfNombreEl.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter') nfTipoEl.focus();
+			});
+			nfTipoEl.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter') handleGuardarNueva();
+			});
+		}
+
+		// Event delegation en la lista de plantillas
+		plantillasListEl.addEventListener('click', async (e) => {
+
+			// Toggle panel de campos
+			const togglePlBtn = e.target.closest('[data-toggle-pl]');
+			if (togglePlBtn) {
+				await togglePanel(togglePlBtn.dataset.togglePl);
+				return;
+			}
+
+			if (!_esAdmin) return;
+
+			// Toggle activa
+			const toggleActBtn = e.target.closest('[data-toggle-activa]');
+			if (toggleActBtn) {
+				e.stopPropagation();
+				await toggleActiva(toggleActBtn.dataset.toggleActiva, toggleActBtn.dataset.activa === 'true');
+				return;
+			}
+
+			// Eliminar plantilla
+			const elimPlBtn = e.target.closest('[data-eliminar-pl]');
+			if (elimPlBtn) {
+				e.stopPropagation();
+				await eliminarPlantilla(elimPlBtn.dataset.eliminarPl, elimPlBtn.dataset.nombre);
+				return;
+			}
+
+			// Abrir form agregar campo
+			const openCampoBtn = e.target.closest('[data-open-addcampo]');
+			if (openCampoBtn) {
+				const plId  = openCampoBtn.dataset.openAddcampo;
+				const form  = document.getElementById(`addcampo-form-${plId}`);
+				const trigBtn = document.getElementById(`btn-addcampo-${plId}`);
+				if (form) form.hidden = false;
+				if (trigBtn) trigBtn.hidden = true;
+				return;
+			}
+
+			// Cancelar agregar campo
+			const cancelCampoBtn = e.target.closest('[data-cancel-addcampo]');
+			if (cancelCampoBtn) {
+				const plId  = cancelCampoBtn.dataset.cancelAddcampo;
+				const form  = document.getElementById(`addcampo-form-${plId}`);
+				const trigBtn = document.getElementById(`btn-addcampo-${plId}`);
+				if (form) form.hidden = true;
+				if (trigBtn) trigBtn.hidden = false;
+				return;
+			}
+
+			// Guardar campo
+			const saveCampoBtn = e.target.closest('[data-save-campo]');
+			if (saveCampoBtn) {
+				await handleGuardarCampo(saveCampoBtn.dataset.saveCampo);
+				return;
+			}
+
+			// Eliminar campo
+			const delCampoBtn = e.target.closest('[data-del-campo]');
+			if (delCampoBtn) {
+				await eliminarCampo(delCampoBtn.dataset.delCampo, delCampoBtn.dataset.plantilla);
+				return;
+			}
+		});
+
+		// Event delegation para cambio en select tipo_campo → mostrar/ocultar opciones
+		plantillasListEl.addEventListener('change', (e) => {
+			const tipoSelect = e.target.closest('[id^="nc-tipo-"]');
+			if (!tipoSelect) return;
+			const plId = tipoSelect.id.replace('nc-tipo-', '');
+			const opcionesWrap = document.getElementById(`nc-opciones-wrap-${plId}`);
+			if (opcionesWrap) opcionesWrap.hidden = tipoSelect.value !== 'lista';
+		});
+
+		// Teclado en header de plantilla → espacio/enter = toggle
+		plantillasListEl.addEventListener('keydown', async (e) => {
+			if (e.key !== 'Enter' && e.key !== ' ') return;
+			const hdr = e.target.closest('[data-toggle-pl]');
+			if (hdr) { e.preventDefault(); await togglePanel(hdr.dataset.togglePl); }
+		});
+	}
+
+	init();
+</script>
+</body>
+</html>
