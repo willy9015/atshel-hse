@@ -674,14 +674,14 @@
 		supabase,
 		requireAuth,
 		getUsuario,
-	} from '/js/atshel-supabase.js';
+	} from '/src/js/atshel-supabase.js';
 
 	import {
 		sanitizeHTML,
 		formatFecha,
 		formatFechaCorta,
 		showToast,
-	} from '/js/atshel-core.js';
+	} from '/src/js/atshel-core.js';
 
 	// ── ID del incidente desde URL ───────────────────────────
 	const _incidenteId = new URLSearchParams(window.location.search).get('id');
