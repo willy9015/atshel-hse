@@ -1,1272 +1,1071 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-AR" dir="ltr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1C1C1C">
-  <meta name="description" content="ATSHEL — Panel de seguridad industrial">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>ATSHEL — Panel principal</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE Manager — Panel principal">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="ATSHEL">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
 
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
-  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+	<title>Panel — ATSHEL HSE</title>
 
-  <!-- Barlow Condensed (display industrial) + IBM Plex Sans (cuerpo técnico) -->
-  <!-- Non-blocking: system fonts se usan mientras cargan; SW cachea en primera visita -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
-        media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-  </noscript>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-  <!-- Sistema de diseño global (variables, reset, utilidades) -->
-  <link rel="stylesheet" href="/css/atshel-theme.css">
+	<link rel="stylesheet" href="/css/atshel-theme.css">
 
-  <style>
-    /* ================================================================
-       INDEX.HTML — Estilos específicos de página
-       Fallbacks duplicados de atshel-theme.css para robustez offline.
-       ================================================================ */
+	<style>
+		/* ── Layout base ──────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+			position:       relative;
+		}
 
-    :root {
-      /* Brand tokens — fallback si theme.css no cargó */
-      --c-carbon:   #1C1C1C;
-      --c-primary:  #373737;
-      --c-accent:   #FFC107;
-      --c-green:    #5C8A2E;
-      --c-green-lt: #7CB342;
-      --c-danger:   #C62828;
-      --c-danger-lt:#FFEBEE;
-      --c-orange:   #E65100;
-      --c-blue:     #1565C0;
-      --c-bg:       #F0F0F0;
-      --c-surface:  #FFFFFF;
-      --c-border:   #DEDEDE;
-      --c-text:     #1A1A1A;
-      --c-muted:    #6B6B6B;
-      --c-shadow:   rgba(0,0,0,0.09);
-      --c-shadow-md:rgba(0,0,0,0.18);
+		/* ── App header ───────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
 
-      /* Tipografía */
-      --f-display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
-      --f-body:    'IBM Plex Sans', system-ui, sans-serif;
+		.app-header__brand {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
 
-      /* Layout */
-      --header-h:   58px;
-      --nav-h:      62px;
-      --safe-bot:   env(safe-area-inset-bottom, 0px);
+		.app-header__logo {
+			width:         28px;
+			height:        28px;
+			border-radius: 6px;
+			flex-shrink:   0;
+		}
 
-      /* Espaciado base 4px */
-      --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
-      --s5: 20px; --s6: 24px; --s8: 32px;
-    }
+		.app-header__name {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			letter-spacing: 0.04em;
+			line-height:  1;
+		}
 
-    /* ── Reset mínimo ─────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
-    body {
-      font-family: var(--f-body);
-      font-size: 16px;
-      line-height: 1.5;
-      background: var(--c-bg);
-      color: var(--c-text);
-      min-height: 100dvh;
-      overflow-x: hidden;
-    }
-    button {
-      font-family: inherit;
-      cursor: pointer;
-      border: none;
-      background: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+		.app-header__actions {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
 
-    /* ── Utilidades ──────────────────────────────────────────── */
-    .hidden { display: none !important; }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-    }
+		/* Badge de sincronización */
+		.sync-badge {
+			display:       flex;
+			align-items:   center;
+			gap:           5px;
+			padding:       4px 8px;
+			border-radius: 20px;
+			font-family:   var(--font-mono);
+			font-size:     10px;
+			font-weight:   500;
+			line-height:   1;
+			cursor:        default;
+			user-select:   none;
+		}
+		.sync-badge--ok      { background: var(--color-success-bg); color: var(--color-success); }
+		.sync-badge--pending { background: var(--color-warning-bg); color: var(--color-warning); }
+		.sync-badge--offline { background: var(--color-danger-bg);  color: var(--color-danger);  }
 
-    /* ── Offline banner ──────────────────────────────────────── */
-    .offline-banner {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 1000;
-      background: var(--c-carbon);
-      color: var(--c-accent);
-      font-family: var(--f-display);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      text-align: center;
-      padding: var(--s2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--s2);
-      height: 34px;
-      transform: translateY(-100%);
-      transition: transform 0.25s ease;
-    }
-    .offline-banner.is-visible { transform: translateY(0); }
-    body.is-offline .app-header,
-    body.is-offline .page-wrap { margin-top: 34px; }
+		.sync-badge__dot {
+			width:         6px;
+			height:        6px;
+			border-radius: 50%;
+			background:    currentColor;
+			flex-shrink:   0;
+		}
+		.sync-badge--pending .sync-badge__dot {
+			animation: pulse-dot 1.4s ease-in-out infinite;
+		}
+		@keyframes pulse-dot {
+			0%, 100% { opacity: 1; }
+			50%       { opacity: 0.3; }
+		}
 
-    /* ── Header ──────────────────────────────────────────────── */
-    .app-header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 200;
-      height: var(--header-h);
-      background: var(--c-carbon);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 var(--s4);
-      border-bottom: 2px solid var(--c-accent);
-    }
+		/* ── Contenido principal ──────────────────────────────── */
+		.dashboard-main {
+			flex:          1;
+			overflow-y:    auto;
+			padding:       20px 16px calc(80px + env(safe-area-inset-bottom));
+			display:       flex;
+			flex-direction: column;
+			gap:           20px;
+		}
 
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      min-width: 0;
-    }
-    .header-wordmark {
-      font-family: var(--f-display);
-      font-size: 26px;
-      font-weight: 900;
-      color: var(--c-accent);
-      letter-spacing: 0.04em;
-      flex-shrink: 0;
-      line-height: 1;
-    }
-    .header-divider {
-      width: 1px;
-      height: 28px;
-      background: #444;
-      flex-shrink: 0;
-    }
-    .header-user {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .header-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #E0E0E0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 130px;
-      line-height: 1.2;
-    }
-    .role-pill {
-      display: inline-block;
-      font-family: var(--f-display);
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      padding: 1px 5px;
-      border-radius: 2px;
-      width: fit-content;
-      line-height: 1.6;
-    }
-    .role-pill--administrador { background: var(--c-accent);  color: var(--c-carbon); }
-    .role-pill--supervisor    { background: #1E88E5;           color: #fff; }
-    .role-pill--hse           { background: var(--c-green-lt); color: #fff; }
+		/* ── Saludo ───────────────────────────────────────────── */
+		.greeting {
+			animation: slide-up 0.4s ease both;
+		}
+		.greeting__sub {
+			font-size:  var(--text-sm);
+			color:      var(--text-secondary);
+			margin-top: 2px;
+		}
+		.greeting__name {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-2xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1.1;
+		}
+		.greeting__role-badge {
+			display:       inline-block;
+			margin-top:    6px;
+			padding:       2px 8px;
+			border-radius: 4px;
+			background:    var(--accent-subtle);
+			border:        1px solid var(--accent-subtle-hover);
+			font-family:   var(--font-mono);
+			font-size:     10px;
+			font-weight:   500;
+			color:         var(--accent);
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+		}
 
-    /* Sync indicator */
-    .sync-pill {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-family: var(--f-display);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #888;
-      cursor: default;
-      flex-shrink: 0;
-      min-width: 62px;
-      justify-content: flex-end;
-    }
-    .sync-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #555;
-      flex-shrink: 0;
-    }
-    .sync-pill[data-state="synced"]  { color: var(--c-green-lt); }
-    .sync-pill[data-state="synced"]  .sync-dot { background: var(--c-green-lt); }
-    .sync-pill[data-state="syncing"] { color: var(--c-accent); }
-    .sync-pill[data-state="syncing"] .sync-dot {
-      background: var(--c-accent);
-      animation: blink 0.9s ease-in-out infinite;
-    }
-    .sync-pill[data-state="offline"] .sync-dot { background: #777; }
-    .sync-pill[data-state="error"]   { color: var(--c-danger); }
-    .sync-pill[data-state="error"]   .sync-dot { background: var(--c-danger); }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+		/* ── Banner de alerta ─────────────────────────────────── */
+		.alert-banner {
+			display:       flex;
+			align-items:   center;
+			gap:           10px;
+			padding:       12px 14px;
+			border-radius: 8px;
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+			animation:     slide-up 0.35s ease both;
+		}
+		.alert-banner--danger {
+			background:  var(--color-danger-bg);
+			border:      1px solid var(--color-danger-border);
+			color:       var(--color-danger);
+		}
+		.alert-banner--warning {
+			background:  var(--color-warning-bg);
+			border:      1px solid var(--color-warning-border);
+			color:       var(--color-warning);
+		}
+		.alert-banner__icon {
+			font-size:  18px;
+			flex-shrink: 0;
+		}
 
-    /* ── Scroll wrapper ──────────────────────────────────────── */
-    .page-wrap {
-      margin-top: var(--header-h);
-      padding-bottom: calc(var(--nav-h) + var(--safe-bot) + var(--s4));
-      padding-top: var(--s4);
-      padding-left: var(--s4);
-      padding-right: var(--s4);
-    }
+		/* ── Grid de KPIs ─────────────────────────────────────── */
+		.kpi-grid {
+			display:               grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap:                   10px;
+			animation:             slide-up 0.4s 0.05s ease both;
+		}
 
-    /* ── Skeleton loader ─────────────────────────────────────── */
-    @keyframes shimmer {
-      from { background-position: -200% 0; }
-      to   { background-position:  200% 0; }
-    }
-    .skel {
-      background: linear-gradient(90deg, #D8D8D8 25%, #EDEDED 50%, #D8D8D8 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.3s infinite;
-      border-radius: 4px;
-    }
-    .skel-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin-bottom: var(--s5); }
-    .skel-card   { height: 90px; border-radius: 8px; }
-    .skel-cta    { height: 58px; border-radius: 6px; margin-bottom: var(--s5); }
-    .skel-grid-4 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin-bottom: var(--s5); }
-    .skel-btn    { height: 58px; border-radius: 6px; }
-    .skel-h      { height: 14px; width: 35%; border-radius: 3px; margin-bottom: var(--s3); }
-    .skel-row    { height: 58px; border-radius: 6px; margin-bottom: var(--s2); }
+		.kpi-card {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			padding:       14px 12px;
+			display:       flex;
+			flex-direction: column;
+			gap:           2px;
+			transition:    background 0.15s ease, border-color 0.15s ease;
+			cursor:        default;
+		}
+		.kpi-card:active {
+			background: var(--surface-03);
+		}
 
-    /* ── Alert: acciones vencidas ────────────────────────────── */
-    .alert-vencidas {
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      background: var(--c-danger-lt);
-      border-left: 4px solid var(--c-danger);
-      border-radius: 0 6px 6px 0;
-      padding: var(--s3) var(--s4);
-      margin-bottom: var(--s4);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--c-danger);
-      animation: slide-down 0.25s ease;
-    }
-    .alert-vencidas .av-icon { font-size: 18px; flex-shrink: 0; }
-    .alert-vencidas .av-link {
-      margin-left: auto;
-      font-size: 12px;
-      font-family: var(--f-display);
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--c-danger);
-      padding: var(--s1) var(--s2);
-      border: 1px solid var(--c-danger);
-      border-radius: 3px;
-    }
-    @keyframes slide-down { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+		.kpi-card__icon {
+			font-size:    18px;
+			margin-bottom: 4px;
+			line-height:  1;
+		}
 
-    /* ── Banner nuevo ingresante ─────────────────────────────── */
-    .banner-ingresante {
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      background: linear-gradient(135deg, #BF360C 0%, #E64A19 100%);
-      border-radius: 8px;
-      padding: var(--s4);
-      margin-bottom: var(--s4);
-      color: #fff;
-    }
-    .banner-ingresante .bi-icon { font-size: 28px; flex-shrink: 0; }
-    .banner-ingresante .bi-title {
-      font-family: var(--f-display);
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-    .banner-ingresante .bi-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+		.kpi-card__value {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-3xl);
+			font-weight:  800;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
 
-    /* ── Stats section ───────────────────────────────────────── */
-    .section-eyebrow {
-      font-family: var(--f-display);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--c-muted);
-      margin-bottom: var(--s3);
-    }
-    .stats-section { margin-bottom: var(--s5); }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--s3);
-    }
+		.kpi-card--danger  .kpi-card__value { color: var(--color-danger);  }
+		.kpi-card--warning .kpi-card__value { color: var(--color-warning); }
+		.kpi-card--success .kpi-card__value { color: var(--color-success); }
+		.kpi-card--accent  .kpi-card__value { color: var(--accent);        }
 
-    /* La firma visual del diseño: número gigante + franja de color izquierda */
-    .stat-card {
-      background: var(--c-surface);
-      border-radius: 8px;
-      padding: var(--s4) var(--s4) var(--s4) calc(var(--s4) + 6px);
-      box-shadow: 0 1px 3px var(--c-shadow);
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: box-shadow 0.15s, transform 0.1s;
-      min-height: 90px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-    }
-    .stat-card:active  { transform: scale(0.97); box-shadow: 0 1px 1px var(--c-shadow); }
-    .stat-card:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+		.kpi-card__label {
+			font-size:   var(--text-xs);
+			font-weight: 600;
+			color:       var(--text-secondary);
+			line-height: 1.3;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
 
-    /* Franja de color izquierda */
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 6px;
-    }
-    .stat-card--inc::before   { background: #E53935; }
-    .stat-card--acc::before   { background: var(--c-accent); }
-    .stat-card--perm::before  { background: var(--c-blue); }
-    .stat-card--chk::before   { background: var(--c-green-lt); }
+		/* Skeleton loader para KPIs */
+		.kpi-skeleton {
+			height:        18px;
+			border-radius: 4px;
+			background:    var(--surface-03);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+		.kpi-skeleton--lg { height: 36px; }
 
-    /* Icono fantasma fondo */
-    .stat-bg-icon {
-      position: absolute;
-      right: var(--s3);
-      top: var(--s3);
-      font-size: 30px;
-      opacity: 0.08;
-      pointer-events: none;
-      line-height: 1;
-    }
+		/* ── Barra de cumplimiento ────────────────────────────── */
+		.compliance-bar {
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 10px;
+			padding:       14px;
+			display:       flex;
+			flex-direction: column;
+			gap:           8px;
+			animation:     slide-up 0.4s 0.1s ease both;
+		}
 
-    /* El número: firma visual — condensado, pesado, dominante */
-    .stat-number {
-      font-family: var(--f-display);
-      font-size: 46px;
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: -0.02em;
-      color: var(--c-carbon);
-    }
-    .stat-number.is-warning { color: var(--c-danger); }
-    .stat-label {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--c-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      line-height: 1.3;
-      margin-top: 3px;
-    }
+		.compliance-bar__header {
+			display:         flex;
+			justify-content: space-between;
+			align-items:     center;
+		}
 
-    /* ── CTA: Reportar incidente ─────────────────────────────── */
-    .cta-section { margin-bottom: var(--s5); }
-    .btn-reportar {
-      width: 100%;
-      min-height: 58px;
-      background: var(--c-accent);
-      color: var(--c-carbon);
-      font-family: var(--f-display);
-      font-size: 20px;
-      font-weight: 900;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--s3);
-      box-shadow: 0 4px 16px rgba(255,193,7,0.30), 0 1px 4px rgba(0,0,0,0.12);
-      transition: box-shadow 0.15s, transform 0.1s, background 0.15s;
-      position: relative;
-      overflow: hidden;
-    }
-    .btn-reportar::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0);
-      transition: background 0.15s;
-    }
-    .btn-reportar:active {
-      transform: translateY(1px);
-      box-shadow: 0 2px 6px rgba(255,193,7,0.20);
-    }
-    .btn-reportar:active::after { background: rgba(0,0,0,0.08); }
-    .btn-reportar:focus-visible { outline: 3px solid var(--c-carbon); outline-offset: 2px; }
-    .btn-reportar .ico { font-size: 22px; }
+		.compliance-bar__label {
+			font-size:   var(--text-sm);
+			font-weight: 600;
+			color:       var(--text-secondary);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
 
-    /* ── Acciones rápidas ────────────────────────────────────── */
-    .quick-section { margin-bottom: var(--s5); }
-    .quick-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--s3);
-    }
-    .btn-quick {
-      min-height: 58px;
-      background: var(--c-surface);
-      border: 1.5px solid var(--c-border);
-      border-radius: 6px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: var(--s3);
-      color: var(--c-primary);
-      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
-      cursor: pointer;
-    }
-    .btn-quick:active  { transform: scale(0.97); background: #F7F7F7; }
-    .btn-quick:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 1px; border-color: transparent; }
-    .btn-quick .ico    { font-size: 22px; opacity: 0.65; }
-    .btn-quick .lbl {
-      font-family: var(--f-display);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.09em;
-      text-transform: uppercase;
-      text-align: center;
-    }
+		.compliance-bar__pct {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+		}
 
-    /* ── Actividad reciente ───────────────────────────────────── */
-    .activity-section { margin-bottom: var(--s5); }
-    .activity-list { list-style: none; }
-    .activity-item {
-      background: var(--c-surface);
-      border-radius: 6px;
-      margin-bottom: var(--s2);
-      padding: var(--s3) var(--s4);
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      box-shadow: 0 1px 3px var(--c-shadow);
-      cursor: pointer;
-      transition: box-shadow 0.12s, transform 0.1s;
-      min-height: 52px;
-    }
-    .activity-item:active { transform: scale(0.99); box-shadow: none; }
-    .activity-item:focus-visible { outline: 2px solid var(--c-accent); }
-    .activity-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
-    .activity-body { flex: 1; min-width: 0; }
-    .activity-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--c-text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .activity-meta { font-size: 11px; color: var(--c-muted); margin-top: 1px; }
-    .activity-badge {
-      font-family: var(--f-display);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      padding: 2px 7px;
-      border-radius: 3px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
+		.compliance-bar__track {
+			height:        6px;
+			border-radius: 3px;
+			background:    var(--surface-04);
+			overflow:      hidden;
+		}
 
-    /* Estado badges */
-    .b-abierto    { background:#FFEBEE; color:#C62828; }
-    .b-investiga  { background:#FFF3E0; color:#E65100; }
-    .b-cerrado    { background:#E8F5E9; color:#2E7D32; }
-    .b-pendiente  { background:#FFF8E1; color:#F57F17; }
-    .b-vencida    { background:#FFEBEE; color:#C62828; }
-    .b-completada { background:#E8F5E9; color:#2E7D32; }
-    .b-en-curso   { background:#E3F2FD; color:#1565C0; }
-    .b-solicitado { background:#EDE7F6; color:#4527A0; }
-    .b-aprobado   { background:#E8F5E9; color:#2E7D32; }
-    .b-activo     { background:#E8F5E9; color:#2E7D32; }
-    .b-firmado    { background:#F3E5F5; color:#6A1B9A; }
-    .b-borrador   { background:#F5F5F5; color:#616161; }
+		.compliance-bar__fill {
+			height:        100%;
+			border-radius: 3px;
+			background:    var(--color-success);
+			transition:    width 0.6s ease;
+		}
+		.compliance-bar__fill--warn { background: var(--color-warning); }
+		.compliance-bar__fill--bad  { background: var(--color-danger);  }
 
-    .activity-empty {
-      text-align: center;
-      padding: var(--s8) var(--s4);
-      color: var(--c-muted);
-    }
-    .activity-empty .ae-icon { font-size: 36px; display: block; margin-bottom: var(--s3); opacity: 0.4; }
-    .activity-empty .ae-text { font-size: 14px; }
+		.compliance-bar__meta {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+		}
 
-    /* ── Error state ─────────────────────────────────────────── */
-    .error-state {
-      text-align: center;
-      padding: 60px var(--s4) var(--s4);
-    }
-    .error-state .es-icon { font-size: 48px; opacity: 0.35; display: block; margin-bottom: var(--s4); }
-    .error-state .es-msg  { font-size: 15px; color: var(--c-muted); margin-bottom: var(--s5); }
-    .btn-retry {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--s2);
-      background: var(--c-primary);
-      color: #fff;
-      font-family: var(--f-display);
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: var(--s3) var(--s5);
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-retry:active { background: var(--c-carbon); }
+		/* ── Secciones de lista ───────────────────────────────── */
+		.list-section {
+			display:       flex;
+			flex-direction: column;
+			gap:           10px;
+			animation:     slide-up 0.4s 0.15s ease both;
+		}
 
-    /* ── Bottom navigation ───────────────────────────────────── */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      height: var(--nav-h);
-      background: var(--c-surface);
-      border-top: 1px solid var(--c-border);
-      display: flex;
-      align-items: stretch;
-      z-index: 200;
-      padding-bottom: var(--safe-bot);
-      box-shadow: 0 -2px 10px var(--c-shadow);
-    }
-    .nav-item {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      color: var(--c-muted);
-      transition: color 0.12s;
-      position: relative;
-      min-height: 48px;
-      padding: var(--s1) 2px;
-    }
-    .nav-item:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -2px; }
-    .nav-item[aria-current="page"] { color: var(--c-carbon); }
-    .nav-item[aria-current="page"]::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 20%; right: 20%;
-      height: 3px;
-      background: var(--c-accent);
-      border-radius: 0 0 3px 3px;
-    }
-    .nav-ico  { font-size: 22px; line-height: 1; }
-    .nav-lbl  {
-      font-family: var(--f-display);
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
+		.list-section__header {
+			display:         flex;
+			justify-content: space-between;
+			align-items:     baseline;
+		}
 
-    /* ── Focus global (WCAG AA) ──────────────────────────────── */
-    :focus-visible {
-      outline: 2px solid var(--c-accent);
-      outline-offset: 2px;
-    }
-  </style>
+		.list-section__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.list-section__link {
+			font-size:      var(--text-sm);
+			font-weight:    600;
+			color:          var(--accent);
+			text-decoration: none;
+		}
+		.list-section__link:hover { color: var(--accent-hover); }
+
+		/* ── Item de lista genérico ───────────────────────────── */
+		.list-item {
+			display:        flex;
+			align-items:    flex-start;
+			gap:            12px;
+			padding:        14px;
+			background:     var(--surface-02);
+			border:         1px solid var(--border-subtle);
+			border-radius:  10px;
+			text-decoration: none;
+			transition:     background 0.15s ease;
+			cursor:         pointer;
+		}
+		.list-item:hover,
+		.list-item:focus-visible { background: var(--surface-03); }
+		.list-item:active         { background: var(--surface-04); }
+
+		.list-item__icon {
+			width:          36px;
+			height:         36px;
+			border-radius:  8px;
+			display:        flex;
+			align-items:    center;
+			justify-content: center;
+			font-size:      16px;
+			flex-shrink:    0;
+		}
+		.list-item__icon--danger  { background: var(--color-danger-bg);  }
+		.list-item__icon--warning { background: var(--color-warning-bg); }
+		.list-item__icon--info    { background: var(--color-info-bg);    }
+		.list-item__icon--success { background: var(--color-success-bg); }
+
+		.list-item__body  { flex: 1; min-width: 0; }
+
+		.list-item__title {
+			font-size:     var(--text-base);
+			font-weight:   600;
+			color:         var(--text-primary);
+			line-height:   1.3;
+			white-space:   nowrap;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+		}
+
+		.list-item__meta {
+			display:     flex;
+			flex-wrap:   wrap;
+			gap:         6px;
+			margin-top:  4px;
+			align-items: center;
+		}
+
+		.list-item__date {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+			font-family: var(--font-mono);
+		}
+
+		/* ── Chips / badges ───────────────────────────────────── */
+		.chip {
+			display:       inline-flex;
+			align-items:   center;
+			padding:       2px 6px;
+			border-radius: 4px;
+			font-size:     10px;
+			font-weight:   600;
+			line-height:   1.4;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			flex-shrink:   0;
+		}
+		.chip--danger  { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--info    { background: var(--color-info-bg);    color: var(--color-info);    }
+		.chip--neutral { background: var(--surface-04);       color: var(--text-secondary);}
+
+		/* ── Estado vacío ─────────────────────────────────────── */
+		.empty-state {
+			padding:     32px 16px;
+			text-align:  center;
+			color:       var(--text-tertiary);
+			font-size:   var(--text-sm);
+			background:  var(--surface-02);
+			border:      1px solid var(--border-subtle);
+			border-radius: 10px;
+		}
+		.empty-state__icon { font-size: 28px; margin-bottom: 8px; }
+
+		/* ── Skeleton genérico ────────────────────────────────── */
+		.skeleton-item {
+			height:        68px;
+			border-radius: 10px;
+			background:    var(--surface-02);
+			animation:     shimmer 1.5s ease-in-out infinite;
+		}
+
+		@keyframes shimmer {
+			0%, 100% { opacity: 0.8; }
+			50%       { opacity: 0.4; }
+		}
+
+		/* ── Barra de navegación inferior ─────────────────────── */
+		.bottom-nav {
+			position:     fixed;
+			bottom:       0;
+			left:         0;
+			right:        0;
+			z-index:      100;
+			display:      flex;
+			background:   var(--surface-01);
+			border-top:   1px solid var(--border-subtle);
+			padding-bottom: env(safe-area-inset-bottom);
+		}
+
+		.bottom-nav__item {
+			flex:           1;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            3px;
+			padding:        10px 4px;
+			text-decoration: none;
+			color:          var(--text-tertiary);
+			font-size:      10px;
+			font-weight:    600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			transition:     color 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			min-height:     56px;
+		}
+
+		.bottom-nav__item:hover       { color: var(--text-secondary); }
+		.bottom-nav__item--active     { color: var(--accent); }
+
+		.bottom-nav__icon {
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			width:         28px;
+			height:        28px;
+			border-radius: 8px;
+			transition:    background 0.15s ease;
+			position:      relative;
+		}
+		.bottom-nav__item--active .bottom-nav__icon {
+			background: var(--accent-subtle);
+		}
+
+		.bottom-nav__badge {
+			position:      absolute;
+			top:           -2px;
+			right:         -2px;
+			min-width:     16px;
+			height:        16px;
+			padding:       0 4px;
+			border-radius: 8px;
+			background:    var(--color-danger);
+			color:         #fff;
+			font-family:   var(--font-mono);
+			font-size:     9px;
+			font-weight:   700;
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			line-height:   1;
+		}
+
+		/* ── Animaciones de entrada ───────────────────────────── */
+		@keyframes slide-up {
+			from { opacity: 0; transform: translateY(10px); }
+			to   { opacity: 1; transform: translateY(0);    }
+		}
+	</style>
 </head>
-
 <body>
-
-  <!-- ================================================================
-       OFFLINE BANNER
-       ================================================================ -->
-  <div id="offline-banner"
-       class="offline-banner"
-       role="alert"
-       aria-live="polite"
-       aria-atomic="true">
-    ⬡&nbsp; Sin conexión — datos locales
-  </div>
-
-  <!-- ================================================================
-       HEADER
-       ================================================================ -->
-  <header class="app-header" role="banner">
-    <div class="header-brand">
-      <span class="header-wordmark" aria-label="ATSHEL">ATSHEL</span>
-      <div class="header-divider" aria-hidden="true"></div>
-      <div class="header-user">
-        <span id="js-user-name" class="header-name" aria-label="Nombre de usuario"></span>
-        <span id="js-role-pill" class="role-pill" aria-label="Rol del usuario"></span>
-      </div>
-    </div>
-
-    <div id="js-sync"
-         class="sync-pill"
-         data-state="syncing"
-         role="status"
-         aria-live="polite"
-         aria-label="Sincronización: cargando">
-      <span class="sync-dot" aria-hidden="true"></span>
-      <span id="js-sync-lbl">Sync</span>
-    </div>
-  </header>
-
-  <!-- ================================================================
-       CONTENIDO PRINCIPAL
-       ================================================================ -->
-  <main class="page-wrap" id="main-content" role="main">
-
-    <!-- ─── SKELETON (visible mientras carga) ─── -->
-    <div id="js-skeleton" role="status" aria-label="Cargando panel...">
-      <div class="skel-grid-2">
-        <div class="skel skel-card"></div>
-        <div class="skel skel-card"></div>
-        <div class="skel skel-card"></div>
-        <div class="skel skel-card"></div>
-      </div>
-      <div class="skel skel-cta"></div>
-      <div class="skel skel-grid-4">
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-      </div>
-      <div class="skel skel-h"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-    </div>
-
-    <!-- ─── DASHBOARD (oculto hasta que carga) ─── -->
-    <div id="js-dashboard" class="hidden">
-
-      <!-- Banner: Nuevo ingresante -->
-      <div id="js-ingresante" class="banner-ingresante hidden" role="note" aria-label="Aviso de nuevo ingresante">
-        <span class="bi-icon" aria-hidden="true">🟠</span>
-        <div>
-          <div class="bi-title">Nuevo ingresante</div>
-          <div class="bi-sub" id="js-ingresante-sub">Completá tu inducción antes de operar.</div>
-        </div>
-      </div>
-
-      <!-- Alerta: Acciones vencidas -->
-      <div id="js-vencidas" class="alert-vencidas hidden" role="alert" aria-live="assertive">
-        <span class="av-icon" aria-hidden="true">⚡</span>
-        <span id="js-vencidas-msg"></span>
-        <a href="/acciones.html" class="av-link" aria-label="Ver acciones vencidas">Ver</a>
-      </div>
-
-      <!-- ─── ESTADÍSTICAS ─── -->
-      <section class="stats-section" aria-labelledby="stats-h">
-        <div id="stats-h" class="section-eyebrow">Estado actual</div>
-        <div class="stats-grid">
-
-          <article class="stat-card stat-card--inc"
-                   role="button" tabindex="0"
-                   aria-label="Incidentes abiertos"
-                   onclick="nav('/incidentes.html')"
-                   onkeydown="kpEnter(event,'/incidentes.html')">
-            <span class="stat-bg-icon" aria-hidden="true">⚠</span>
-            <span class="stat-number" id="js-n-inc">—</span>
-            <span class="stat-label">Incidentes<br>abiertos</span>
-          </article>
-
-          <article class="stat-card stat-card--acc"
-                   role="button" tabindex="0"
-                   aria-label="Acciones correctivas pendientes"
-                   onclick="nav('/acciones.html')"
-                   onkeydown="kpEnter(event,'/acciones.html')">
-            <span class="stat-bg-icon" aria-hidden="true">⚡</span>
-            <span class="stat-number" id="js-n-acc">—</span>
-            <span class="stat-label">Acciones<br>pendientes</span>
-          </article>
-
-          <article class="stat-card stat-card--perm"
-                   role="button" tabindex="0"
-                   aria-label="Permisos de trabajo activos"
-                   onclick="nav('/permisos.html')"
-                   onkeydown="kpEnter(event,'/permisos.html')">
-            <span class="stat-bg-icon" aria-hidden="true">🔑</span>
-            <span class="stat-number" id="js-n-perm">—</span>
-            <span class="stat-label">Permisos<br>activos</span>
-          </article>
-
-          <article class="stat-card stat-card--chk"
-                   role="button" tabindex="0"
-                   aria-label="Checklists completados hoy"
-                   onclick="nav('/checklists.html')"
-                   onkeydown="kpEnter(event,'/checklists.html')">
-            <span class="stat-bg-icon" aria-hidden="true">☑</span>
-            <span class="stat-number" id="js-n-chk">—</span>
-            <span class="stat-label">Checklists<br>hoy</span>
-          </article>
-
-        </div>
-      </section>
-
-      <!-- ─── CTA PRINCIPAL ─── -->
-      <section class="cta-section">
-        <button class="btn-reportar"
-                onclick="nav('/incidente-nuevo.html')"
-                aria-label="Reportar un nuevo incidente de seguridad">
-          <span class="ico" aria-hidden="true">＋</span>
-          Reportar incidente
-        </button>
-      </section>
-
-      <!-- ─── ACCIONES RÁPIDAS ─── -->
-      <section class="quick-section" aria-labelledby="quick-h">
-        <div id="quick-h" class="section-eyebrow">Acciones rápidas</div>
-        <div class="quick-grid">
-
-          <button class="btn-quick"
-                  onclick="nav('/ats-nuevo.html')"
-                  aria-label="Iniciar nuevo Análisis de Trabajo Seguro">
-            <span class="ico" aria-hidden="true">📋</span>
-            <span class="lbl">Nuevo ATS</span>
-          </button>
-
-          <button class="btn-quick"
-                  onclick="nav('/permisos.html')"
-                  aria-label="Solicitar nuevo permiso de trabajo">
-            <span class="ico" aria-hidden="true">🔑</span>
-            <span class="lbl">Permiso</span>
-          </button>
-
-          <button class="btn-quick"
-                  onclick="nav('/checklists.html')"
-                  aria-label="Completar checklist de seguridad">
-            <span class="ico" aria-hidden="true">☑</span>
-            <span class="lbl">Checklist</span>
-          </button>
-
-          <button class="btn-quick"
-                  onclick="nav('/near-miss.html')"
-                  aria-label="Registrar cuasi-accidente o acto inseguro">
-            <span class="ico" aria-hidden="true">👁</span>
-            <span class="lbl">Near miss</span>
-          </button>
-
-        </div>
-      </section>
-
-      <!-- ─── ACTIVIDAD RECIENTE ─── -->
-      <section class="activity-section" aria-labelledby="act-h">
-        <div id="act-h" class="section-eyebrow">Actividad reciente</div>
-        <ul id="js-activity"
-            class="activity-list"
-            aria-live="polite"
-            aria-label="Lista de actividad reciente">
-          <!-- Poblado por JS -->
-        </ul>
-      </section>
-
-    </div><!-- /js-dashboard -->
-
-    <!-- ─── ERROR STATE ─── -->
-    <div id="js-error" class="error-state hidden" role="alert">
-      <span class="es-icon" aria-hidden="true">⚠</span>
-      <p class="es-msg" id="js-error-msg">No se pudo cargar el panel.</p>
-      <button class="btn-retry" onclick="initDashboard()">↺ Reintentar</button>
-    </div>
-
-  </main>
-
-  <!-- ================================================================
-       NAVEGACIÓN INFERIOR
-       ================================================================ -->
-  <nav class="bottom-nav" aria-label="Navegación principal">
-    <a href="/index.html" class="nav-item" aria-current="page">
-      <span class="nav-ico" aria-hidden="true">⌂</span>
-      <span class="nav-lbl">Inicio</span>
-    </a>
-    <a href="/incidentes.html" class="nav-item">
-      <span class="nav-ico" aria-hidden="true">⚠</span>
-      <span class="nav-lbl">Incidentes</span>
-    </a>
-    <a href="/ats-supervisor.html" class="nav-item" id="js-nav-ats">
-      <span class="nav-ico" aria-hidden="true">📋</span>
-      <span class="nav-lbl">ATS</span>
-    </a>
-    <a href="/permisos.html" class="nav-item">
-      <span class="nav-ico" aria-hidden="true">🔑</span>
-      <span class="nav-lbl">Permisos</span>
-    </a>
-    <a href="/perfil.html" class="nav-item">
-      <span class="nav-ico" aria-hidden="true">👤</span>
-      <span class="nav-lbl">Perfil</span>
-    </a>
-  </nav>
-
-  <!-- ================================================================
-       SCRIPTS — orden crítico, sin defer ni async
-       ================================================================ -->
-  <script src="/vendor/dompurify.min.js"></script>
-  <script src="/vendor/phosphor-icons.min.js"></script>
-  <script src="/vendor/jspdf.min.js"></script>
-  <script type="module" src="/src/js/atshel-app.js"></script>
-
-  <!-- ================================================================
-       LÓGICA DE PÁGINA — index.html
-       Namespace: window.ATSHEL establecido por atshel-app.js
-       window.ATSHEL.db      → instancia PowerSync (SQLite local)
-       window.ATSHEL.supabase → cliente Supabase JS
-       window.ATSHEL.user    → perfil del usuario autenticado
-       ================================================================ -->
-  <script>
-  'use strict';
-
-  // ── Señal de página para atshel-app.js ─────────────────────────
-  window.__ATSHEL_PAGE = 'index';
-
-  // ── Atajos DOM ──────────────────────────────────────────────────
-  const g = id => document.getElementById(id);
-  const EL = {
-    skeleton:   g('js-skeleton'),
-    dashboard:  g('js-dashboard'),
-    error:      g('js-error'),
-    errorMsg:   g('js-error-msg'),
-    offline:    g('offline-banner'),
-    sync:       g('js-sync'),
-    syncLbl:    g('js-sync-lbl'),
-    userName:   g('js-user-name'),
-    rolePill:   g('js-role-pill'),
-    nInc:       g('js-n-inc'),
-    nAcc:       g('js-n-acc'),
-    nPerm:      g('js-n-perm'),
-    nChk:       g('js-n-chk'),
-    vencidas:   g('js-vencidas'),
-    vencidasMsg:g('js-vencidas-msg'),
-    activity:   g('js-activity'),
-    ingresante: g('js-ingresante'),
-    ingSub:     g('js-ingresante-sub'),
-  };
-
-  // ── Navegación helper ───────────────────────────────────────────
-  function nav(url) { window.location.href = url; }
-  function kpEnter(e, url) { if (e.key === 'Enter') nav(url); }
-
-  // ── Conectividad ────────────────────────────────────────────────
-  function applyOnline()  {
-    EL.offline.classList.remove('is-visible');
-    document.body.classList.remove('is-offline');
-  }
-  function applyOffline() {
-    EL.offline.classList.add('is-visible');
-    document.body.classList.add('is-offline');
-    setSyncState('offline');
-  }
-  window.addEventListener('online',  () => { applyOnline();  setSyncState('syncing'); refreshStats(); });
-  window.addEventListener('offline', () => applyOffline());
-  if (!navigator.onLine) applyOffline();
-
-  // ── Sync indicator ──────────────────────────────────────────────
-  const SYNC_LABEL = { synced:'Listo', syncing:'Sync', offline:'Offline', error:'Error' };
-  function setSyncState(state, detail) {
-    EL.sync.dataset.state = state;
-    EL.syncLbl.textContent = SYNC_LABEL[state] ?? state;
-    EL.sync.setAttribute('aria-label',
-      'Sincronización: ' + (detail ?? SYNC_LABEL[state] ?? state));
-  }
-
-  // ── Perfil de usuario ───────────────────────────────────────────
-  const ROLE_LABEL = { administrador:'Admin', supervisor:'Superv.', hse:'HSE' };
-  function renderUser(u) {
-    if (!u) return;
-    const first = (u.nombre_completo || 'Usuario').split(' ')[0];
-    EL.userName.textContent = first;
-    const r = u.rol || '';
-    EL.rolePill.textContent  = ROLE_LABEL[r] ?? r.toUpperCase();
-    EL.rolePill.className    = 'role-pill role-pill--' + r;
-
-    if (u.es_nuevo_ingresante) {
-      EL.ingresante.classList.remove('hidden');
-      EL.ingSub.textContent = u.tutor_id
-        ? 'Contactá a tu tutor antes de operar.'
-        : 'Completá tu inducción antes de comenzar operaciones.';
-    }
-  }
-
-  // ── Fecha local sin bug UTC ──────────────────────────────────────
-  // NUNCA usar new Date("YYYY-MM-DD") — interpreta como UTC
-  function todayLocal() {
-    const d = new Date();
-    return [
-      d.getFullYear(),
-      String(d.getMonth() + 1).padStart(2, '0'),
-      String(d.getDate()).padStart(2, '0'),
-    ].join('-');
-  }
-
-  // ── Query helpers: PowerSync → fallback Supabase ────────────────
-  async function dbCount(sql, params, supaFn) {
-    try {
-      const db = window.ATSHEL?.db;
-      if (db?.execute) {
-        const res = await db.execute(sql, params);
-        const arr = res.rows?._array ?? res.rows ?? [];
-        const row = arr[0] ?? {};
-        return parseInt(row.count ?? row.n ?? 0, 10);
-      }
-    } catch (e) { console.warn('[ATSHEL/db] count fallback:', e.message); }
-
-    try { return await supaFn(); }
-    catch (e) { console.error('[ATSHEL/supa] count error:', e.message); return null; }
-  }
-
-  async function dbRows(sql, params, supaFn) {
-    try {
-      const db = window.ATSHEL?.db;
-      if (db?.execute) {
-        const res = await db.execute(sql, params);
-        return res.rows?._array ?? res.rows ?? [];
-      }
-    } catch (e) { console.warn('[ATSHEL/db] rows fallback:', e.message); }
-
-    try { return await supaFn(); }
-    catch (e) { console.error('[ATSHEL/supa] rows error:', e.message); return []; }
-  }
-
-  // ── Estadísticas ────────────────────────────────────────────────
-  async function loadStats() {
-    const supa  = window.ATSHEL?.supabase;
-    const today = todayLocal();
-
-    // 1. Incidentes abiertos (Abierto | En investigación)
-    const nInc = await dbCount(
-      `SELECT COUNT(*) AS count FROM incidentes
-       WHERE estado IN ('Abierto','En investigación') AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('incidentes')
-          .select('*', { count:'exact', head:true })
-          .in('estado', ['Abierto','En investigación'])
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nInc !== null) EL.nInc.textContent = nInc;
-
-    // 2. Acciones pendientes (Pendiente | En curso)
-    const nAcc = await dbCount(
-      `SELECT COUNT(*) AS count FROM acciones_correctivas
-       WHERE estado IN ('Pendiente','En curso') AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('acciones_correctivas')
-          .select('*', { count:'exact', head:true })
-          .in('estado', ['Pendiente','En curso'])
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nAcc !== null) EL.nAcc.textContent = nAcc;
-
-    // 3. Permisos activos (Aprobado | Activo)
-    const nPerm = await dbCount(
-      `SELECT COUNT(*) AS count FROM permisos_trabajo
-       WHERE estado IN ('Aprobado','Activo') AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('permisos_trabajo')
-          .select('*', { count:'exact', head:true })
-          .in('estado', ['Aprobado','Activo'])
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nPerm !== null) EL.nPerm.textContent = nPerm;
-
-    // 4. Checklists de hoy
-    const nChk = await dbCount(
-      `SELECT COUNT(*) AS count FROM checklist_instancias
-       WHERE fecha_ejecucion = ? AND deleted_at IS NULL`,
-      [today],
-      async () => {
-        const { count } = await supa
-          .from('checklist_instancias')
-          .select('*', { count:'exact', head:true })
-          .eq('fecha_ejecucion', today)
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nChk !== null) EL.nChk.textContent = nChk;
-
-    // 5. Acciones VENCIDAS — requieren atención inmediata
-    const nVenc = await dbCount(
-      `SELECT COUNT(*) AS count FROM acciones_correctivas
-       WHERE estado = 'Vencida' AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('acciones_correctivas')
-          .select('*', { count:'exact', head:true })
-          .eq('estado', 'Vencida')
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nVenc && nVenc > 0) {
-      const txt = nVenc === 1 ? '1 acción VENCIDA' : nVenc + ' acciones VENCIDAS';
-      EL.vencidasMsg.textContent = txt + ' — atención requerida';
-      EL.vencidas.classList.remove('hidden');
-      EL.nAcc.classList.add('is-warning');
-    }
-  }
-
-  // ── Feed de actividad ─────────────────────────────────────────────
-  const BADGE_MAP = {
-    'Abierto':         'b-abierto',
-    'En investigación':'b-investiga',
-    'Cerrado':         'b-cerrado',
-    'Pendiente':       'b-pendiente',
-    'Vencida':         'b-vencida',
-    'Completada':      'b-completada',
-    'En curso':        'b-en-curso',
-    'Solicitado':      'b-solicitado',
-    'En_revision':     'b-pendiente',
-    'Aprobado':        'b-aprobado',
-    'Activo':          'b-activo',
-    'Firmado':         'b-firmado',
-    'Borrador':        'b-borrador',
-    'En_curso':        'b-en-curso',
-    'Completado':      'b-completada',
-    'Cancelado':       'b-borrador',
-  };
-  const TYPE_ICO = { incidente:'⚠', accion:'⚡', permiso:'🔑', ats:'📋', checklist:'☑' };
-
-  function relTime(iso) {
-    if (!iso) return '';
-    const d    = new Date(iso);
-    const diff = Date.now() - d.getTime();
-    const m    = Math.floor(diff / 60000);
-    const h    = Math.floor(diff / 3600000);
-    const day  = Math.floor(diff / 86400000);
-    if (m < 2)   return 'hace un momento';
-    if (m < 60)  return `hace ${m} min`;
-    if (h < 24)  return `hace ${h}h`;
-    if (day < 2) return 'ayer';
-    if (day < 7) return `hace ${day} días`;
-    return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short' });
-  }
-
-  function makeActivityItem(type, title, estado, ts, href) {
-    // DOMPurify está cargado antes de este script
-    const safeTitle = typeof DOMPurify !== 'undefined'
-      ? DOMPurify.sanitize(title, { ALLOWED_TAGS: [] })
-      : title.replace(/</g, '&lt;');
-
-    const badgeCls = BADGE_MAP[estado] ?? 'b-borrador';
-    const li = document.createElement('li');
-    li.className = 'activity-item';
-    li.setAttribute('role', 'button');
-    li.setAttribute('tabindex', '0');
-    li.setAttribute('aria-label', safeTitle + ', estado: ' + estado);
-    if (href) {
-      li.onclick     = () => nav(href);
-      li.onkeydown   = e => { if (e.key === 'Enter') nav(href); };
-    }
-    li.innerHTML =
-      `<span class="activity-icon" aria-hidden="true">${TYPE_ICO[type] ?? '●'}</span>` +
-      `<div class="activity-body">` +
-        `<div class="activity-title">${safeTitle}</div>` +
-        `<div class="activity-meta">${relTime(ts)}</div>` +
-      `</div>` +
-      `<span class="activity-badge ${badgeCls}">${estado}</span>`;
-    return li;
-  }
-
-  async function loadActivity() {
-    const supa  = window.ATSHEL?.supabase;
-    const items = [];
-
-    // Incidentes recientes
-    const incs = await dbRows(
-      `SELECT id, numero, tipo, estado, created_at
-       FROM incidentes
-       WHERE deleted_at IS NULL
-       ORDER BY created_at DESC LIMIT 3`,
-      [],
-      async () => {
-        const { data } = await supa
-          .from('incidentes')
-          .select('id,numero,tipo,estado,created_at')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(3);
-        return data ?? [];
-      }
-    );
-    incs.forEach(r => {
-      const lbl = (r.numero ? r.numero + ' — ' : '') + (r.tipo || 'Incidente');
-      items.push({ type:'incidente', title:lbl, estado:r.estado, ts:r.created_at,
-        href:'/incidente-detalle.html?id=' + r.id });
-    });
-
-    // ATS recientes (JOIN plantillas_ats para obtener nombre)
-    const atsRows = await dbRows(
-      `SELECT ai.id, ai.estado, ai.created_at, pa.nombre_ats
-       FROM ats_instancias ai
-       LEFT JOIN plantillas_ats pa ON pa.id = ai.plantilla_id
-       WHERE ai.deleted_at IS NULL
-       ORDER BY ai.created_at DESC LIMIT 2`,
-      [],
-      async () => {
-        const { data } = await supa
-          .from('ats_instancias')
-          .select('id,estado,created_at,plantillas_ats(nombre_ats)')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(2);
-        return data ?? [];
-      }
-    );
-    atsRows.forEach(r => {
-      // PowerSync JOIN → r.nombre_ats; Supabase nested → r.plantillas_ats?.nombre_ats
-      const nombre = r.nombre_ats ?? r.plantillas_ats?.nombre_ats ?? 'ATS';
-      items.push({ type:'ats', title:nombre, estado:r.estado, ts:r.created_at, href:null });
-    });
-
-    // Acciones correctivas recientes
-    const accRows = await dbRows(
-      `SELECT id, descripcion, estado, created_at
-       FROM acciones_correctivas
-       WHERE deleted_at IS NULL
-       ORDER BY created_at DESC LIMIT 2`,
-      [],
-      async () => {
-        const { data } = await supa
-          .from('acciones_correctivas')
-          .select('id,descripcion,estado,created_at')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(2);
-        return data ?? [];
-      }
-    );
-    accRows.forEach(r => {
-      const desc = (r.descripcion ?? '').slice(0, 50) || 'Acción correctiva';
-      items.push({ type:'accion', title:desc, estado:r.estado, ts:r.created_at, href:'/acciones.html' });
-    });
-
-    // Ordenar por fecha desc, tomar 6
-    items.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-    const top6 = items.slice(0, 6);
-
-    EL.activity.innerHTML = '';
-
-    if (top6.length === 0) {
-      EL.activity.innerHTML =
-        `<li class="activity-empty">` +
-          `<span class="ae-icon" aria-hidden="true">📭</span>` +
-          `<span class="ae-text">Sin actividad reciente</span>` +
-        `</li>`;
-      return;
-    }
-
-    const frag = document.createDocumentFragment();
-    top6.forEach(item =>
-      frag.appendChild(makeActivityItem(item.type, item.title, item.estado, item.ts, item.href))
-    );
-    EL.activity.appendChild(frag);
-  }
-
-  // ── Refresh parcial (sin mostrar skeleton) ─────────────────────
-  async function refreshStats() {
-    try {
-      await Promise.allSettled([loadStats(), loadActivity()]);
-      setSyncState(navigator.onLine ? 'synced' : 'offline');
-    } catch (e) {
-      console.warn('[ATSHEL] refresh error:', e.message);
-    }
-  }
-
-  // ── Carga principal del dashboard ──────────────────────────────
-  async function initDashboard() {
-    // Mostrar skeleton, ocultar estados anteriores
-    EL.skeleton.classList.remove('hidden');
-    EL.dashboard.classList.add('hidden');
-    EL.error.classList.add('hidden');
-    EL.vencidas.classList.add('hidden');
-    EL.ingresante.classList.add('hidden');
-    setSyncState('syncing');
-
-    try {
-      // Perfil de usuario (cargado por atshel-app.js antes del evento)
-      renderUser(window.ATSHEL?.user);
-
-      if (!navigator.onLine) applyOffline();
-
-      // Estadísticas y actividad en paralelo
-      await Promise.allSettled([loadStats(), loadActivity()]);
-
-      // Mostrar dashboard
-      EL.skeleton.classList.add('hidden');
-      EL.dashboard.classList.remove('hidden');
-      setSyncState(navigator.onLine ? 'synced' : 'offline');
-
-    } catch (err) {
-      console.error('[ATSHEL] initDashboard error:', err);
-      EL.skeleton.classList.add('hidden');
-      EL.errorMsg.textContent =
-        'No se pudo cargar el panel. ' + (err?.message ?? 'Error desconocido.');
-      EL.error.classList.remove('hidden');
-      setSyncState('error', err?.message);
-    }
-  }
-
-  // ── Exponer para retry en error state ──────────────────────────
-  window.initDashboard = initDashboard;
-
-  // ── Escuchar eventos de atshel-app.js ─────────────────────────
-  // 'atshel:ready' → auth OK + PowerSync inicializado
-  // 'atshel:synced' → ciclo de sync completado (actualizar datos)
-  let readyFired = false;
-
-  document.addEventListener('atshel:ready', function () {
-    readyFired = true;
-    initDashboard();
-  });
-
-  document.addEventListener('atshel:synced', function () {
-    if (!EL.dashboard.classList.contains('hidden')) {
-      setSyncState('syncing');
-      refreshStats();
-    }
-  });
-
-  // Fallback: si atshel-app.js no dispara el evento en 1.5s,
-  // cargamos el dashboard de todas formas (modo degradado)
-  document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(function () {
-      if (!readyFired) {
-        console.warn('[ATSHEL] atshel:ready no recibido, cargando en modo degradado');
-        initDashboard();
-      }
-    }, 1500);
-  });
-
-  </script>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__brand">
+			<img
+				src="/icons/icon-192.png"
+				alt=""
+				aria-hidden="true"
+				class="app-header__logo"
+				width="28"
+				height="28"
+			>
+			<span class="app-header__name">ATSHEL</span>
+		</div>
+
+		<div class="app-header__actions">
+			<div
+				id="sync-badge"
+				class="sync-badge sync-badge--pending"
+				aria-live="polite"
+				aria-label="Estado de sincronización"
+			>
+				<span class="sync-badge__dot" aria-hidden="true"></span>
+				<span id="sync-text">Conectando...</span>
+			</div>
+		</div>
+	</header>
+
+	<!-- ── Contenido principal ─────────────────────────────── -->
+	<main class="dashboard-main" id="main-content" role="main">
+
+		<!-- Saludo -->
+		<section class="greeting" aria-label="Saludo">
+			<p id="greeting-time" class="greeting__sub">Cargando...</p>
+			<h1 id="greeting-name" class="greeting__name">—</h1>
+			<span id="greeting-role" class="greeting__role-badge" aria-label="Rol">—</span>
+		</section>
+
+		<!-- Banner de alerta equipos (oculto por defecto) -->
+		<div
+			id="banner-equipos"
+			class="alert-banner alert-banner--danger"
+			role="alert"
+			aria-live="assertive"
+			hidden
+		>
+			<span class="alert-banner__icon" aria-hidden="true">⚠️</span>
+			<span id="banner-equipos-texto"></span>
+		</div>
+
+		<!-- KPI Cards -->
+		<section aria-label="Indicadores del período">
+			<div class="kpi-grid" id="kpi-grid">
+				<!-- Incidentes -->
+				<div class="kpi-card" id="kpi-incidentes" role="img" aria-label="Incidentes">
+					<div class="kpi-card__icon" aria-hidden="true">⚠️</div>
+					<div id="kpi-inc-valor" class="kpi-card__value">—</div>
+					<div class="kpi-card__label">Incidentes</div>
+				</div>
+				<!-- Acciones pendientes -->
+				<div class="kpi-card" id="kpi-acciones" role="img" aria-label="Acciones pendientes">
+					<div class="kpi-card__icon" aria-hidden="true">📋</div>
+					<div id="kpi-acc-valor" class="kpi-card__value">—</div>
+					<div class="kpi-card__label">Acc. pendientes</div>
+				</div>
+				<!-- ATS firmados -->
+				<div class="kpi-card kpi-card--success" id="kpi-ats" role="img" aria-label="ATS firmados">
+					<div class="kpi-card__icon" aria-hidden="true">✅</div>
+					<div id="kpi-ats-valor" class="kpi-card__value">—</div>
+					<div class="kpi-card__label">ATS firmados</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Barra de cumplimiento de acciones -->
+		<div class="compliance-bar" id="compliance-bar" aria-label="Cumplimiento de acciones correctivas">
+			<div class="compliance-bar__header">
+				<span class="compliance-bar__label">Cumplimiento acciones</span>
+				<span id="compliance-pct" class="compliance-bar__pct">—</span>
+			</div>
+			<div class="compliance-bar__track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-labelledby="compliance-pct">
+				<div id="compliance-fill" class="compliance-bar__fill" style="width:0%"></div>
+			</div>
+			<div id="compliance-meta" class="compliance-bar__meta">Últimos 30 días · Meta ISO 45001: ≥ 90%</div>
+		</div>
+
+		<!-- Acciones urgentes -->
+		<section class="list-section" aria-labelledby="title-acciones">
+			<div class="list-section__header">
+				<h2 id="title-acciones" class="list-section__title">Acciones urgentes</h2>
+				<a href="/accion-nueva.html" class="list-section__link">+ Nueva</a>
+			</div>
+			<div id="list-acciones" aria-live="polite">
+				<div class="skeleton-item"></div>
+				<div class="skeleton-item"></div>
+			</div>
+		</section>
+
+		<!-- Últimos incidentes -->
+		<section class="list-section" aria-labelledby="title-incidentes">
+			<div class="list-section__header">
+				<h2 id="title-incidentes" class="list-section__title">Últimos incidentes</h2>
+				<a href="/incidentes.html" class="list-section__link">Ver todos</a>
+			</div>
+			<div id="list-incidentes" aria-live="polite">
+				<div class="skeleton-item"></div>
+				<div class="skeleton-item"></div>
+				<div class="skeleton-item"></div>
+			</div>
+		</section>
+
+	</main>
+
+	<!-- ── Navegación inferior ─────────────────────────────── -->
+	<nav class="bottom-nav" aria-label="Navegación principal">
+
+		<a href="/dashboard.html" class="bottom-nav__item bottom-nav__item--active" aria-current="page">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48a16,16,0,0,1,21.66,0l80,75.48A16,16,0,0,1,224,115.55Z"/>
+				</svg>
+			</span>
+			<span>Inicio</span>
+		</a>
+
+		<a href="/incidentes.html" class="bottom-nav__item" aria-label="Incidentes">
+			<span class="bottom-nav__icon" aria-hidden="true" id="nav-icon-incidentes">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M236.8,188.09,149.35,36.22a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/>
+				</svg>
+				<span id="nav-badge-incidentes" class="bottom-nav__badge" hidden aria-label="incidentes pendientes"></span>
+			</span>
+			<span>Incidentes</span>
+		</a>
+
+		<a href="/ats-nuevo.html" class="bottom-nav__item" aria-label="ATS nuevo">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM40,64H216V80H40ZM216,192H40V96H216Zm-32-72a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,120Zm0,32a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,152ZM96,120a8,8,0,0,1-8,8H80v8a8,8,0,0,1-16,0v-8H56a8,8,0,0,1,0-16H64v-8a8,8,0,0,1,16,0v8h8A8,8,0,0,1,96,120Z"/>
+				</svg>
+			</span>
+			<span>ATS</span>
+		</a>
+
+		<a href="/near-miss.html" class="bottom-nav__item" aria-label="Near miss">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/>
+				</svg>
+			</span>
+			<span>Near Miss</span>
+		</a>
+
+		<a href="/accion-nueva.html" class="bottom-nav__item" aria-label="Acciones correctivas">
+			<span class="bottom-nav__icon" aria-hidden="true" id="nav-icon-acciones">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M243.28,68.24l-24-23.56a16,16,0,0,0-22.59.27L115.27,133.67a16,16,0,0,0,0,22.58l16,16a16.07,16.07,0,0,0,11.31,4.69,15.9,15.9,0,0,0,11.2-4.5l-4-4L213.05,105Zm-56.5,81.77a0,0,0,0,1,0,0l-16-16L243.25,60.35l24,23.56ZM48,68a12,12,0,1,1,12,12A12,12,0,0,1,48,68ZM104,52a12,12,0,1,1,12,12A12,12,0,0,1,104,52ZM162,36a12,12,0,1,1,12,12A12,12,0,0,1,162,36ZM32,120a12,12,0,1,1,12,12A12,12,0,0,1,32,120ZM168,200a12,12,0,1,1,12,12A12,12,0,0,1,168,200ZM124,184a12,12,0,1,1,12,12A12,12,0,0,1,124,184ZM80,168a12,12,0,1,1,12,12A12,12,0,0,1,80,168Z"/>
+				</svg>
+				<span id="nav-badge-acciones" class="bottom-nav__badge" hidden aria-label="acciones pendientes"></span>
+			</span>
+			<span>Acciones</span>
+		</a>
+
+	</nav>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor (síncronos) ──────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo principal ────────────────────────────────── -->
+<script type="module">
+	/**
+	 * dashboard.html — módulo principal.
+	 *
+	 * Fuentes de datos (todas verificadas MCP 2026-06-24):
+	 *   · fn_calcular_kpis(p_empresa_id, p_desde, p_hasta) → JSONB
+	 *       Retorna: incidentes.total, acciones_correctivas.totales,
+	 *                acciones_correctivas.porcentaje_cumplimiento,
+	 *                documentacion.ats_firmados, equipos.vencidos, etc.
+	 *   · public.incidentes (estado: 'Abierto'|'En investigación'|'Cerrado')
+	 *   · public.acciones_correctivas (estado: 'Pendiente'|'En curso'|'Vencida'|'Completada')
+	 *
+	 * Enums verificados con pg_get_constraintdef(oid):
+	 *   incidentes.severidad : 'Leve'|'Moderado'|'Grave'|'Catastrófico'
+	 *   incidentes.tipo      : 'Incidente real'|'Cuasi-accidente'|'Acto inseguro'|'Condición insegura'
+	 */
+
+	import {
+		supabase,
+		getUsuario,
+		getEmpresaId,
+		getRol,
+		requireAuth,
+		calcularKpis,
+	} from '/src/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		formatFechaCorta,
+	} from '/src/js/atshel-core.js';
+
+	// ── Referencias al DOM ───────────────────────────────────
+	const greetingTimeEl    = document.getElementById('greeting-time');
+	const greetingNameEl    = document.getElementById('greeting-name');
+	const greetingRoleEl    = document.getElementById('greeting-role');
+	const syncBadgeEl       = document.getElementById('sync-badge');
+	const syncTextEl        = document.getElementById('sync-text');
+	const bannerEquiposEl   = document.getElementById('banner-equipos');
+	const bannerEquiposTxt  = document.getElementById('banner-equipos-texto');
+	const kpiIncValorEl     = document.getElementById('kpi-inc-valor');
+	const kpiAccValorEl     = document.getElementById('kpi-acc-valor');
+	const kpiAtsValorEl     = document.getElementById('kpi-ats-valor');
+	const kpiCardAccEl      = document.getElementById('kpi-acciones');
+	const compliancePctEl   = document.getElementById('compliance-pct');
+	const complianceFillEl  = document.getElementById('compliance-fill');
+	const complianceMetaEl  = document.getElementById('compliance-meta');
+	const listAccionesEl    = document.getElementById('list-acciones');
+	const listIncidentesEl  = document.getElementById('list-incidentes');
+	const navBadgeIncEl     = document.getElementById('nav-badge-incidentes');
+	const navBadgeAccEl     = document.getElementById('nav-badge-acciones');
+
+	// ── Helpers de saludo ────────────────────────────────────
+	function getSaludo() {
+		const h = new Date().getHours();
+		if (h >= 6  && h < 12) return 'Buenos días';
+		if (h >= 12 && h < 19) return 'Buenas tardes';
+		return 'Buenas noches';
+	}
+
+	const ROLES_LABEL = {
+		administrador: 'Administrador',
+		supervisor:    'Supervisor',
+		hse:           'HSE',
+	};
+
+	// ── Helpers de chips ─────────────────────────────────────
+	function chipSeveridad(sev) {
+		const map = {
+			'Leve':        ['neutral',  'Leve'],
+			'Moderado':    ['warning',  'Moderado'],
+			'Grave':       ['danger',   'Grave'],
+			'Catastrófico':['danger',   'Catastrófico'],
+		};
+		const [tipo, label] = map[sev] || ['neutral', sev || '—'];
+		return `<span class="chip chip--${tipo}">${sanitizeHTML(label)}</span>`;
+	}
+
+	function chipEstadoAccion(estado) {
+		const map = {
+			'Pendiente': 'warning',
+			'En curso':  'info',
+			'Vencida':   'danger',
+			'Completada':'success',
+		};
+		const tipo = map[estado] || 'neutral';
+		return `<span class="chip chip--${tipo}">${sanitizeHTML(estado || '—')}</span>`;
+	}
+
+	function chipEstadoIncidente(estado) {
+		const map = {
+			'Abierto':           'danger',
+			'En investigación':  'warning',
+			'Cerrado':           'success',
+		};
+		const tipo = map[estado] || 'neutral';
+		return `<span class="chip chip--${tipo}">${sanitizeHTML(estado || '—')}</span>`;
+	}
+
+	// Icono y clase para incidente según tipo
+	function incidenteIconData(tipo) {
+		const map = {
+			'Incidente real':   ['⚠️', 'danger'],
+			'Cuasi-accidente':  ['🔶', 'warning'],
+			'Acto inseguro':    ['👁️', 'info'],
+			'Condición insegura':['🔧','info'],
+		};
+		return map[tipo] || ['📌', 'neutral'];
+	}
+
+	// ── Actualizar badge de sincronización ───────────────────
+	function updateSyncBadge(estado) {
+		// estado: 'ok' | 'pending' | 'offline'
+		const clases = {
+			ok:      'sync-badge sync-badge--ok',
+			pending: 'sync-badge sync-badge--pending',
+			offline: 'sync-badge sync-badge--offline',
+		};
+		const textos = {
+			ok:      'Sincronizado',
+			pending: 'Sincronizando...',
+			offline: 'Sin conexión',
+		};
+		syncBadgeEl.className = clases[estado] || clases.pending;
+		syncTextEl.textContent = textos[estado] || textos.pending;
+	}
+
+	// ── Render: KPIs ─────────────────────────────────────────
+	function renderKpis(kpis) {
+		if (!kpis) return;
+
+		const totalInc = kpis.incidentes?.total ?? 0;
+		kpiIncValorEl.textContent = totalInc;
+		// Color según riesgo
+		if (totalInc === 0) {
+			document.getElementById('kpi-incidentes').classList.add('kpi-card--success');
+		} else if (totalInc >= 3) {
+			document.getElementById('kpi-incidentes').classList.add('kpi-card--danger');
+		} else {
+			document.getElementById('kpi-incidentes').classList.add('kpi-card--warning');
+		}
+
+		const atsVal = kpis.documentacion?.ats_firmados ?? 0;
+		kpiAtsValorEl.textContent = atsVal;
+
+		// Cumplimiento
+		const pct = kpis.acciones_correctivas?.porcentaje_cumplimiento;
+		if (pct !== null && pct !== undefined) {
+			compliancePctEl.textContent = pct + '%';
+			complianceFillEl.style.width = Math.min(pct, 100) + '%';
+			complianceFillEl.parentElement.setAttribute('aria-valuenow', pct);
+			if (pct >= 90) {
+				complianceFillEl.className = 'compliance-bar__fill';
+			} else if (pct >= 70) {
+				complianceFillEl.className = 'compliance-bar__fill compliance-bar__fill--warn';
+			} else {
+				complianceFillEl.className = 'compliance-bar__fill compliance-bar__fill--bad';
+			}
+			const tot   = kpis.acciones_correctivas?.totales ?? 0;
+			const cerr  = kpis.acciones_correctivas?.cerradas_a_tiempo ?? 0;
+			complianceMetaEl.textContent =
+				`${cerr} de ${tot} cerradas a tiempo · Meta ISO 45001: ≥ 90%`;
+		} else {
+			compliancePctEl.textContent  = 'Sin datos';
+			complianceFillEl.style.width = '0%';
+			complianceMetaEl.textContent = 'No hay acciones en el período.';
+		}
+
+		// Equipos vencidos
+		const venc = kpis.equipos?.vencidos ?? 0;
+		const porV = kpis.equipos?.por_vencer ?? 0;
+		if (venc > 0) {
+			bannerEquiposTxt.textContent =
+				`${venc} equipo${venc > 1 ? 's' : ''} con calibración vencida. Revisá antes de operar.`;
+			bannerEquiposEl.hidden = false;
+			bannerEquiposEl.className = 'alert-banner alert-banner--danger';
+		} else if (porV > 0) {
+			bannerEquiposTxt.textContent =
+				`${porV} equipo${porV > 1 ? 's' : ''} vence${porV === 1 ? 'n' : ''} en los próximos 30 días.`;
+			bannerEquiposEl.hidden = false;
+			bannerEquiposEl.className = 'alert-banner alert-banner--warning';
+		}
+	}
+
+	// ── Render: acciones urgentes ────────────────────────────
+	function renderAcciones(acciones, totalPendiente) {
+		// Actualizar KPI de acciones pendientes
+		kpiAccValorEl.textContent = totalPendiente ?? 0;
+		if ((totalPendiente ?? 0) > 0) {
+			kpiCardAccEl.classList.add('kpi-card--warning');
+		}
+		// Badge en nav
+		if (totalPendiente > 0) {
+			navBadgeAccEl.textContent = totalPendiente > 9 ? '9+' : String(totalPendiente);
+			navBadgeAccEl.hidden = false;
+		}
+
+		if (!acciones || acciones.length === 0) {
+			listAccionesEl.innerHTML =
+				`<div class="empty-state">
+					<div class="empty-state__icon">✅</div>
+					Sin acciones urgentes
+				</div>`;
+			return;
+		}
+
+		const items = acciones.map(a => {
+			const esVencida = a.estado === 'Vencida';
+			const venc = a.fecha_vencimiento
+				? formatFechaCorta(a.fecha_vencimiento)
+				: 'Sin fecha';
+			return `
+			<a href="/accion-detalle.html?id=${sanitizeHTML(a.id)}"
+			   class="list-item"
+			   aria-label="Acción: ${sanitizeHTML(a.descripcion?.substring(0,60) ?? '—')}">
+				<div class="list-item__icon ${esVencida ? 'list-item__icon--danger' : 'list-item__icon--warning'}"
+				     aria-hidden="true">
+					${esVencida ? '🔴' : '🟠'}
+				</div>
+				<div class="list-item__body">
+					<div class="list-item__title">${sanitizeHTML(a.descripcion?.substring(0,80) ?? '—')}</div>
+					<div class="list-item__meta">
+						${chipEstadoAccion(a.estado)}
+						<span class="list-item__date">Vence: ${sanitizeHTML(venc)}</span>
+					</div>
+				</div>
+			</a>`;
+		}).join('');
+
+		listAccionesEl.innerHTML = items;
+	}
+
+	// ── Render: incidentes recientes ─────────────────────────
+	function renderIncidentes(incidentes, cantAbiertas) {
+		// Badge en nav
+		if (cantAbiertas > 0) {
+			navBadgeIncEl.textContent = cantAbiertas > 9 ? '9+' : String(cantAbiertas);
+			navBadgeIncEl.hidden = false;
+			navBadgeIncEl.setAttribute('aria-label', `${cantAbiertas} incidentes abiertos`);
+		}
+
+		if (!incidentes || incidentes.length === 0) {
+			listIncidentesEl.innerHTML =
+				`<div class="empty-state">
+					<div class="empty-state__icon">🛡️</div>
+					Sin incidentes en los últimos 30 días
+				</div>`;
+			return;
+		}
+
+		const items = incidentes.map(inc => {
+			const [icono, iconClass] = incidenteIconData(inc.tipo);
+			const fecha = inc.fecha_hora
+				? formatFechaCorta(inc.fecha_hora)
+				: 'Sin fecha';
+			const lugar = inc.locacion_nombre
+				? ` · ${inc.locacion_nombre}`
+				: '';
+			return `
+			<a href="/incidente-detalle.html?id=${sanitizeHTML(inc.id)}"
+			   class="list-item"
+			   aria-label="Incidente ${sanitizeHTML(inc.numero ?? '')}: ${sanitizeHTML(inc.descripcion?.substring(0,60) ?? '—')}">
+				<div class="list-item__icon list-item__icon--${iconClass}" aria-hidden="true">
+					${icono}
+				</div>
+				<div class="list-item__body">
+					<div class="list-item__title">${sanitizeHTML(inc.descripcion?.substring(0,80) ?? '—')}</div>
+					<div class="list-item__meta">
+						${chipSeveridad(inc.severidad)}
+						${chipEstadoIncidente(inc.estado)}
+						<span class="list-item__date">${sanitizeHTML(fecha + lugar)}</span>
+					</div>
+				</div>
+			</a>`;
+		}).join('');
+
+		listIncidentesEl.innerHTML = items;
+	}
+
+	// ── Estado de error por sección ──────────────────────────
+	function renderSectionError(containerEl, msg) {
+		containerEl.innerHTML =
+			`<div class="empty-state">
+				<div class="empty-state__icon">⚡</div>
+				${sanitizeHTML(msg)}
+			</div>`;
+	}
+
+	// ── Carga de datos ───────────────────────────────────────
+	async function cargarDatos(empresaId) {
+		const hoy    = new Date();
+		const desde  = new Date(hoy);
+		desde.setDate(desde.getDate() - 30);
+		const desdeStr = desde.toISOString().slice(0, 10);
+		const hastaStr = hoy.toISOString().slice(0, 10);
+
+		// Las tres cargas en paralelo para minimizar latencia
+		const [kpisResult, accionesResult, incidentesResult] = await Promise.allSettled([
+
+			// 1. KPIs vía RPC
+			calcularKpis({ empresaId, desde: desdeStr, hasta: hastaStr }),
+
+			// 2. Acciones urgentes (Pendiente, En curso, Vencida) — máximo 5
+			supabase
+				.from('acciones_correctivas')
+				.select('id, descripcion, estado, fecha_vencimiento')
+				.in('estado', ['Pendiente', 'En curso', 'Vencida'])
+				.is('deleted_at', null)
+				.order('fecha_vencimiento', { ascending: true, nullsFirst: false })
+				.limit(5),
+
+			// 3. Incidentes recientes — máximo 5
+			supabase
+				.from('incidentes')
+				.select('id, numero, tipo, severidad, estado, descripcion, fecha_hora, locacion_nombre')
+				.is('deleted_at', null)
+				.order('created_at', { ascending: false })
+				.limit(5),
+		]);
+
+		// KPIs
+		if (kpisResult.status === 'fulfilled' && !kpisResult.value?.error) {
+			renderKpis(kpisResult.value?.data ?? kpisResult.value);
+		} else {
+			// KPIs indisponibles — no es bloqueante, mostrar parcial
+			kpiIncValorEl.textContent = '—';
+			kpiAccValorEl.textContent = '—';
+			kpiAtsValorEl.textContent = '—';
+		}
+
+		// Acciones
+		if (accionesResult.status === 'fulfilled' && !accionesResult.value?.error) {
+			const { data } = accionesResult.value;
+			// Contar totales pendientes (para badge)
+			const { count } = await supabase
+				.from('acciones_correctivas')
+				.select('id', { count: 'exact', head: true })
+				.in('estado', ['Pendiente', 'En curso', 'Vencida'])
+				.is('deleted_at', null);
+			renderAcciones(data, count ?? 0);
+		} else {
+			renderSectionError(listAccionesEl, 'No se pudieron cargar las acciones.');
+		}
+
+		// Incidentes
+		if (incidentesResult.status === 'fulfilled' && !incidentesResult.value?.error) {
+			const { data } = incidentesResult.value;
+			// Contar abiertos para badge
+			const { count: cantAbiertas } = await supabase
+				.from('incidentes')
+				.select('id', { count: 'exact', head: true })
+				.in('estado', ['Abierto', 'En investigación'])
+				.is('deleted_at', null);
+			renderIncidentes(data, cantAbiertas ?? 0);
+		} else {
+			renderSectionError(listIncidentesEl, 'No se pudieron cargar los incidentes.');
+		}
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Verificar sesión — redirige a login si no hay
+		await requireAuth('/login.html');
+
+		// 2. Cargar datos del usuario
+		let usuario;
+		try {
+			usuario = await getUsuario();
+		} catch {
+			// Si falla, redirigir a login
+			window.location.replace('/login.html');
+			return;
+		}
+
+		// 3. Renderizar saludo inmediatamente (no espera los KPIs)
+		greetingTimeEl.textContent = getSaludo();
+		const nombre = usuario?.nombre_completo?.split(' ')[0] ?? 'Operador';
+		greetingNameEl.textContent = nombre;
+		const rol = usuario?.rol ?? await getRol() ?? 'hse';
+		greetingRoleEl.textContent = ROLES_LABEL[rol] ?? rol;
+
+		// 4. Estado de red inicial
+		updateSyncBadge(navigator.onLine ? 'pending' : 'offline');
+
+		// 5. Cargar datos en paralelo
+		const empresaId = usuario?.empresa_id ?? await getEmpresaId();
+		try {
+			await cargarDatos(empresaId);
+			updateSyncBadge(navigator.onLine ? 'ok' : 'offline');
+		} catch {
+			updateSyncBadge('offline');
+		}
+
+		// 6. Actualizar badge de red en tiempo real
+		window.addEventListener('online',  () => updateSyncBadge('ok'));
+		window.addEventListener('offline', () => updateSyncBadge('offline'));
+	}
+
+	init();
+</script>
 </body>
 </html>
