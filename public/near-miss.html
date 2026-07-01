@@ -1,4 +1,908 @@
-o) → new Date() es seguro
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Reportar near miss">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Near Miss — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
+
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
+
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         10px;
+		}
+
+		.app-header__icon {
+			font-size: 20px;
+			line-height: 1;
+		}
+
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
+
+		.app-header__sub {
+			font-size:  var(--text-xs);
+			color:      var(--text-tertiary);
+			margin-top: 1px;
+		}
+
+		/* ── Intro banner ─────────────────────────────────────── */
+		.intro-banner {
+			background:   var(--color-warning-bg);
+			border-bottom: 1px solid var(--color-warning-border);
+			padding:      10px 16px;
+			font-size:    var(--text-sm);
+			color:        var(--color-warning);
+			font-weight:  600;
+			line-height:  1.4;
+		}
+
+		/* ── Form ─────────────────────────────────────────────── */
+		.form-main {
+			flex:           1;
+			padding:        20px 16px calc(96px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            20px;
+		}
+
+		/* ── Tipo badge fijo ──────────────────────────────────── */
+		.tipo-badge {
+			display:       inline-flex;
+			align-items:   center;
+			gap:           6px;
+			padding:       8px 14px;
+			border-radius: 8px;
+			background:    var(--color-warning-bg);
+			border:        1px solid var(--color-warning-border);
+			color:         var(--color-warning);
+			font-size:     var(--text-sm);
+			font-weight:   700;
+		}
+
+		/* ── Severidad compacta (2 columnas) ──────────────────── */
+		.sev-grid {
+			display:               grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap:                   8px;
+		}
+
+		.sev-card {
+			display:        flex;
+			align-items:    center;
+			gap:            8px;
+			padding:        12px;
+			border-radius:  8px;
+			border:         2px solid transparent;
+			cursor:         pointer;
+			transition:     all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			user-select:    none;
+		}
+		.sev-card:active { transform: scale(0.97); }
+
+		.sev-card__dot {
+			width:         10px;
+			height:        10px;
+			border-radius: 50%;
+			flex-shrink:   0;
+		}
+
+		.sev-card__label {
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			line-height: 1;
+		}
+
+		.sev-card--leve {
+			background:   var(--color-success-bg);
+			color:        var(--color-success);
+		}
+		.sev-card--leve .sev-card__dot { background: var(--color-success); }
+		.sev-card--leve[aria-pressed="true"] { border-color: var(--color-success); }
+
+		.sev-card--moderado {
+			background:   var(--color-warning-bg);
+			color:        var(--color-warning);
+		}
+		.sev-card--moderado .sev-card__dot { background: var(--color-warning); }
+		.sev-card--moderado[aria-pressed="true"] { border-color: var(--color-warning); }
+
+		.sev-card--grave {
+			background:   rgba(255,100,0,0.1);
+			color:        #FF6400;
+		}
+		.sev-card--grave .sev-card__dot { background: #FF6400; }
+		.sev-card--grave[aria-pressed="true"] { border-color: #FF6400; }
+
+		.sev-card--catastrofico {
+			background:   var(--color-danger-bg);
+			color:        var(--color-danger);
+		}
+		.sev-card--catastrofico .sev-card__dot { background: var(--color-danger); }
+		.sev-card--catastrofico[aria-pressed="true"] { border-color: var(--color-danger); }
+
+		/* ── Campos ───────────────────────────────────────────── */
+		.field { display: flex; flex-direction: column; gap: 6px; }
+
+		.field__label {
+			font-size:      10px;
+			font-weight:    700;
+			color:          var(--text-tertiary);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.field__label abbr { text-decoration: none; color: var(--color-danger); margin-left: 2px; }
+
+		.field__textarea,
+		.field__input,
+		.field__datetime {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       11px 14px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
+		.field__datetime { color-scheme: dark; }
+
+		.field__textarea:focus,
+		.field__input:focus,
+		.field__datetime:focus   { border-color: var(--accent); }
+
+		.field__textarea::placeholder,
+		.field__input::placeholder { color: var(--text-tertiary); }
+
+		.field__textarea[aria-invalid="true"],
+		.field__input[aria-invalid="true"],
+		.field__datetime[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		.field__error {
+			font-size:   var(--text-xs);
+			color:       var(--color-danger);
+			font-weight: 600;
+			min-height:  16px;
+		}
+
+		/* ── Geo row ──────────────────────────────────────────── */
+		.geo-row { display: flex; align-items: center; gap: 8px; }
+
+		.btn-geo {
+			display:      flex;
+			align-items:  center;
+			gap:          5px;
+			padding:      9px 12px;
+			border-radius: 8px;
+			background:   var(--surface-03);
+			border:       1px solid var(--border-subtle);
+			color:        var(--text-secondary);
+			font-family:  var(--font-sans);
+			font-size:    var(--text-sm);
+			font-weight:  600;
+			cursor:       pointer;
+			white-space:  nowrap;
+			flex-shrink:  0;
+			transition:   background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-geo:disabled { opacity: 0.5; cursor: not-allowed; }
+		.btn-geo--ok    { color: var(--color-success); border-color: var(--color-success-bg); }
+		.btn-geo--error { color: var(--color-danger);  border-color: var(--color-danger-bg);  }
+
+		.geo-coords {
+			font-family:   var(--font-mono);
+			font-size:     var(--text-xs);
+			color:         var(--text-tertiary);
+			flex:          1;
+			overflow:      hidden;
+			text-overflow: ellipsis;
+			white-space:   nowrap;
+		}
+
+		/* ── Sección ──────────────────────────────────────────── */
+		.section-title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-lg);
+			font-weight:  700;
+			color:        var(--text-primary);
+			margin-bottom: 10px;
+		}
+
+		/* ── Error banner ─────────────────────────────────────── */
+		.form-error-banner {
+			padding:       12px 14px;
+			border-radius: 8px;
+			background:    var(--color-danger-bg);
+			border:        1px solid var(--color-danger-border);
+			color:         var(--color-danger);
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+		}
+
+		/* ── Estado de éxito (inline) ─────────────────────────── */
+		.success-state {
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			padding:        40px 24px;
+			text-align:     center;
+			gap:            12px;
+			animation:      fade-in 0.3s ease;
+		}
+
+		.success-state__icon {
+			font-size:    48px;
+			line-height:  1;
+		}
+
+		.success-state__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-3xl);
+			font-weight:  800;
+			color:        var(--color-success);
+			line-height:  1;
+		}
+
+		.success-state__sub {
+			font-size:   var(--text-base);
+			color:       var(--text-secondary);
+			line-height: 1.4;
+			max-width:   280px;
+		}
+
+		.success-state__numero {
+			font-family:  var(--font-mono);
+			font-size:    var(--text-sm);
+			color:        var(--text-tertiary);
+			padding:      6px 12px;
+			background:   var(--surface-02);
+			border-radius: 6px;
+			border:       1px solid var(--border-subtle);
+		}
+
+		.success-actions {
+			display:        flex;
+			flex-direction: column;
+			gap:            8px;
+			width:          100%;
+			max-width:      320px;
+			margin-top:     8px;
+		}
+
+		.btn-otro {
+			padding:       13px;
+			border-radius: 10px;
+			background:    var(--accent);
+			border:        none;
+			color:         #000;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   700;
+			cursor:        pointer;
+			transition:    background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-otro:hover { background: var(--accent-hover); }
+
+		.btn-ver-lista {
+			padding:       13px;
+			border-radius: 10px;
+			background:    transparent;
+			border:        1px solid var(--border-subtle);
+			color:         var(--text-secondary);
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   600;
+			cursor:        pointer;
+			text-decoration: none;
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-ver-lista:hover { background: var(--surface-03); }
+
+		@keyframes fade-in {
+			from { opacity: 0; transform: translateY(12px); }
+			to   { opacity: 1; transform: translateY(0);    }
+		}
+
+		/* ── Footer ───────────────────────────────────────────── */
+		.form-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+		}
+
+		.btn-guardar {
+			width:           100%;
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			gap:             8px;
+			padding:         14px;
+			border-radius:   10px;
+			background:      var(--accent);
+			border:          none;
+			color:           #000;
+			font-family:     var(--font-sans);
+			font-size:       var(--text-base);
+			font-weight:     700;
+			cursor:          pointer;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar:hover    { background: var(--accent-hover); }
+		.btn-guardar:active   { transform: scale(0.99); }
+		.btn-guardar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-spinner {
+			width:         18px;
+			height:        18px;
+			border:        2px solid rgba(0,0,0,0.25);
+			border-top-color: #000;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+		}
+		@keyframes spin { to { transform: rotate(360deg); } }
+
+		/* ── Bottom nav ───────────────────────────────────────── */
+		.bottom-nav {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			z-index:        100;
+			display:        flex;
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			padding-bottom: env(safe-area-inset-bottom);
+		}
+		/* (oculto mientras hay formulario visible, muestra tras éxito) */
+		.bottom-nav { display: none; }
+		.bottom-nav.is-visible { display: flex; }
+
+		.bottom-nav__item {
+			flex:           1;
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            3px;
+			padding:        10px 4px;
+			text-decoration: none;
+			color:          var(--text-tertiary);
+			font-size:      10px;
+			font-weight:    600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			min-height:     56px;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.bottom-nav__item--active { color: var(--accent); }
+		.bottom-nav__icon {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           28px;
+			height:          28px;
+			border-radius:   8px;
+		}
+		.bottom-nav__item--active .bottom-nav__icon { background: var(--accent-subtle); }
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<span class="app-header__icon" aria-hidden="true">🔶</span>
+			<div>
+				<div class="app-header__title">Near Miss</div>
+				<div class="app-header__sub">Cuasi-accidente</div>
+			</div>
+		</div>
+	</header>
+
+	<!-- ── Intro ───────────────────────────────────────────── -->
+	<div class="intro-banner" role="note">
+		Reportá lo que estuvo a punto de ocurrir. Cada near miss que reportás evita un accidente real.
+	</div>
+
+	<!-- ── Form ────────────────────────────────────────────── -->
+	<main class="form-main" id="main-content" role="main">
+
+		<!-- Error banner -->
+		<div id="form-error-banner" class="form-error-banner" role="alert" aria-live="assertive" hidden>
+			<span id="form-error-text"></span>
+		</div>
+
+		<!-- Estado de éxito (oculto hasta guardar) -->
+		<div id="success-state" class="success-state" hidden aria-live="polite">
+			<div class="success-state__icon" aria-hidden="true">✅</div>
+			<div class="success-state__title">¡Reportado!</div>
+			<div class="success-state__sub">Near miss registrado correctamente. Tu reporte ayuda a prevenir accidentes.</div>
+			<div id="success-numero" class="success-state__numero"></div>
+			<div class="success-actions">
+				<button id="btn-reportar-otro" class="btn-otro" type="button">
+					+ Reportar otro near miss
+				</button>
+				<a href="/incidentes.html" class="btn-ver-lista">
+					Ver todos los incidentes
+				</a>
+			</div>
+		</div>
+
+		<!-- Formulario (visible hasta guardar) -->
+		<div id="form-fields">
+
+			<!-- Tipo fijo -->
+			<div>
+				<div class="section-title">Tipo</div>
+				<div class="tipo-badge" aria-label="Tipo de reporte: Cuasi-accidente">
+					<span aria-hidden="true">🔶</span>
+					Cuasi-accidente — Near Miss
+				</div>
+			</div>
+
+			<!-- Severidad potencial -->
+			<div>
+				<div class="section-title">
+					Severidad potencial <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr>
+				</div>
+				<div
+					class="sev-grid"
+					role="group"
+					aria-label="Severidad potencial del near miss"
+					id="sev-grid"
+				>
+					<button class="sev-card sev-card--leve"          type="button" data-sev="Leve"          aria-pressed="true"  aria-label="Leve">
+						<span class="sev-card__dot" aria-hidden="true"></span>
+						<span class="sev-card__label">Leve</span>
+					</button>
+					<button class="sev-card sev-card--moderado"      type="button" data-sev="Moderado"      aria-pressed="false" aria-label="Moderado">
+						<span class="sev-card__dot" aria-hidden="true"></span>
+						<span class="sev-card__label">Moderado</span>
+					</button>
+					<button class="sev-card sev-card--grave"         type="button" data-sev="Grave"         aria-pressed="false" aria-label="Grave">
+						<span class="sev-card__dot" aria-hidden="true"></span>
+						<span class="sev-card__label">Grave</span>
+					</button>
+					<button class="sev-card sev-card--catastrofico"  type="button" data-sev="Catastrófico"  aria-pressed="false" aria-label="Catastrófico">
+						<span class="sev-card__dot" aria-hidden="true"></span>
+						<span class="sev-card__label">Catastrófico</span>
+					</button>
+				</div>
+				<div id="error-sev" class="field__error" aria-live="polite"></div>
+			</div>
+
+			<!-- ¿Qué casi ocurrió? -->
+			<div class="field">
+				<label class="field__label" for="input-descripcion">
+					¿Qué casi ocurrió? <abbr title="Requerido">*</abbr>
+				</label>
+				<textarea
+					id="input-descripcion"
+					class="field__textarea"
+					rows="4"
+					placeholder="Describí el evento: qué ocurrió, qué pudo haber pasado, cómo se evitó..."
+					aria-required="true"
+					maxlength="2000"
+				></textarea>
+				<div id="error-descripcion" class="field__error" aria-live="polite"></div>
+			</div>
+
+			<!-- Fecha y hora -->
+			<div class="field">
+				<label class="field__label" for="input-fecha-hora">
+					Fecha y hora <abbr title="Requerido">*</abbr>
+				</label>
+				<input
+					id="input-fecha-hora"
+					class="field__datetime"
+					type="datetime-local"
+					aria-required="true"
+				>
+				<div id="error-fecha" class="field__error" aria-live="polite"></div>
+			</div>
+
+			<!-- Lugar -->
+			<div class="field">
+				<label class="field__label" for="input-ubicacion">
+					¿Dónde ocurrió? <abbr title="Requerido">*</abbr>
+				</label>
+				<input
+					id="input-ubicacion"
+					class="field__input"
+					type="text"
+					placeholder="Ej: Manifold norte, Pozo N°5, Planta de separación..."
+					aria-required="true"
+					autocomplete="off"
+					maxlength="300"
+				>
+				<div id="error-ubicacion" class="field__error" aria-live="polite"></div>
+
+				<!-- Geo -->
+				<div class="geo-row" style="margin-top:6px">
+					<button id="btn-geo" class="btn-geo" type="button" aria-label="Obtener ubicación GPS">
+						📍 GPS
+					</button>
+					<span id="geo-status" class="geo-coords" aria-live="polite"></span>
+				</div>
+			</div>
+
+			<!-- Acciones inmediatas (opcional) -->
+			<div class="field">
+				<label class="field__label" for="input-acciones">
+					Acciones tomadas (opcional)
+				</label>
+				<textarea
+					id="input-acciones"
+					class="field__textarea"
+					rows="2"
+					placeholder="¿Qué se hizo para controlar la situación?"
+					maxlength="1000"
+				></textarea>
+			</div>
+
+		</div><!-- /#form-fields -->
+
+	</main>
+
+	<!-- ── Footer con botón guardar ────────────────────────── -->
+	<footer id="form-footer" class="form-footer" role="contentinfo">
+		<button id="btn-guardar" class="btn-guardar" type="button" aria-label="Guardar reporte de near miss">
+			<span id="btn-text">Guardar reporte</span>
+			<span id="btn-spinner" class="btn-spinner" hidden aria-hidden="true"></span>
+		</button>
+	</footer>
+
+	<!-- ── Bottom nav (visible tras éxito) ─────────────────── -->
+	<nav id="bottom-nav" class="bottom-nav" aria-label="Navegación principal">
+		<a href="/dashboard.html" class="bottom-nav__item" aria-label="Inicio">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48a16,16,0,0,1,21.66,0l80,75.48A16,16,0,0,1,224,115.55Z"/>
+				</svg>
+			</span>
+			<span>Inicio</span>
+		</a>
+		<a href="/incidentes.html" class="bottom-nav__item" aria-label="Incidentes">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M236.8,188.09,149.35,36.22a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/>
+				</svg>
+			</span>
+			<span>Incidentes</span>
+		</a>
+		<a href="/ats-nuevo.html" class="bottom-nav__item" aria-label="ATS">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM40,64H216V80H40ZM216,192H40V96H216Zm-32-72a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,120Zm0,32a8,8,0,0,1-8,8H136a8,8,0,0,1,0-16h40A8,8,0,0,1,184,152ZM96,120a8,8,0,0,1-8,8H80v8a8,8,0,0,1-16,0v-8H56a8,8,0,0,1,0-16H64v-8a8,8,0,0,1,16,0v8h8A8,8,0,0,1,96,120Z"/>
+				</svg>
+			</span>
+			<span>ATS</span>
+		</a>
+		<a href="/near-miss.html" class="bottom-nav__item bottom-nav__item--active" aria-current="page" aria-label="Near miss">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/>
+				</svg>
+			</span>
+			<span>Near Miss</span>
+		</a>
+		<a href="/accion-nueva.html" class="bottom-nav__item" aria-label="Acciones">
+			<span class="bottom-nav__icon" aria-hidden="true">
+				<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+					<path d="M243.28,68.24l-24-23.56a16,16,0,0,0-22.59.27L115.27,133.67a16,16,0,0,0,0,22.58l16,16a16.07,16.07,0,0,0,11.31,4.69,15.9,15.9,0,0,0,11.2-4.5l-4-4L213.05,105Zm-56.5,81.77a0,0,0,0,1,0,0l-16-16L243.25,60.35l24,23.56Z"/>
+				</svg>
+			</span>
+			<span>Acciones</span>
+		</a>
+	</nav>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * near-miss.html — reporte rápido de cuasi-accidente.
+	 *
+	 * Inserta en public.incidentes con tipo = 'Cuasi-accidente' (hardcoded).
+	 * Columnas verificadas MCP — mismas que incidente-nuevo.html:
+	 *   tipo      TEXT NOT NULL — fijo: 'Cuasi-accidente'
+	 *   severidad TEXT NOT NULL — selecciona el usuario
+	 *   descripcion TEXT NOT NULL
+	 *   fecha_hora  TIMESTAMPTZ NOT NULL (datetime-local + time = safe)
+	 *   ubicacion   TEXT NOT NULL
+	 *   created_by  UUID → public.usuarios.id (NO auth.uid())
+	 *   atshel_local_id UNIQUE → idempotencia, error 23505 = duplicado
+	 *
+	 * UX diferencial: éxito inline (no redirige) para reportar N near misses
+	 * sin fricción. Nuevo atshel_local_id en cada reset.
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+	} from '/src/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		generateLocalId,
+		showToast,
+	} from '/src/js/atshel-core.js';
+
+	// ── Estado ───────────────────────────────────────────────
+	let _localId    = generateLocalId();
+	let _severidad  = 'Leve'; // default
+	let _latitud    = null;
+	let _longitud   = null;
+	let _submitting = false;
+	let _usuario    = null;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const sevGridEl          = document.getElementById('sev-grid');
+	const errorSevEl         = document.getElementById('error-sev');
+	const descripcionEl      = document.getElementById('input-descripcion');
+	const errorDescEl        = document.getElementById('error-descripcion');
+	const fechaHoraEl        = document.getElementById('input-fecha-hora');
+	const errorFechaEl       = document.getElementById('error-fecha');
+	const ubicacionEl        = document.getElementById('input-ubicacion');
+	const errorUbicacionEl   = document.getElementById('error-ubicacion');
+	const btnGeoEl           = document.getElementById('btn-geo');
+	const geoStatusEl        = document.getElementById('geo-status');
+	const accionesEl         = document.getElementById('input-acciones');
+	const formErrorBannerEl  = document.getElementById('form-error-banner');
+	const formErrorTextEl    = document.getElementById('form-error-text');
+	const formFieldsEl       = document.getElementById('form-fields');
+	const formFooterEl       = document.getElementById('form-footer');
+	const successStateEl     = document.getElementById('success-state');
+	const successNumeroEl    = document.getElementById('success-numero');
+	const btnReportarOtroEl  = document.getElementById('btn-reportar-otro');
+	const btnGuardarEl       = document.getElementById('btn-guardar');
+	const btnTextEl          = document.getElementById('btn-text');
+	const btnSpinnerEl       = document.getElementById('btn-spinner');
+	const bottomNavEl        = document.getElementById('bottom-nav');
+
+	// ── Helpers ───────────────────────────────────────────────
+	function showFormError(msg) {
+		formErrorTextEl.textContent = msg;
+		formErrorBannerEl.hidden    = false;
+		formErrorBannerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	function hideFormError() {
+		formErrorBannerEl.hidden    = true;
+		formErrorTextEl.textContent = '';
+	}
+
+	function setError(inputEl, errorEl, msg) {
+		errorEl.textContent = msg;
+		if (msg) inputEl.setAttribute('aria-invalid', 'true');
+		else     inputEl.removeAttribute('aria-invalid');
+	}
+
+	function clearError(inputEl, errorEl) {
+		setError(inputEl, errorEl, '');
+	}
+
+	function setBtnLoading(loading) {
+		_submitting           = loading;
+		btnGuardarEl.disabled = loading;
+		btnTextEl.hidden      = loading;
+		btnSpinnerEl.hidden   = !loading;
+	}
+
+	// ── Severidad ─────────────────────────────────────────────
+	function selectSev(valor) {
+		_severidad = valor;
+		sevGridEl.querySelectorAll('.sev-card').forEach(card => {
+			card.setAttribute('aria-pressed', String(card.dataset.sev === valor));
+		});
+		errorSevEl.textContent = '';
+	}
+
+	// ── Geolocalización ──────────────────────────────────────
+	function obtenerGeo() {
+		if (!navigator.geolocation) {
+			geoStatusEl.textContent = 'No disponible';
+			return;
+		}
+		btnGeoEl.disabled       = true;
+		geoStatusEl.textContent = 'Obteniendo...';
+		btnGeoEl.className      = 'btn-geo';
+
+		navigator.geolocation.getCurrentPosition(
+			pos => {
+				_latitud  = parseFloat(pos.coords.latitude.toFixed(6));
+				_longitud = parseFloat(pos.coords.longitude.toFixed(6));
+				geoStatusEl.textContent  = `${_latitud}, ${_longitud}`;
+				btnGeoEl.className       = 'btn-geo btn-geo--ok';
+				btnGeoEl.textContent     = '✓ GPS';
+				btnGeoEl.disabled        = false;
+			},
+			err => {
+				_latitud = _longitud    = null;
+				geoStatusEl.textContent = ['', 'Permiso denegado', 'Posición no disponible', 'Tiempo agotado'][err.code] || 'Error';
+				btnGeoEl.className      = 'btn-geo btn-geo--error';
+				btnGeoEl.textContent    = '📍 Reintentar';
+				btnGeoEl.disabled       = false;
+			},
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+		);
+	}
+
+	// ── Validación ────────────────────────────────────────────
+	function validate() {
+		let ok = true;
+		hideFormError();
+
+		if (!_severidad) {
+			errorSevEl.textContent = 'Seleccioná la severidad potencial.';
+			ok = false;
+		}
+
+		const desc = descripcionEl.value.trim();
+		if (!desc) {
+			setError(descripcionEl, errorDescEl, 'Describí el near miss.');
+			ok = false;
+		} else if (desc.length < 10) {
+			setError(descripcionEl, errorDescEl, 'Demasiado corto (mínimo 10 caracteres).');
+			ok = false;
+		} else {
+			clearError(descripcionEl, errorDescEl);
+		}
+
+		if (!fechaHoraEl.value) {
+			setError(fechaHoraEl, errorFechaEl, 'Indicá la fecha y hora.');
+			ok = false;
+		} else {
+			// datetime-local incluye tiempo → new Date() es seguro (no es date-only)
+			const dt = new Date(fechaHoraEl.value);
+			if (dt.getTime() > Date.now() + 10 * 60 * 1000) {
+				setError(fechaHoraEl, errorFechaEl, 'La fecha no puede ser futura.');
+				ok = false;
+			} else {
+				clearError(fechaHoraEl, errorFechaEl);
+			}
+		}
+
+		const ubic = ubicacionEl.value.trim();
+		if (!ubic) {
+			setError(ubicacionEl, errorUbicacionEl, 'Indicá el lugar.');
+			ok = false;
+		} else {
+			clearError(ubicacionEl, errorUbicacionEl);
+		}
+
+		return ok;
+	}
+
+	// ── Mostrar éxito inline ──────────────────────────────────
+	function showSuccess(numero) {
+		formFieldsEl.hidden  = true;
+		formFooterEl.hidden  = true;
+		successNumeroEl.textContent = numero ? `Número de reporte: ${numero}` : 'Reporte registrado';
+		successStateEl.hidden = false;
+		bottomNavEl.classList.add('is-visible');
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
+	// ── Resetear formulario para nuevo reporte ────────────────
+	function resetForm() {
+		_localId           = generateLocalId();
+		_latitud           = null;
+		_longitud          = null;
+		_severidad         = 'Leve';
+
+		selectSev('Leve');
+		descripcionEl.value = '';
+		ubicacionEl.value   = '';
+		accionesEl.value    = '';
+		btnGeoEl.className  = 'btn-geo';
+		btnGeoEl.textContent = '📍 GPS';
+		geoStatusEl.textContent = '';
+
+		// Restaurar fecha a ahora
+		setDefaultFecha();
+
+		hideFormError();
+		[descripcionEl, ubicacionEl].forEach(el => el.removeAttribute('aria-invalid'));
+		[errorDescEl, errorUbicacionEl, errorFechaEl, errorSevEl].forEach(el => { el.textContent = ''; });
+
+		successStateEl.hidden = true;
+		bottomNavEl.classList.remove('is-visible');
+		formFieldsEl.hidden  = false;
+		formFooterEl.hidden  = false;
+
+		descripcionEl.focus();
+	}
+
+	// ── Fecha default = ahora en hora local ──────────────────
+	function setDefaultFecha() {
+		const ahora  = new Date();
+		const offset = ahora.getTimezoneOffset();
+		fechaHoraEl.value = new Date(ahora.getTime() - offset * 60000).toISOString().slice(0, 16);
+		fechaHoraEl.max   = fechaHoraEl.value;
+	}
+
+	// ── Submit ────────────────────────────────────────────────
+	async function handleSubmit() {
+		if (_submitting) return;
+		if (!validate()) {
+			document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			return;
+		}
+
+		setBtnLoading(true);
+
+		try {
+			const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
+
+			// datetime-local = "YYYY-MM-DDTHH:mm" (con tiempo) → new Date() es seguro
 			const fechaISO = new Date(fechaHoraEl.value).toISOString();
 
 			// acciones_inmediatas: array con el texto si hay algo, vacío si no
