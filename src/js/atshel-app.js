@@ -50,6 +50,40 @@ import {
 } from './atshel-powersync.js';
 
 // ─────────────────────────────────────────────────────────────
+// DEBUG TEMPORAL — captura errores no manejados y los muestra
+// en pantalla. Sacar este bloque una vez resuelto el diagnóstico.
+// ─────────────────────────────────────────────────────────────
+(function _atshelDebugCatcher() {
+	function _mostrarError(origen, mensaje) {
+		let box = document.getElementById('_atshel-debug-box');
+		if (!box) {
+			box = document.createElement('div');
+			box.id = '_atshel-debug-box';
+			box.style.cssText =
+				'position:fixed;bottom:0;left:0;right:0;z-index:99999;' +
+				'background:#4a0000;color:#fff;font:12px monospace;' +
+				'padding:10px;max-height:40vh;overflow:auto;' +
+				'border-top:3px solid red;white-space:pre-wrap;';
+			document.documentElement.appendChild(box);
+		}
+		const linea = document.createElement('div');
+		linea.style.marginBottom = '8px';
+		linea.style.borderBottom = '1px solid #822';
+		linea.style.paddingBottom = '8px';
+		linea.textContent = '[' + origen + '] ' + mensaje;
+		box.appendChild(linea);
+	}
+	window.addEventListener('error', (e) => {
+		_mostrarError('error', (e.message || 'error desconocido') +
+			' — ' + (e.filename || '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
+	});
+	window.addEventListener('unhandledrejection', (e) => {
+		const r = e.reason;
+		_mostrarError('promise', r && r.stack ? r.stack : String(r));
+	});
+})();
+
+// ─────────────────────────────────────────────────────────────
 // CONSTANTES
 // ─────────────────────────────────────────────────────────────
 
