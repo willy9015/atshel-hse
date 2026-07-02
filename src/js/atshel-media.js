@@ -699,3 +699,4 @@ export class ColaSubida {
 // 7. INSTANCIA GLOBAL DE COLA
 //    Se usa desde atshel-app.js para procesar al reconectar
 // ────────────────────────────────────────────────────────────
+export const colaSubida = new ColaSubida();
