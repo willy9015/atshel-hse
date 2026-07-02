@@ -81,6 +81,9 @@ import {
 		const r = e.reason;
 		_mostrarError('promise', r && r.stack ? r.stack : String(r));
 	});
+	window._atshelDebugPaso = function (texto) {
+		_mostrarError('paso', texto + '  @' + new Date().toLocaleTimeString());
+	};
 })();
 
 // ─────────────────────────────────────────────────────────────
@@ -180,31 +183,49 @@ async function _initProtegido() {
 	try {
 
 		// ── PASO 1: Verificar sesión activa ─────────────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('1 verificarSesion — inicio');
 		await _paso1_verificarSesion();
+		window._atshelDebugPaso && window._atshelDebugPaso('1 verificarSesion — OK');
 
 		// ── PASO 2: Cargar datos del usuario y empresa ───────────
+		window._atshelDebugPaso && window._atshelDebugPaso('2 cargarUsuario — inicio');
 		await _paso2_cargarUsuario();
+		window._atshelDebugPaso && window._atshelDebugPaso('2 cargarUsuario — OK');
 
 		// ── PASO 3: Verificar términos aceptados ─────────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('3 verificarTerminos — inicio');
 		await _paso3_verificarTerminos();
+		window._atshelDebugPaso && window._atshelDebugPaso('3 verificarTerminos — OK');
 
 		// ── PASO 4: Verificar PIN configurado ────────────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('4 verificarPin — inicio');
 		await _paso4_verificarPin();
+		window._atshelDebugPaso && window._atshelDebugPaso('4 verificarPin — OK');
 
 		// ── PASO 5: Iniciar heartbeat dual ───────────────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('5 heartbeat — inicio');
 		await _paso5_heartbeat();
+		window._atshelDebugPaso && window._atshelDebugPaso('5 heartbeat — OK');
 
 		// ── PASO 6: Registrar Service Worker ─────────────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('6 serviceWorker — inicio');
 		await _paso6_serviceWorker();
+		window._atshelDebugPaso && window._atshelDebugPaso('6 serviceWorker — OK');
 
 		// ── PASO 7: Inicializar PowerSync ────────────────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('7 powerSync — inicio');
 		await _paso7_powerSync();
+		window._atshelDebugPaso && window._atshelDebugPaso('7 powerSync — OK');
 
 		// ── PASO 8: Procesar cola de subida pendiente ────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('8 colaSubida — inicio');
 		await _paso8_colaSubida();
+		window._atshelDebugPaso && window._atshelDebugPaso('8 colaSubida — OK');
 
 		// ── PASO 9: Renderizar UI según rol ──────────────────────
+		window._atshelDebugPaso && window._atshelDebugPaso('9 renderUI — inicio');
 		_paso9_renderUI();
+		window._atshelDebugPaso && window._atshelDebugPaso('9 renderUI — OK, init completo');
 
 		// Listo — disparar evento para que el HTML de cada pantalla
 		// pueda suscribirse y cargar sus propios datos
