@@ -15,7 +15,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.powersync.journeyapps.com wss://*.powersync.journeyapps.com; worker-src 'self' blob:; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.powersync.journeyapps.com wss://*.powersync.journeyapps.com; worker-src 'self' blob:; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; frame-ancestors 'none'"
         },
         {
           "key": "Strict-Transport-Security",
