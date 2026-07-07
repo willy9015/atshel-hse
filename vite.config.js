@@ -11,24 +11,24 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				// ── Auth / onboarding ──────────────────────────
-				login:                 'public/login.html',
-				setup:                 'public/setup.html',
-				offline:               'public/offline.html',
+				login:                 'login.html',
+				setup:                 'setup.html',
+				offline:               'offline.html',
 				index:                 'index.html',
 
 				// ── Panel principal ────────────────────────────
-				dashboard:             'public/dashboard.html',
+				dashboard:             'dashboard.html',
 
 				// ── Incidentes ──────────────────────────────────
-				incidentes:            'public/incidentes.html',
-				incidente_nuevo:       'public/incidente-nuevo.html',
-				incidente_detalle:     'public/incidente-detalle.html',
-				incidente_investigar:  'public/incidente-investigar.html',
-				near_miss:             'public/near-miss.html',
+				incidentes:            'incidentes.html',
+				incidente_nuevo:       'incidente-nuevo.html',
+				incidente_detalle:     'incidente-detalle.html',
+				incidente_investigar:  'incidente-investigar.html',
+				near_miss:             'near-miss.html',
 
 				// ── ATS ──────────────────────────────────────────
-				ats_nuevo:             'public/ats-nuevo.html',
-				ats_supervisor:        'public/ats-supervisor.html',
+				ats_nuevo:             'ats-nuevo.html',
+				ats_supervisor:        'ats-supervisor.html',
 
 				// NOTA: archivo real subido como "plantilla-admin.html"
 				// (singular). El nombre canónico del proyecto es
@@ -37,23 +37,23 @@ export default defineConfig({
 				// existe en disco para no romper el build. Si en algún
 				// momento renombrás el archivo en GitHub a
 				// "plantillas-admin.html", actualizá esta línea también.
-				plantilla_admin:       'public/plantilla-admin.html',
+				plantilla_admin:       'plantilla-admin.html',
 
 				// ── Acciones correctivas ─────────────────────────
-				accion_nueva:          'public/accion-nueva.html',
-				accion_detalle:        'public/accion-detalle.html',
+				accion_nueva:          'accion-nueva.html',
+				accion_detalle:        'accion-detalle.html',
 
 				// ── Sincronización ────────────────────────────────
-				conflictos:            'public/conflictos.html',
+				conflictos:            'conflictos.html',
 
 				// ── PENDIENTES (módulos documentados en Claude.md,
 				//    aún sin construir — agregar cuando existan):
-				//    permisos:        'public/permisos.html',
-				//    checklist:       'public/checklist.html',
-				//    checklist_nuevo: 'public/checklist-nuevo.html',
-				//    acciones:        'public/acciones.html',
-				//    equipos:         'public/equipos.html',
-				//    perfil:          'public/perfil.html',  (sin spec — definir alcance primero)
+				//    permisos:        'permisos.html',
+				//    checklist:       'checklist.html',
+				//    checklist_nuevo: 'checklist-nuevo.html',
+				//    acciones:        'acciones.html',
+				//    equipos:         'equipos.html',
+				//    perfil:          'perfil.html',  (sin spec — definir alcance primero)
 			},
 		},
 	},
