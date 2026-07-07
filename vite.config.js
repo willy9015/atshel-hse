@@ -14,7 +14,7 @@ export default defineConfig({
 				login:                 'public/login.html',
 				setup:                 'public/setup.html',
 				offline:               'public/offline.html',
-				index:                 'public/index.html',
+				index:                 'index.html',
 
 				// ── Panel principal ────────────────────────────
 				dashboard:             'public/dashboard.html',
