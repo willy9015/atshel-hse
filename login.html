@@ -744,12 +744,14 @@
 			setFieldError(emailEl,    errorEmailEl,    '');
 			setFieldError(passwordEl, errorPasswordEl, '');
 			formErrorEl.hidden          = true;
+			formErrorEl.classList.remove('visible');
 			formErrorTextEl.textContent = '';
 		}
 
 		function showFormError(msg) {
 			formErrorTextEl.textContent = msg;
 			formErrorEl.hidden          = false;
+			formErrorEl.classList.add('visible');
 			formErrorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 		}
 
@@ -845,7 +847,7 @@
 				const { error: loginError } = await login(email, pass);
 
 				if (loginError) {
-					showFormError(mapAuthError(loginError.message));
+					showFormError(loginError);
 					return;
 				}
 
