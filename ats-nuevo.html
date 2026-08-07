@@ -822,15 +822,34 @@
 
 	// ── Step 2: Cargar y renderizar campos ────────────────────
 	async function cargarCampos(plantillaId) {
+		// DIAGNÓSTICO: mostrar en pantalla qué pasa exactamente
+		const diag = (msg) => {
+			let box = document.getElementById('_diag');
+			if (!box) {
+				box = document.createElement('div');
+				box.id = '_diag';
+				box.style.cssText = 'background:#1a1a2e;color:#00ff88;font:11px monospace;padding:8px;margin:8px 0;border-radius:6px;border:1px solid #00ff8844;white-space:pre-wrap;';
+				camposListEl.parentNode.insertBefore(box, camposListEl);
+			}
+			box.textContent += msg + '\n';
+		};
+
+		diag('empresa_id usuario: ' + (_usuario?.empresa_id ?? 'NULL'));
+		diag('plantillaId: ' + plantillaId);
+
 		const { data, error } = await supabase
 			.from('campos_plantilla')
 			.select('id, etiqueta, tipo_campo, orden, requerido, opciones')
 			.eq('plantilla_id', plantillaId)
+			.eq('empresa_id', _usuario?.empresa_id)
 			.is('deleted_at', null)
 			.order('orden', { ascending: true });
 
+		diag('error: ' + (error ? JSON.stringify(error) : 'ninguno'));
+		diag('campos encontrados: ' + (data?.length ?? 0));
+
 		if (error) {
-			showStepError(2, 'No se pudieron cargar los campos de la plantilla.');
+			showStepError(2, 'Error: ' + error.message);
 			return;
 		}
 
@@ -840,8 +859,8 @@
 			camposListEl.innerHTML = `
 			<div class="empty-state">
 				<div class="empty-state__icon">📄</div>
-				<div class="empty-state__title">Plantilla sin campos</div>
-				<div class="empty-state__sub">Esta plantilla no tiene campos configurados. Podés continuar al IPERC.</div>
+				<div class="empty-state__title">Sin campos (empresa: ${_usuario?.empresa_id})</div>
+				<div class="empty-state__sub">La plantilla no devolvió campos para esta empresa.</div>
 			</div>`;
 			return;
 		}
