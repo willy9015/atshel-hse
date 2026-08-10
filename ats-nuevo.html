@@ -678,6 +678,7 @@
 	let _plantillas     = [];
 	let _selectedPl     = null;   // plantilla seleccionada
 	let _campos         = [];     // campos_plantilla de la plantilla
+	let _fotosTemp      = {};     // fotos pendientes de subida { campoId: File }
 	let _respuestas     = {};     // Map<campoId, valor>
 	let _ipercs         = [];     // array de items IPERC
 	let _ipercCount     = 0;
@@ -947,9 +948,30 @@
 					break;
 
 				case 'foto':
-					inputHTML = `<div class="campo-placeholder">
-						📷 La foto se puede adjuntar desde el detalle del ATS.
-					</div>`;
+					inputHTML = `
+						<div class="campo-foto-wrapper" data-campo="${campoId}">
+							<input
+								type="file"
+								id="c-${campoId}"
+								accept="image/*"
+								capture="environment"
+								data-campo="${campoId}"
+								class="campo-foto-input"
+								style="display:none"
+							/>
+							<button
+								type="button"
+								class="btn-foto"
+								onclick="document.getElementById('c-${campoId}').click()"
+								style="width:100%;height:52px;background:#1F252D;border:1.5px dashed #4A5568;border-radius:8px;color:#8B98A8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"
+							>
+								📷 Tocar para sacar foto
+							</button>
+							<img
+								id="preview-${campoId}"
+								style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:8px;"
+							/>
+						</div>`;
 					break;
 
 				default:
@@ -1255,6 +1277,23 @@
 				const card = e.target.closest('.plantilla-card[data-id]');
 				if (card) { e.preventDefault(); selectPlantilla(card.dataset.id); }
 			}
+		});
+
+		// Foto: preview al seleccionar archivo — event delegation
+		camposListEl.addEventListener('change', (e) => {
+			if (!e.target.classList.contains('campo-foto-input')) return;
+			const file = e.target.files?.[0];
+			if (!file) return;
+			const campoId = e.target.dataset.campo;
+			const preview = document.getElementById('preview-' + campoId);
+			const btn = e.target.nextElementSibling;
+			const reader = new FileReader();
+			reader.onload = (ev) => {
+				if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
+				if (btn) btn.textContent = '✅ Foto cargada — tocar para cambiar';
+				_fotosTemp[campoId] = file;
+			};
+			reader.readAsDataURL(file);
 		});
 
 		// Toggle booleano — event delegation en campos
