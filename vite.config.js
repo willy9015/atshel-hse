@@ -43,12 +43,16 @@ export default defineConfig({
 				accion_nueva:          'accion-nueva.html',
 				accion_detalle:        'accion-detalle.html',
 
+				// ── Permisos de trabajo ───────────────────────────
+				permisos:              'permisos.html',
+
 				// ── Sincronización ────────────────────────────────
 				conflictos:            'conflictos.html',
 
 				// ── PENDIENTES (módulos documentados en Claude.md,
 				//    aún sin construir — agregar cuando existan):
-				//    permisos:        'permisos.html',
+				//    permiso_nuevo:   'permiso-nuevo.html',   (próxima entrega)
+				//    permiso_detalle: 'permiso-detalle.html', (próxima entrega)
 				//    checklist:       'checklist.html',
 				//    checklist_nuevo: 'checklist-nuevo.html',
 				//    acciones:        'acciones.html',
