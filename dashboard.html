@@ -158,6 +158,10 @@
 			line-height:   1.4;
 			animation:     slide-up 0.35s ease both;
 		}
+		/* display:flex de arriba le gana al [hidden] nativo del navegador
+		   en la cascada — sin esto, el banner se ve vacío en vez de
+		   desaparecer cuando no hay ninguna alerta de equipos. */
+		.alert-banner[hidden] { display: none; }
 		.alert-banner--danger {
 			background:  var(--color-danger-bg);
 			border:      1px solid var(--color-danger-border);
@@ -667,40 +671,6 @@
 <script src="/vendor/dompurify.min.js"></script>
 <script src="/vendor/phosphor-icons.min.js"></script>
 
-<!-- ── DEBUG TEMPORAL — captura fallos de carga de módulos ── -->
-<script>
-(function () {
-	function mostrar(origen, mensaje) {
-		let box = document.getElementById('_atshel-debug-box');
-		if (!box) {
-			box = document.createElement('div');
-			box.id = '_atshel-debug-box';
-			box.style.cssText =
-				'position:fixed;bottom:0;left:0;right:0;z-index:99999;' +
-				'background:#4a0000;color:#fff;font:12px monospace;' +
-				'padding:10px;max-height:40vh;overflow:auto;' +
-				'border-top:3px solid red;white-space:pre-wrap;';
-			document.documentElement.appendChild(box);
-		}
-		const linea = document.createElement('div');
-		linea.style.marginBottom = '8px';
-		linea.style.borderBottom = '1px solid #822';
-		linea.style.paddingBottom = '8px';
-		linea.textContent = '[' + origen + '] ' + mensaje;
-		box.appendChild(linea);
-	}
-	window.addEventListener('error', function (e) {
-		mostrar('error', (e.message || 'error desconocido') +
-			' — ' + (e.filename || '') + ':' + (e.lineno || '') + ':' + (e.colno || ''));
-	});
-	window.addEventListener('unhandledrejection', function (e) {
-		const r = e.reason;
-		mostrar('promise', r && r.stack ? r.stack : String(r));
-	});
-	mostrar('debug', 'Capturador instalado, esperando módulo...');
-})();
-</script>
-
 <!-- ── Módulo principal ────────────────────────────────── -->
 <script type="module">
 	/**
@@ -994,14 +964,17 @@
 		const hoy    = new Date();
 		const desde  = new Date(hoy);
 		desde.setDate(desde.getDate() - 30);
-		const desdeStr = desde.toISOString().slice(0, 10);
-		const hastaStr = hoy.toISOString().slice(0, 10);
-
 		// Las tres cargas en paralelo para minimizar latencia
 		const [kpisResult, accionesResult, incidentesResult] = await Promise.allSettled([
 
 			// 1. KPIs vía RPC
-			calcularKpis({ empresaId, desde: desdeStr, hasta: hastaStr }),
+			// BUG (corregido 2026-08-15): calcularKpis() hace su propio
+			// desde.toISOString() internamente — hay que pasarle objetos
+			// Date, no strings ya formateadas. Pasar un string acá rompe
+			// con un TypeError que el try/catch interno de calcularKpis()
+			// atrapa en silencio y devuelve null, dejando estas tres
+			// tarjetas y el banner de equipos vacíos para siempre.
+			calcularKpis({ desde, hasta: hoy }),
 
 			// 2. Acciones urgentes (Pendiente, En curso, Vencida) — máximo 5
 			supabase
