@@ -454,6 +454,23 @@
 	 * URL params:
 	 *   ?incidente_id=UUID  → pre-carga contexto del incidente
 	 *   (sin param)         → muestra select con incidentes abiertos
+	 *
+	 * ── EXPERIMENTO OFFLINE-FIRST (2026-08-18) ──────────────────
+	 * Primera página de ATSHEL que escribe por PowerSync en vez de ir
+	 * directo a Supabase. Motivo: initPowerSync() nunca se llamaba fuera
+	 * de index.html — ninguna pantalla tenía la conexión local activa,
+	 * pese a que el schema SQLite y el AtShelConnector (uploadData /
+	 * fetchCredentials) ya estaban completos en atshel-powersync.js.
+	 *
+	 * Camino: guardar() intenta primero executeLocal() (INSERT crudo en
+	 * SQLite local — funciona offline, PowerSync sube la fila sola
+	 * cuando hay señal). Si PowerSync no está listo o el insert local
+	 * falla, cae al INSERT directo contra Supabase de siempre — no se
+	 * quitó el camino online, se lo dejó como respaldo.
+	 *
+	 * Si esto funciona limpio en producción, es la plantilla para el
+	 * resto de los formularios de alta. Si no, mejor descubrirlo acá
+	 * y no en seis archivos a la vez.
 	 */
 
 	import {
@@ -462,6 +479,12 @@
 		getUsuario,
 		getEmpresaId,
 	} from '/src/js/atshel-supabase.js';
+
+	import {
+		initPowerSync,
+		isPowerSyncReady,
+		executeLocal,
+	} from '/src/js/atshel-powersync.js';
 
 	import {
 		sanitizeHTML,
@@ -476,7 +499,8 @@
 	const _incIdFromUrl = _params.get('incidente_id') ?? null;
 
 	// ── Estado ───────────────────────────────────────────────
-	const _localId    = generateLocalId();
+	const _localId    = generateLocalId(); // atshel_local_id — dedup en insert online
+	const _newId      = generateLocalId(); // id (PK) — usado en el camino offline/local
 	let _incidenteId  = _incIdFromUrl; // se confirma al cargar o al seleccionar
 	let _usuario      = null;
 	let _submitting   = false;
@@ -679,18 +703,51 @@
 		setBtnLoading(true);
 
 		try {
-			const empresaId  = _usuario?.empresa_id ?? await getEmpresaId();
-			const incId      = _incidenteId || selectIncidenteEl.value;
+			const empresaId   = _usuario?.empresa_id ?? await getEmpresaId();
+			const incId       = _incidenteId || selectIncidenteEl.value;
 			const responsable = selectResponsableEl.value || null;
 
 			// Convertir fecha a fin de día TIMESTAMPTZ — sin new Date("YYYY-MM-DD")
 			const fechaVencISO = fechaAFinDeDia(fechaEl.value);
+			const descripcion  = descripcionEl.value.trim();
+			const nowISO       = new Date().toISOString();
 
+			// ── Camino offline-first: INSERT crudo en SQLite local ──
+			// PowerSync detecta el write y lo sube solo cuando hay señal.
+			if (isPowerSyncReady()) {
+				const ok = await executeLocal(
+					`INSERT INTO acciones_correctivas
+						(id, atshel_local_id, empresa_id, incidente_id, descripcion,
+						 responsable_id, fecha_vencimiento, estado, version,
+						 created_by, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					[
+						_newId, _localId, empresaId, incId, descripcion,
+						responsable, fechaVencISO, 'Pendiente', 1,
+						_usuario?.id ?? null, nowISO, nowISO,
+					]
+				);
+
+				if (ok) {
+					showToast(
+						navigator.onLine
+							? 'Acción correctiva guardada.'
+							: 'Guardada localmente — se sube sola cuando vuelva la señal.',
+						'success'
+					);
+					window.location.replace(`/accion-detalle.html?id=${_newId}`);
+					return;
+				}
+
+				console.warn('[ATSHEL] executeLocal falló, cayendo al insert online directo.');
+			}
+
+			// ── Camino online directo (respaldo, o si PowerSync no está listo) ──
 			const payload = {
 				atshel_local_id:   _localId,
 				empresa_id:        empresaId,
 				incidente_id:      incId,
-				descripcion:       descripcionEl.value.trim(),
+				descripcion:       descripcion,
 				responsable_id:    responsable,
 				fecha_vencimiento: fechaVencISO,
 				created_by:        _usuario?.id ?? null, // → public.usuarios.id
@@ -763,6 +820,13 @@
 	async function init() {
 		// 1. Sesión
 		await requireAuth('/login.html');
+
+		// 1.5 PowerSync — arranca en paralelo, sin bloquear el resto del
+		//     init(). Si falla o tarda, guardar() simplemente cae al
+		//     camino online cuando llegue el momento.
+		initPowerSync().catch((err) => {
+			console.warn('[ATSHEL] PowerSync no disponible, se usará el camino online:', err.message);
+		});
 
 		// 2. Usuario
 		_usuario = await getUsuario().catch(() => null);
