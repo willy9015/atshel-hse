@@ -23,7 +23,7 @@
 //    Cambiar CACHE_VERSION fuerza la renovación de todos los caches.
 // ─────────────────────────────────────────────────────────────
 
-const CACHE_VERSION    = 'v1.0.0';
+const CACHE_VERSION    = 'v1.1.0';
 const CACHE_STATIC     = `atshel-static-${CACHE_VERSION}`;
 const CACHE_PAGES      = `atshel-pages-${CACHE_VERSION}`;
 const CACHE_MEDIA      = `atshel-media-${CACHE_VERSION}`;
@@ -52,11 +52,27 @@ const ASSETS_PRECACHE = [
 	'/vendor/phosphor-icons.min.js',
 	'/vendor/jspdf.min.js',
 
-	// Pantallas principales
+	// Pantallas de acceso — necesarias antes de tener sesión
 	'/offline.html',
 	'/login.html',
 	'/setup.html',
 	'/index.html',
+
+	// Pantallas de trabajo — v1.1.0 (2026-08-19): antes solo se
+	// cacheaban recién en la primera visita online (_networkFirstHTML
+	// las agrega a CACHE_PAGES cuando responden ok). Si un técnico
+	// nunca había abierto una pantalla estando online, la primera vez
+	// que la pedía sin señal cae directo a offline.html — no porque
+	// falte conexión, sino porque no había nada en caché todavía.
+	// Precachear acá las pantallas centrales evita ese falso negativo
+	// desde la primera vez que se instala la PWA.
+	'/dashboard.html',
+	'/incidentes.html',
+	'/incidente-nuevo.html',
+	'/incidente-detalle.html',
+	'/accion-nueva.html',
+	'/accion-detalle.html',
+	'/permisos.html',
 ];
 
 // ─────────────────────────────────────────────────────────────
