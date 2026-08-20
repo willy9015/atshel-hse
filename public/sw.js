@@ -23,7 +23,7 @@
 //    Cambiar CACHE_VERSION fuerza la renovación de todos los caches.
 // ─────────────────────────────────────────────────────────────
 
-const CACHE_VERSION    = 'v1.1.0';
+const CACHE_VERSION    = 'v1.1.1';
 const CACHE_STATIC     = `atshel-static-${CACHE_VERSION}`;
 const CACHE_PAGES      = `atshel-pages-${CACHE_VERSION}`;
 const CACHE_MEDIA      = `atshel-media-${CACHE_VERSION}`;
@@ -309,9 +309,13 @@ async function _networkFirstHTML(request) {
 		return response;
 
 	} catch {
-		// Buscar en caché de páginas
+		// Buscar en caché de páginas. Primero match exacto; si la página
+		// se pidió con query string (ej. accion-detalle.html?id=X) y lo
+		// que está precacheado es la base sin query, ignoreSearch la
+		// encuentra igual — es la misma plantilla HTML para cualquier id.
 		const cache  = await caches.open(CACHE_PAGES);
-		const cached = await cache.match(request);
+		let   cached = await cache.match(request);
+		if (!cached) cached = await cache.match(request, { ignoreSearch: true });
 		if (cached) return cached;
 
 		// Fallback a offline.html
