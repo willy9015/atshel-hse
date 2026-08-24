@@ -1,1272 +1,1223 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-AR" dir="ltr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1C1C1C">
-  <meta name="description" content="ATSHEL — Panel de seguridad industrial">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>ATSHEL — Panel principal</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Reportar nuevo incidente">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
 
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
-  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+	<title>Nuevo incidente — ATSHEL HSE</title>
 
-  <!-- Barlow Condensed (display industrial) + IBM Plex Sans (cuerpo técnico) -->
-  <!-- Non-blocking: system fonts se usan mientras cargan; SW cachea en primera visita -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
-        media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-  </noscript>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-  <!-- Sistema de diseño global (variables, reset, utilidades) -->
-  <link rel="stylesheet" href="/css/atshel-theme.css">
+	<link rel="stylesheet" href="/css/atshel-theme.css">
 
-  <style>
-    /* ================================================================
-       INDEX.HTML — Estilos específicos de página
-       Fallbacks duplicados de atshel-theme.css para robustez offline.
-       ================================================================ */
+	<style>
+		/* ── Layout ───────────────────────────────────────────── */
+		.app {
+			display:        flex;
+			flex-direction: column;
+			min-height:     100dvh;
+			background:     var(--surface-base);
+		}
 
-    :root {
-      /* Brand tokens — fallback si theme.css no cargó */
-      --c-carbon:   #1C1C1C;
-      --c-primary:  #373737;
-      --c-accent:   #FFC107;
-      --c-green:    #5C8A2E;
-      --c-green-lt: #7CB342;
-      --c-danger:   #C62828;
-      --c-danger-lt:#FFEBEE;
-      --c-orange:   #E65100;
-      --c-blue:     #1565C0;
-      --c-bg:       #F0F0F0;
-      --c-surface:  #FFFFFF;
-      --c-border:   #DEDEDE;
-      --c-text:     #1A1A1A;
-      --c-muted:    #6B6B6B;
-      --c-shadow:   rgba(0,0,0,0.09);
-      --c-shadow-md:rgba(0,0,0,0.18);
+		/* ── Header ───────────────────────────────────────────── */
+		.app-header {
+			position:        sticky;
+			top:             0;
+			z-index:         100;
+			display:         flex;
+			align-items:     center;
+			justify-content: space-between;
+			padding:         0 16px;
+			height:          56px;
+			background:      var(--surface-01);
+			border-bottom:   1px solid var(--border-subtle);
+			padding-top:     env(safe-area-inset-top);
+		}
 
-      /* Tipografía */
-      --f-display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
-      --f-body:    'IBM Plex Sans', system-ui, sans-serif;
+		.app-header__left {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
 
-      /* Layout */
-      --header-h:   58px;
-      --nav-h:      62px;
-      --safe-bot:   env(safe-area-inset-bottom, 0px);
+		.btn-back {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          none;
+			color:           var(--text-secondary);
+			cursor:          pointer;
+			transition:      background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:hover  { background: var(--surface-03); }
+		.btn-back:active { background: var(--surface-04); }
 
-      /* Espaciado base 4px */
-      --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
-      --s5: 20px; --s6: 24px; --s8: 32px;
-    }
+		.app-header__title {
+			font-family:  var(--font-condensed);
+			font-size:    var(--text-xl);
+			font-weight:  700;
+			color:        var(--text-primary);
+			line-height:  1;
+		}
 
-    /* ── Reset mínimo ─────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
-    body {
-      font-family: var(--f-body);
-      font-size: 16px;
-      line-height: 1.5;
-      background: var(--c-bg);
-      color: var(--c-text);
-      min-height: 100dvh;
-      overflow-x: hidden;
-    }
-    button {
-      font-family: inherit;
-      cursor: pointer;
-      border: none;
-      background: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+		/* ── Form main ────────────────────────────────────────── */
+		.form-main {
+			flex:           1;
+			padding:        20px 16px calc(100px + env(safe-area-inset-bottom));
+			display:        flex;
+			flex-direction: column;
+			gap:            24px;
+		}
 
-    /* ── Utilidades ──────────────────────────────────────────── */
-    .hidden { display: none !important; }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-    }
+		/* ── Sección ──────────────────────────────────────────── */
+		.form-section {
+			display:        flex;
+			flex-direction: column;
+			gap:            10px;
+		}
 
-    /* ── Offline banner ──────────────────────────────────────── */
-    .offline-banner {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 1000;
-      background: var(--c-carbon);
-      color: var(--c-accent);
-      font-family: var(--f-display);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      text-align: center;
-      padding: var(--s2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--s2);
-      height: 34px;
-      transform: translateY(-100%);
-      transition: transform 0.25s ease;
-    }
-    .offline-banner.is-visible { transform: translateY(0); }
-    body.is-offline .app-header,
-    body.is-offline .page-wrap { margin-top: 34px; }
+		.form-section__label {
+			font-family:    var(--font-condensed);
+			font-size:      var(--text-lg);
+			font-weight:    700;
+			color:          var(--text-primary);
+			line-height:    1;
+		}
 
-    /* ── Header ──────────────────────────────────────────────── */
-    .app-header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 200;
-      height: var(--header-h);
-      background: var(--c-carbon);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 var(--s4);
-      border-bottom: 2px solid var(--c-accent);
-    }
+		.form-section__label abbr {
+			text-decoration: none;
+			color:           var(--color-danger);
+			margin-left:     2px;
+		}
 
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      min-width: 0;
-    }
-    .header-wordmark {
-      font-family: var(--f-display);
-      font-size: 26px;
-      font-weight: 900;
-      color: var(--c-accent);
-      letter-spacing: 0.04em;
-      flex-shrink: 0;
-      line-height: 1;
-    }
-    .header-divider {
-      width: 1px;
-      height: 28px;
-      background: #444;
-      flex-shrink: 0;
-    }
-    .header-user {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .header-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #E0E0E0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 130px;
-      line-height: 1.2;
-    }
-    .role-pill {
-      display: inline-block;
-      font-family: var(--f-display);
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      padding: 1px 5px;
-      border-radius: 2px;
-      width: fit-content;
-      line-height: 1.6;
-    }
-    .role-pill--administrador { background: var(--c-accent);  color: var(--c-carbon); }
-    .role-pill--supervisor    { background: #1E88E5;           color: #fff; }
-    .role-pill--hse           { background: var(--c-green-lt); color: #fff; }
+		.form-section__hint {
+			font-size:  var(--text-sm);
+			color:      var(--text-tertiary);
+			margin-top: -4px;
+		}
 
-    /* Sync indicator */
-    .sync-pill {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-family: var(--f-display);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #888;
-      cursor: default;
-      flex-shrink: 0;
-      min-width: 62px;
-      justify-content: flex-end;
-    }
-    .sync-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #555;
-      flex-shrink: 0;
-    }
-    .sync-pill[data-state="synced"]  { color: var(--c-green-lt); }
-    .sync-pill[data-state="synced"]  .sync-dot { background: var(--c-green-lt); }
-    .sync-pill[data-state="syncing"] { color: var(--c-accent); }
-    .sync-pill[data-state="syncing"] .sync-dot {
-      background: var(--c-accent);
-      animation: blink 0.9s ease-in-out infinite;
-    }
-    .sync-pill[data-state="offline"] .sync-dot { background: #777; }
-    .sync-pill[data-state="error"]   { color: var(--c-danger); }
-    .sync-pill[data-state="error"]   .sync-dot { background: var(--c-danger); }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+		/* ── Selector de tipo (4 cards grandes) ───────────────── */
+		.tipo-grid {
+			display:               grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap:                   8px;
+		}
 
-    /* ── Scroll wrapper ──────────────────────────────────────── */
-    .page-wrap {
-      margin-top: var(--header-h);
-      padding-bottom: calc(var(--nav-h) + var(--safe-bot) + var(--s4));
-      padding-top: var(--s4);
-      padding-left: var(--s4);
-      padding-right: var(--s4);
-    }
+		.tipo-card {
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            6px;
+			padding:        16px 10px;
+			border-radius:  10px;
+			border:         2px solid var(--border-subtle);
+			background:     var(--surface-02);
+			cursor:         pointer;
+			transition:     all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			user-select:    none;
+			min-height:     80px;
+		}
+		.tipo-card:hover { background: var(--surface-03); }
+		.tipo-card:active { transform: scale(0.98); }
 
-    /* ── Skeleton loader ─────────────────────────────────────── */
-    @keyframes shimmer {
-      from { background-position: -200% 0; }
-      to   { background-position:  200% 0; }
-    }
-    .skel {
-      background: linear-gradient(90deg, #D8D8D8 25%, #EDEDED 50%, #D8D8D8 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.3s infinite;
-      border-radius: 4px;
-    }
-    .skel-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin-bottom: var(--s5); }
-    .skel-card   { height: 90px; border-radius: 8px; }
-    .skel-cta    { height: 58px; border-radius: 6px; margin-bottom: var(--s5); }
-    .skel-grid-4 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin-bottom: var(--s5); }
-    .skel-btn    { height: 58px; border-radius: 6px; }
-    .skel-h      { height: 14px; width: 35%; border-radius: 3px; margin-bottom: var(--s3); }
-    .skel-row    { height: 58px; border-radius: 6px; margin-bottom: var(--s2); }
+		.tipo-card__icon   { font-size: 24px; line-height: 1; }
+		.tipo-card__label  {
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			color:       var(--text-secondary);
+			text-align:  center;
+			line-height: 1.2;
+		}
 
-    /* ── Alert: acciones vencidas ────────────────────────────── */
-    .alert-vencidas {
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      background: var(--c-danger-lt);
-      border-left: 4px solid var(--c-danger);
-      border-radius: 0 6px 6px 0;
-      padding: var(--s3) var(--s4);
-      margin-bottom: var(--s4);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--c-danger);
-      animation: slide-down 0.25s ease;
-    }
-    .alert-vencidas .av-icon { font-size: 18px; flex-shrink: 0; }
-    .alert-vencidas .av-link {
-      margin-left: auto;
-      font-size: 12px;
-      font-family: var(--f-display);
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--c-danger);
-      padding: var(--s1) var(--s2);
-      border: 1px solid var(--c-danger);
-      border-radius: 3px;
-    }
-    @keyframes slide-down { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+		.tipo-card[aria-pressed="true"] {
+			border-color: var(--accent);
+			background:   var(--accent-subtle);
+		}
+		.tipo-card[aria-pressed="true"] .tipo-card__label {
+			color: var(--accent);
+		}
 
-    /* ── Banner nuevo ingresante ─────────────────────────────── */
-    .banner-ingresante {
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      background: linear-gradient(135deg, #BF360C 0%, #E64A19 100%);
-      border-radius: 8px;
-      padding: var(--s4);
-      margin-bottom: var(--s4);
-      color: #fff;
-    }
-    .banner-ingresante .bi-icon { font-size: 28px; flex-shrink: 0; }
-    .banner-ingresante .bi-title {
-      font-family: var(--f-display);
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-    .banner-ingresante .bi-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+		/* ── Selector de severidad (4 cards de colores) ────────── */
+		.sev-grid {
+			display:               grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap:                   6px;
+		}
 
-    /* ── Stats section ───────────────────────────────────────── */
-    .section-eyebrow {
-      font-family: var(--f-display);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--c-muted);
-      margin-bottom: var(--s3);
-    }
-    .stats-section { margin-bottom: var(--s5); }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--s3);
-    }
+		.sev-card {
+			display:        flex;
+			flex-direction: column;
+			align-items:    center;
+			justify-content: center;
+			gap:            4px;
+			padding:        10px 4px;
+			border-radius:  8px;
+			border:         2px solid transparent;
+			cursor:         pointer;
+			transition:     all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			user-select:    none;
+			min-height:     64px;
+		}
+		.sev-card:active { transform: scale(0.97); }
 
-    /* La firma visual del diseño: número gigante + franja de color izquierda */
-    .stat-card {
-      background: var(--c-surface);
-      border-radius: 8px;
-      padding: var(--s4) var(--s4) var(--s4) calc(var(--s4) + 6px);
-      box-shadow: 0 1px 3px var(--c-shadow);
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: box-shadow 0.15s, transform 0.1s;
-      min-height: 90px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-    }
-    .stat-card:active  { transform: scale(0.97); box-shadow: 0 1px 1px var(--c-shadow); }
-    .stat-card:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+		.sev-card__dot {
+			width:         12px;
+			height:        12px;
+			border-radius: 50%;
+		}
+		.sev-card__label {
+			font-size:   10px;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			text-align:  center;
+			line-height: 1.2;
+		}
 
-    /* Franja de color izquierda */
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 6px;
-    }
-    .stat-card--inc::before   { background: #E53935; }
-    .stat-card--acc::before   { background: var(--c-accent); }
-    .stat-card--perm::before  { background: var(--c-blue); }
-    .stat-card--chk::before   { background: var(--c-green-lt); }
+		/* Colores por severidad */
+		.sev-card--leve {
+			background:   var(--color-success-bg);
+			border-color: var(--color-success-bg);
+			color:        var(--color-success);
+		}
+		.sev-card--leve .sev-card__dot { background: var(--color-success); }
+		.sev-card--leve[aria-pressed="true"] {
+			border-color: var(--color-success);
+		}
 
-    /* Icono fantasma fondo */
-    .stat-bg-icon {
-      position: absolute;
-      right: var(--s3);
-      top: var(--s3);
-      font-size: 30px;
-      opacity: 0.08;
-      pointer-events: none;
-      line-height: 1;
-    }
+		.sev-card--moderado {
+			background:   var(--color-warning-bg);
+			border-color: var(--color-warning-bg);
+			color:        var(--color-warning);
+		}
+		.sev-card--moderado .sev-card__dot { background: var(--color-warning); }
+		.sev-card--moderado[aria-pressed="true"] {
+			border-color: var(--color-warning);
+		}
 
-    /* El número: firma visual — condensado, pesado, dominante */
-    .stat-number {
-      font-family: var(--f-display);
-      font-size: 46px;
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: -0.02em;
-      color: var(--c-carbon);
-    }
-    .stat-number.is-warning { color: var(--c-danger); }
-    .stat-label {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--c-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      line-height: 1.3;
-      margin-top: 3px;
-    }
+		.sev-card--grave {
+			background:   rgba(255,100,0,0.1);
+			border-color: rgba(255,100,0,0.1);
+			color:        #FF6400;
+		}
+		.sev-card--grave .sev-card__dot { background: #FF6400; }
+		.sev-card--grave[aria-pressed="true"] {
+			border-color: #FF6400;
+		}
 
-    /* ── CTA: Reportar incidente ─────────────────────────────── */
-    .cta-section { margin-bottom: var(--s5); }
-    .btn-reportar {
-      width: 100%;
-      min-height: 58px;
-      background: var(--c-accent);
-      color: var(--c-carbon);
-      font-family: var(--f-display);
-      font-size: 20px;
-      font-weight: 900;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--s3);
-      box-shadow: 0 4px 16px rgba(255,193,7,0.30), 0 1px 4px rgba(0,0,0,0.12);
-      transition: box-shadow 0.15s, transform 0.1s, background 0.15s;
-      position: relative;
-      overflow: hidden;
-    }
-    .btn-reportar::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0);
-      transition: background 0.15s;
-    }
-    .btn-reportar:active {
-      transform: translateY(1px);
-      box-shadow: 0 2px 6px rgba(255,193,7,0.20);
-    }
-    .btn-reportar:active::after { background: rgba(0,0,0,0.08); }
-    .btn-reportar:focus-visible { outline: 3px solid var(--c-carbon); outline-offset: 2px; }
-    .btn-reportar .ico { font-size: 22px; }
+		.sev-card--catastrofico {
+			background:   var(--color-danger-bg);
+			border-color: var(--color-danger-bg);
+			color:        var(--color-danger);
+		}
+		.sev-card--catastrofico .sev-card__dot { background: var(--color-danger); }
+		.sev-card--catastrofico[aria-pressed="true"] {
+			border-color: var(--color-danger);
+		}
 
-    /* ── Acciones rápidas ────────────────────────────────────── */
-    .quick-section { margin-bottom: var(--s5); }
-    .quick-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--s3);
-    }
-    .btn-quick {
-      min-height: 58px;
-      background: var(--c-surface);
-      border: 1.5px solid var(--c-border);
-      border-radius: 6px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: var(--s3);
-      color: var(--c-primary);
-      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
-      cursor: pointer;
-    }
-    .btn-quick:active  { transform: scale(0.97); background: #F7F7F7; }
-    .btn-quick:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 1px; border-color: transparent; }
-    .btn-quick .ico    { font-size: 22px; opacity: 0.65; }
-    .btn-quick .lbl {
-      font-family: var(--f-display);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.09em;
-      text-transform: uppercase;
-      text-align: center;
-    }
+		/* ── Campos de texto estándar ─────────────────────────── */
+		.field {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
 
-    /* ── Actividad reciente ───────────────────────────────────── */
-    .activity-section { margin-bottom: var(--s5); }
-    .activity-list { list-style: none; }
-    .activity-item {
-      background: var(--c-surface);
-      border-radius: 6px;
-      margin-bottom: var(--s2);
-      padding: var(--s3) var(--s4);
-      display: flex;
-      align-items: center;
-      gap: var(--s3);
-      box-shadow: 0 1px 3px var(--c-shadow);
-      cursor: pointer;
-      transition: box-shadow 0.12s, transform 0.1s;
-      min-height: 52px;
-    }
-    .activity-item:active { transform: scale(0.99); box-shadow: none; }
-    .activity-item:focus-visible { outline: 2px solid var(--c-accent); }
-    .activity-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
-    .activity-body { flex: 1; min-width: 0; }
-    .activity-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--c-text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .activity-meta { font-size: 11px; color: var(--c-muted); margin-top: 1px; }
-    .activity-badge {
-      font-family: var(--f-display);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      padding: 2px 7px;
-      border-radius: 3px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
+		.field__label {
+			font-size:   var(--text-sm);
+			font-weight: 700;
+			color:       var(--text-secondary);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+		.field__label abbr {
+			text-decoration: none;
+			color: var(--color-danger);
+			margin-left: 2px;
+		}
 
-    /* Estado badges */
-    .b-abierto    { background:#FFEBEE; color:#C62828; }
-    .b-investiga  { background:#FFF3E0; color:#E65100; }
-    .b-cerrado    { background:#E8F5E9; color:#2E7D32; }
-    .b-pendiente  { background:#FFF8E1; color:#F57F17; }
-    .b-vencida    { background:#FFEBEE; color:#C62828; }
-    .b-completada { background:#E8F5E9; color:#2E7D32; }
-    .b-en-curso   { background:#E3F2FD; color:#1565C0; }
-    .b-solicitado { background:#EDE7F6; color:#4527A0; }
-    .b-aprobado   { background:#E8F5E9; color:#2E7D32; }
-    .b-activo     { background:#E8F5E9; color:#2E7D32; }
-    .b-firmado    { background:#F3E5F5; color:#6A1B9A; }
-    .b-borrador   { background:#F5F5F5; color:#616161; }
+		.field__input,
+		.field__textarea,
+		.field__datetime {
+			width:         100%;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       11px 14px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__input:focus,
+		.field__textarea:focus,
+		.field__datetime:focus {
+			border-color: var(--accent);
+		}
+		.field__input::placeholder,
+		.field__textarea::placeholder {
+			color: var(--text-tertiary);
+		}
+		.field__input[aria-invalid="true"],
+		.field__textarea[aria-invalid="true"],
+		.field__datetime[aria-invalid="true"] {
+			border-color: var(--color-danger);
+		}
 
-    .activity-empty {
-      text-align: center;
-      padding: var(--s8) var(--s4);
-      color: var(--c-muted);
-    }
-    .activity-empty .ae-icon { font-size: 36px; display: block; margin-bottom: var(--s3); opacity: 0.4; }
-    .activity-empty .ae-text { font-size: 14px; }
+		.field__textarea {
+			resize:     vertical;
+			min-height: 100px;
+			line-height: 1.5;
+		}
 
-    /* ── Error state ─────────────────────────────────────────── */
-    .error-state {
-      text-align: center;
-      padding: 60px var(--s4) var(--s4);
-    }
-    .error-state .es-icon { font-size: 48px; opacity: 0.35; display: block; margin-bottom: var(--s4); }
-    .error-state .es-msg  { font-size: 15px; color: var(--c-muted); margin-bottom: var(--s5); }
-    .btn-retry {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--s2);
-      background: var(--c-primary);
-      color: #fff;
-      font-family: var(--f-display);
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: var(--s3) var(--s5);
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-retry:active { background: var(--c-carbon); }
+		.field__datetime {
+			color-scheme: dark;
+		}
 
-    /* ── Bottom navigation ───────────────────────────────────── */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      height: var(--nav-h);
-      background: var(--c-surface);
-      border-top: 1px solid var(--c-border);
-      display: flex;
-      align-items: stretch;
-      z-index: 200;
-      padding-bottom: var(--safe-bot);
-      box-shadow: 0 -2px 10px var(--c-shadow);
-    }
-    .nav-item {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      color: var(--c-muted);
-      transition: color 0.12s;
-      position: relative;
-      min-height: 48px;
-      padding: var(--s1) 2px;
-    }
-    .nav-item:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -2px; }
-    .nav-item[aria-current="page"] { color: var(--c-carbon); }
-    .nav-item[aria-current="page"]::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 20%; right: 20%;
-      height: 3px;
-      background: var(--c-accent);
-      border-radius: 0 0 3px 3px;
-    }
-    .nav-ico  { font-size: 22px; line-height: 1; }
-    .nav-lbl  {
-      font-family: var(--f-display);
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
+		.field__error {
+			font-size:  var(--text-xs);
+			color:      var(--color-danger);
+			font-weight: 600;
+			min-height: 16px;
+		}
 
-    /* ── Focus global (WCAG AA) ──────────────────────────────── */
-    :focus-visible {
-      outline: 2px solid var(--c-accent);
-      outline-offset: 2px;
-    }
-  </style>
+		/* ── Bloque de geolocalización ────────────────────────── */
+		.geo-row {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.btn-geo {
+			display:         flex;
+			align-items:     center;
+			gap:             6px;
+			padding:         10px 14px;
+			border-radius:   8px;
+			background:      var(--surface-03);
+			border:          1px solid var(--border-subtle);
+			color:           var(--text-secondary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			white-space:     nowrap;
+			flex-shrink:     0;
+			transition:      background 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-geo:hover  { background: var(--surface-04); }
+		.btn-geo:active { transform: scale(0.97); }
+		.btn-geo:disabled { opacity: 0.5; cursor: not-allowed; }
+		.btn-geo--ok    { color: var(--color-success); border-color: var(--color-success-bg); }
+		.btn-geo--error { color: var(--color-danger);  border-color: var(--color-danger-bg);  }
+
+		.geo-coords {
+			font-family: var(--font-mono);
+			font-size:   var(--text-xs);
+			color:       var(--text-tertiary);
+			flex:        1;
+			min-width:   0;
+			overflow:    hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		/* ── Lista dinámica de acciones inmediatas ────────────── */
+		.acciones-list {
+			display:        flex;
+			flex-direction: column;
+			gap:            6px;
+		}
+
+		.accion-row {
+			display:     flex;
+			align-items: center;
+			gap:         8px;
+		}
+
+		.accion-row__input {
+			flex:          1;
+			box-sizing:    border-box;
+			background:    var(--surface-02);
+			border:        1px solid var(--border-subtle);
+			border-radius: 8px;
+			padding:       10px 12px;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			color:         var(--text-primary);
+			outline:       none;
+			transition:    border-color 0.15s ease;
+		}
+		.accion-row__input:focus { border-color: var(--accent); }
+		.accion-row__input::placeholder { color: var(--text-tertiary); }
+
+		.btn-remove-accion {
+			display:         flex;
+			align-items:     center;
+			justify-content: center;
+			width:           36px;
+			height:          36px;
+			border-radius:   8px;
+			background:      var(--color-danger-bg);
+			border:          none;
+			color:           var(--color-danger);
+			cursor:          pointer;
+			font-size:       18px;
+			flex-shrink:     0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-remove-accion:hover { background: var(--color-danger); color: #fff; }
+
+		.btn-add-accion {
+			display:         flex;
+			align-items:     center;
+			gap:             6px;
+			padding:         9px 14px;
+			border-radius:   8px;
+			background:      transparent;
+			border:          1px dashed var(--border-subtle);
+			color:           var(--text-secondary);
+			font-family:     var(--font-sans);
+			font-size:       var(--text-sm);
+			font-weight:     600;
+			cursor:          pointer;
+			width:           100%;
+			justify-content: center;
+			transition:      all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-add-accion:hover { border-color: var(--accent); color: var(--accent); }
+
+		/* ── Banner de error global del formulario ────────────── */
+		.form-error-banner {
+			padding:       12px 14px;
+			border-radius: 8px;
+			background:    var(--color-danger-bg);
+			border:        1px solid var(--color-danger-border);
+			color:         var(--color-danger);
+			font-size:     var(--text-sm);
+			font-weight:   500;
+			line-height:   1.4;
+		}
+
+		/* ── Footer fijo con botón guardar ────────────────────── */
+		.form-footer {
+			position:       fixed;
+			bottom:         0;
+			left:           0;
+			right:          0;
+			padding:        12px 16px calc(12px + env(safe-area-inset-bottom));
+			background:     var(--surface-01);
+			border-top:     1px solid var(--border-subtle);
+			z-index:        100;
+		}
+
+		.btn-guardar {
+			width:         100%;
+			display:       flex;
+			align-items:   center;
+			justify-content: center;
+			gap:           8px;
+			padding:       14px;
+			border-radius: 10px;
+			background:    var(--accent);
+			border:        none;
+			color:         #000;
+			font-family:   var(--font-sans);
+			font-size:     var(--text-base);
+			font-weight:   700;
+			cursor:        pointer;
+			transition:    background 0.15s ease, transform 0.1s ease;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar:hover  { background: var(--accent-hover); }
+		.btn-guardar:active { transform: scale(0.99); }
+		.btn-guardar:disabled {
+			opacity: 0.5;
+			cursor:  not-allowed;
+			transform: none;
+		}
+
+		.btn-guardar__spinner {
+			width:         18px;
+			height:        18px;
+			border:        2px solid rgba(0,0,0,0.3);
+			border-top-color: #000;
+			border-radius: 50%;
+			animation:     spin 0.7s linear infinite;
+		}
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+	</style>
 </head>
-
 <body>
-
-  <!-- ================================================================
-       OFFLINE BANNER
-       ================================================================ -->
-  <div id="offline-banner"
-       class="offline-banner"
-       role="alert"
-       aria-live="polite"
-       aria-atomic="true">
-    ⬡&nbsp; Sin conexión — datos locales
-  </div>
-
-  <!-- ================================================================
-       HEADER
-       ================================================================ -->
-  <header class="app-header" role="banner">
-    <div class="header-brand">
-      <span class="header-wordmark" aria-label="ATSHEL">ATSHEL</span>
-      <div class="header-divider" aria-hidden="true"></div>
-      <div class="header-user">
-        <span id="js-user-name" class="header-name" aria-label="Nombre de usuario"></span>
-        <span id="js-role-pill" class="role-pill" aria-label="Rol del usuario"></span>
-      </div>
-    </div>
-
-    <div id="js-sync"
-         class="sync-pill"
-         data-state="syncing"
-         role="status"
-         aria-live="polite"
-         aria-label="Sincronización: cargando">
-      <span class="sync-dot" aria-hidden="true"></span>
-      <span id="js-sync-lbl">Sync</span>
-    </div>
-  </header>
-
-  <!-- ================================================================
-       CONTENIDO PRINCIPAL
-       ================================================================ -->
-  <main class="page-wrap" id="main-content" role="main">
-
-    <!-- ─── SKELETON (visible mientras carga) ─── -->
-    <div id="js-skeleton" role="status" aria-label="Cargando panel...">
-      <div class="skel-grid-2">
-        <div class="skel skel-card"></div>
-        <div class="skel skel-card"></div>
-        <div class="skel skel-card"></div>
-        <div class="skel skel-card"></div>
-      </div>
-      <div class="skel skel-cta"></div>
-      <div class="skel skel-grid-4">
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-        <div class="skel skel-btn" style="height:58px;border-radius:6px"></div>
-      </div>
-      <div class="skel skel-h"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-    </div>
-
-    <!-- ─── DASHBOARD (oculto hasta que carga) ─── -->
-    <div id="js-dashboard" class="hidden">
-
-      <!-- Banner: Nuevo ingresante -->
-      <div id="js-ingresante" class="banner-ingresante hidden" role="note" aria-label="Aviso de nuevo ingresante">
-        <span class="bi-icon" aria-hidden="true">🟠</span>
-        <div>
-          <div class="bi-title">Nuevo ingresante</div>
-          <div class="bi-sub" id="js-ingresante-sub">Completá tu inducción antes de operar.</div>
-        </div>
-      </div>
-
-      <!-- Alerta: Acciones vencidas -->
-      <div id="js-vencidas" class="alert-vencidas hidden" role="alert" aria-live="assertive">
-        <span class="av-icon" aria-hidden="true">⚡</span>
-        <span id="js-vencidas-msg"></span>
-        <a href="/acciones.html" class="av-link" aria-label="Ver acciones vencidas">Ver</a>
-      </div>
-
-      <!-- ─── ESTADÍSTICAS ─── -->
-      <section class="stats-section" aria-labelledby="stats-h">
-        <div id="stats-h" class="section-eyebrow">Estado actual</div>
-        <div class="stats-grid">
-
-          <article class="stat-card stat-card--inc"
-                   role="button" tabindex="0"
-                   aria-label="Incidentes abiertos"
-                   onclick="nav('/incidentes.html')"
-                   onkeydown="kpEnter(event,'/incidentes.html')">
-            <span class="stat-bg-icon" aria-hidden="true">⚠</span>
-            <span class="stat-number" id="js-n-inc">—</span>
-            <span class="stat-label">Incidentes<br>abiertos</span>
-          </article>
-
-          <article class="stat-card stat-card--acc"
-                   role="button" tabindex="0"
-                   aria-label="Acciones correctivas pendientes"
-                   onclick="nav('/acciones.html')"
-                   onkeydown="kpEnter(event,'/acciones.html')">
-            <span class="stat-bg-icon" aria-hidden="true">⚡</span>
-            <span class="stat-number" id="js-n-acc">—</span>
-            <span class="stat-label">Acciones<br>pendientes</span>
-          </article>
-
-          <article class="stat-card stat-card--perm"
-                   role="button" tabindex="0"
-                   aria-label="Permisos de trabajo activos"
-                   onclick="nav('/permisos.html')"
-                   onkeydown="kpEnter(event,'/permisos.html')">
-            <span class="stat-bg-icon" aria-hidden="true">🔑</span>
-            <span class="stat-number" id="js-n-perm">—</span>
-            <span class="stat-label">Permisos<br>activos</span>
-          </article>
-
-          <article class="stat-card stat-card--chk"
-                   role="button" tabindex="0"
-                   aria-label="Checklists completados hoy"
-                   onclick="nav('/checklists.html')"
-                   onkeydown="kpEnter(event,'/checklists.html')">
-            <span class="stat-bg-icon" aria-hidden="true">☑</span>
-            <span class="stat-number" id="js-n-chk">—</span>
-            <span class="stat-label">Checklists<br>hoy</span>
-          </article>
-
-        </div>
-      </section>
-
-      <!-- ─── CTA PRINCIPAL ─── -->
-      <section class="cta-section">
-        <button class="btn-reportar"
-                onclick="nav('/incidente-nuevo.html')"
-                aria-label="Reportar un nuevo incidente de seguridad">
-          <span class="ico" aria-hidden="true">＋</span>
-          Reportar incidente
-        </button>
-      </section>
-
-      <!-- ─── ACCIONES RÁPIDAS ─── -->
-      <section class="quick-section" aria-labelledby="quick-h">
-        <div id="quick-h" class="section-eyebrow">Acciones rápidas</div>
-        <div class="quick-grid">
-
-          <button class="btn-quick"
-                  onclick="nav('/ats-nuevo.html')"
-                  aria-label="Iniciar nuevo Análisis de Trabajo Seguro">
-            <span class="ico" aria-hidden="true">📋</span>
-            <span class="lbl">Nuevo ATS</span>
-          </button>
-
-          <button class="btn-quick"
-                  onclick="nav('/permisos.html')"
-                  aria-label="Solicitar nuevo permiso de trabajo">
-            <span class="ico" aria-hidden="true">🔑</span>
-            <span class="lbl">Permiso</span>
-          </button>
-
-          <button class="btn-quick"
-                  onclick="nav('/checklists.html')"
-                  aria-label="Completar checklist de seguridad">
-            <span class="ico" aria-hidden="true">☑</span>
-            <span class="lbl">Checklist</span>
-          </button>
-
-          <button class="btn-quick"
-                  onclick="nav('/near-miss.html')"
-                  aria-label="Registrar cuasi-accidente o acto inseguro">
-            <span class="ico" aria-hidden="true">👁</span>
-            <span class="lbl">Near miss</span>
-          </button>
-
-        </div>
-      </section>
-
-      <!-- ─── ACTIVIDAD RECIENTE ─── -->
-      <section class="activity-section" aria-labelledby="act-h">
-        <div id="act-h" class="section-eyebrow">Actividad reciente</div>
-        <ul id="js-activity"
-            class="activity-list"
-            aria-live="polite"
-            aria-label="Lista de actividad reciente">
-          <!-- Poblado por JS -->
-        </ul>
-      </section>
-
-    </div><!-- /js-dashboard -->
-
-    <!-- ─── ERROR STATE ─── -->
-    <div id="js-error" class="error-state hidden" role="alert">
-      <span class="es-icon" aria-hidden="true">⚠</span>
-      <p class="es-msg" id="js-error-msg">No se pudo cargar el panel.</p>
-      <button class="btn-retry" onclick="initDashboard()">↺ Reintentar</button>
-    </div>
-
-  </main>
-
-  <!-- ================================================================
-       NAVEGACIÓN INFERIOR
-       ================================================================ -->
-  <nav class="bottom-nav" aria-label="Navegación principal">
-    <a href="/index.html" class="nav-item" aria-current="page">
-      <span class="nav-ico" aria-hidden="true">⌂</span>
-      <span class="nav-lbl">Inicio</span>
-    </a>
-    <a href="/incidentes.html" class="nav-item">
-      <span class="nav-ico" aria-hidden="true">⚠</span>
-      <span class="nav-lbl">Incidentes</span>
-    </a>
-    <a href="/ats-supervisor.html" class="nav-item" id="js-nav-ats">
-      <span class="nav-ico" aria-hidden="true">📋</span>
-      <span class="nav-lbl">ATS</span>
-    </a>
-    <a href="/permisos.html" class="nav-item">
-      <span class="nav-ico" aria-hidden="true">🔑</span>
-      <span class="nav-lbl">Permisos</span>
-    </a>
-    <a href="/perfil.html" class="nav-item">
-      <span class="nav-ico" aria-hidden="true">👤</span>
-      <span class="nav-lbl">Perfil</span>
-    </a>
-  </nav>
-
-  <!-- ================================================================
-       SCRIPTS — orden crítico, sin defer ni async
-       ================================================================ -->
-  <script src="/vendor/dompurify.min.js"></script>
-  <script src="/vendor/phosphor-icons.min.js"></script>
-  <script src="/vendor/jspdf.min.js"></script>
-  <script type="module" src="/src/js/atshel-app.js"></script>
-
-  <!-- ================================================================
-       LÓGICA DE PÁGINA — index.html
-       Namespace: window.ATSHEL establecido por atshel-app.js
-       window.ATSHEL.db      → instancia PowerSync (SQLite local)
-       window.ATSHEL.supabase → cliente Supabase JS
-       window.ATSHEL.user    → perfil del usuario autenticado
-       ================================================================ -->
-  <script>
-  'use strict';
-
-  // ── Señal de página para atshel-app.js ─────────────────────────
-  window.__ATSHEL_PAGE = 'index';
-
-  // ── Atajos DOM ──────────────────────────────────────────────────
-  const g = id => document.getElementById(id);
-  const EL = {
-    skeleton:   g('js-skeleton'),
-    dashboard:  g('js-dashboard'),
-    error:      g('js-error'),
-    errorMsg:   g('js-error-msg'),
-    offline:    g('offline-banner'),
-    sync:       g('js-sync'),
-    syncLbl:    g('js-sync-lbl'),
-    userName:   g('js-user-name'),
-    rolePill:   g('js-role-pill'),
-    nInc:       g('js-n-inc'),
-    nAcc:       g('js-n-acc'),
-    nPerm:      g('js-n-perm'),
-    nChk:       g('js-n-chk'),
-    vencidas:   g('js-vencidas'),
-    vencidasMsg:g('js-vencidas-msg'),
-    activity:   g('js-activity'),
-    ingresante: g('js-ingresante'),
-    ingSub:     g('js-ingresante-sub'),
-  };
-
-  // ── Navegación helper ───────────────────────────────────────────
-  function nav(url) { window.location.href = url; }
-  function kpEnter(e, url) { if (e.key === 'Enter') nav(url); }
-
-  // ── Conectividad ────────────────────────────────────────────────
-  function applyOnline()  {
-    EL.offline.classList.remove('is-visible');
-    document.body.classList.remove('is-offline');
-  }
-  function applyOffline() {
-    EL.offline.classList.add('is-visible');
-    document.body.classList.add('is-offline');
-    setSyncState('offline');
-  }
-  window.addEventListener('online',  () => { applyOnline();  setSyncState('syncing'); refreshStats(); });
-  window.addEventListener('offline', () => applyOffline());
-  if (!navigator.onLine) applyOffline();
-
-  // ── Sync indicator ──────────────────────────────────────────────
-  const SYNC_LABEL = { synced:'Listo', syncing:'Sync', offline:'Offline', error:'Error' };
-  function setSyncState(state, detail) {
-    EL.sync.dataset.state = state;
-    EL.syncLbl.textContent = SYNC_LABEL[state] ?? state;
-    EL.sync.setAttribute('aria-label',
-      'Sincronización: ' + (detail ?? SYNC_LABEL[state] ?? state));
-  }
-
-  // ── Perfil de usuario ───────────────────────────────────────────
-  const ROLE_LABEL = { administrador:'Admin', supervisor:'Superv.', hse:'HSE' };
-  function renderUser(u) {
-    if (!u) return;
-    const first = (u.nombre_completo || 'Usuario').split(' ')[0];
-    EL.userName.textContent = first;
-    const r = u.rol || '';
-    EL.rolePill.textContent  = ROLE_LABEL[r] ?? r.toUpperCase();
-    EL.rolePill.className    = 'role-pill role-pill--' + r;
-
-    if (u.es_nuevo_ingresante) {
-      EL.ingresante.classList.remove('hidden');
-      EL.ingSub.textContent = u.tutor_id
-        ? 'Contactá a tu tutor antes de operar.'
-        : 'Completá tu inducción antes de comenzar operaciones.';
-    }
-  }
-
-  // ── Fecha local sin bug UTC ──────────────────────────────────────
-  // NUNCA usar new Date("YYYY-MM-DD") — interpreta como UTC
-  function todayLocal() {
-    const d = new Date();
-    return [
-      d.getFullYear(),
-      String(d.getMonth() + 1).padStart(2, '0'),
-      String(d.getDate()).padStart(2, '0'),
-    ].join('-');
-  }
-
-  // ── Query helpers: PowerSync → fallback Supabase ────────────────
-  async function dbCount(sql, params, supaFn) {
-    try {
-      const db = window.ATSHEL?.db;
-      if (db?.execute) {
-        const res = await db.execute(sql, params);
-        const arr = res.rows?._array ?? res.rows ?? [];
-        const row = arr[0] ?? {};
-        return parseInt(row.count ?? row.n ?? 0, 10);
-      }
-    } catch (e) { console.warn('[ATSHEL/db] count fallback:', e.message); }
-
-    try { return await supaFn(); }
-    catch (e) { console.error('[ATSHEL/supa] count error:', e.message); return null; }
-  }
-
-  async function dbRows(sql, params, supaFn) {
-    try {
-      const db = window.ATSHEL?.db;
-      if (db?.execute) {
-        const res = await db.execute(sql, params);
-        return res.rows?._array ?? res.rows ?? [];
-      }
-    } catch (e) { console.warn('[ATSHEL/db] rows fallback:', e.message); }
-
-    try { return await supaFn(); }
-    catch (e) { console.error('[ATSHEL/supa] rows error:', e.message); return []; }
-  }
-
-  // ── Estadísticas ────────────────────────────────────────────────
-  async function loadStats() {
-    const supa  = window.ATSHEL?.supabase;
-    const today = todayLocal();
-
-    // 1. Incidentes abiertos (Abierto | En investigación)
-    const nInc = await dbCount(
-      `SELECT COUNT(*) AS count FROM incidentes
-       WHERE estado IN ('Abierto','En investigación') AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('incidentes')
-          .select('*', { count:'exact', head:true })
-          .in('estado', ['Abierto','En investigación'])
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nInc !== null) EL.nInc.textContent = nInc;
-
-    // 2. Acciones pendientes (Pendiente | En curso)
-    const nAcc = await dbCount(
-      `SELECT COUNT(*) AS count FROM acciones_correctivas
-       WHERE estado IN ('Pendiente','En curso') AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('acciones_correctivas')
-          .select('*', { count:'exact', head:true })
-          .in('estado', ['Pendiente','En curso'])
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nAcc !== null) EL.nAcc.textContent = nAcc;
-
-    // 3. Permisos activos (Aprobado | Activo)
-    const nPerm = await dbCount(
-      `SELECT COUNT(*) AS count FROM permisos_trabajo
-       WHERE estado IN ('Aprobado','Activo') AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('permisos_trabajo')
-          .select('*', { count:'exact', head:true })
-          .in('estado', ['Aprobado','Activo'])
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nPerm !== null) EL.nPerm.textContent = nPerm;
-
-    // 4. Checklists de hoy
-    const nChk = await dbCount(
-      `SELECT COUNT(*) AS count FROM checklist_instancias
-       WHERE fecha_ejecucion = ? AND deleted_at IS NULL`,
-      [today],
-      async () => {
-        const { count } = await supa
-          .from('checklist_instancias')
-          .select('*', { count:'exact', head:true })
-          .eq('fecha_ejecucion', today)
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nChk !== null) EL.nChk.textContent = nChk;
-
-    // 5. Acciones VENCIDAS — requieren atención inmediata
-    const nVenc = await dbCount(
-      `SELECT COUNT(*) AS count FROM acciones_correctivas
-       WHERE estado = 'Vencida' AND deleted_at IS NULL`,
-      [],
-      async () => {
-        const { count } = await supa
-          .from('acciones_correctivas')
-          .select('*', { count:'exact', head:true })
-          .eq('estado', 'Vencida')
-          .is('deleted_at', null);
-        return count;
-      }
-    );
-    if (nVenc && nVenc > 0) {
-      const txt = nVenc === 1 ? '1 acción VENCIDA' : nVenc + ' acciones VENCIDAS';
-      EL.vencidasMsg.textContent = txt + ' — atención requerida';
-      EL.vencidas.classList.remove('hidden');
-      EL.nAcc.classList.add('is-warning');
-    }
-  }
-
-  // ── Feed de actividad ─────────────────────────────────────────────
-  const BADGE_MAP = {
-    'Abierto':         'b-abierto',
-    'En investigación':'b-investiga',
-    'Cerrado':         'b-cerrado',
-    'Pendiente':       'b-pendiente',
-    'Vencida':         'b-vencida',
-    'Completada':      'b-completada',
-    'En curso':        'b-en-curso',
-    'Solicitado':      'b-solicitado',
-    'En_revision':     'b-pendiente',
-    'Aprobado':        'b-aprobado',
-    'Activo':          'b-activo',
-    'Firmado':         'b-firmado',
-    'Borrador':        'b-borrador',
-    'En_curso':        'b-en-curso',
-    'Completado':      'b-completada',
-    'Cancelado':       'b-borrador',
-  };
-  const TYPE_ICO = { incidente:'⚠', accion:'⚡', permiso:'🔑', ats:'📋', checklist:'☑' };
-
-  function relTime(iso) {
-    if (!iso) return '';
-    const d    = new Date(iso);
-    const diff = Date.now() - d.getTime();
-    const m    = Math.floor(diff / 60000);
-    const h    = Math.floor(diff / 3600000);
-    const day  = Math.floor(diff / 86400000);
-    if (m < 2)   return 'hace un momento';
-    if (m < 60)  return `hace ${m} min`;
-    if (h < 24)  return `hace ${h}h`;
-    if (day < 2) return 'ayer';
-    if (day < 7) return `hace ${day} días`;
-    return d.toLocaleDateString('es-AR', { day:'2-digit', month:'short' });
-  }
-
-  function makeActivityItem(type, title, estado, ts, href) {
-    // DOMPurify está cargado antes de este script
-    const safeTitle = typeof DOMPurify !== 'undefined'
-      ? DOMPurify.sanitize(title, { ALLOWED_TAGS: [] })
-      : title.replace(/</g, '&lt;');
-
-    const badgeCls = BADGE_MAP[estado] ?? 'b-borrador';
-    const li = document.createElement('li');
-    li.className = 'activity-item';
-    li.setAttribute('role', 'button');
-    li.setAttribute('tabindex', '0');
-    li.setAttribute('aria-label', safeTitle + ', estado: ' + estado);
-    if (href) {
-      li.onclick     = () => nav(href);
-      li.onkeydown   = e => { if (e.key === 'Enter') nav(href); };
-    }
-    li.innerHTML =
-      `<span class="activity-icon" aria-hidden="true">${TYPE_ICO[type] ?? '●'}</span>` +
-      `<div class="activity-body">` +
-        `<div class="activity-title">${safeTitle}</div>` +
-        `<div class="activity-meta">${relTime(ts)}</div>` +
-      `</div>` +
-      `<span class="activity-badge ${badgeCls}">${estado}</span>`;
-    return li;
-  }
-
-  async function loadActivity() {
-    const supa  = window.ATSHEL?.supabase;
-    const items = [];
-
-    // Incidentes recientes
-    const incs = await dbRows(
-      `SELECT id, numero, tipo, estado, created_at
-       FROM incidentes
-       WHERE deleted_at IS NULL
-       ORDER BY created_at DESC LIMIT 3`,
-      [],
-      async () => {
-        const { data } = await supa
-          .from('incidentes')
-          .select('id,numero,tipo,estado,created_at')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(3);
-        return data ?? [];
-      }
-    );
-    incs.forEach(r => {
-      const lbl = (r.numero ? r.numero + ' — ' : '') + (r.tipo || 'Incidente');
-      items.push({ type:'incidente', title:lbl, estado:r.estado, ts:r.created_at,
-        href:'/incidente-detalle.html?id=' + r.id });
-    });
-
-    // ATS recientes (JOIN plantillas_ats para obtener nombre)
-    const atsRows = await dbRows(
-      `SELECT ai.id, ai.estado, ai.created_at, pa.nombre_ats
-       FROM ats_instancias ai
-       LEFT JOIN plantillas_ats pa ON pa.id = ai.plantilla_id
-       WHERE ai.deleted_at IS NULL
-       ORDER BY ai.created_at DESC LIMIT 2`,
-      [],
-      async () => {
-        const { data } = await supa
-          .from('ats_instancias')
-          .select('id,estado,created_at,plantillas_ats(nombre_ats)')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(2);
-        return data ?? [];
-      }
-    );
-    atsRows.forEach(r => {
-      // PowerSync JOIN → r.nombre_ats; Supabase nested → r.plantillas_ats?.nombre_ats
-      const nombre = r.nombre_ats ?? r.plantillas_ats?.nombre_ats ?? 'ATS';
-      items.push({ type:'ats', title:nombre, estado:r.estado, ts:r.created_at, href:null });
-    });
-
-    // Acciones correctivas recientes
-    const accRows = await dbRows(
-      `SELECT id, descripcion, estado, created_at
-       FROM acciones_correctivas
-       WHERE deleted_at IS NULL
-       ORDER BY created_at DESC LIMIT 2`,
-      [],
-      async () => {
-        const { data } = await supa
-          .from('acciones_correctivas')
-          .select('id,descripcion,estado,created_at')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(2);
-        return data ?? [];
-      }
-    );
-    accRows.forEach(r => {
-      const desc = (r.descripcion ?? '').slice(0, 50) || 'Acción correctiva';
-      items.push({ type:'accion', title:desc, estado:r.estado, ts:r.created_at, href:'/acciones.html' });
-    });
-
-    // Ordenar por fecha desc, tomar 6
-    items.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-    const top6 = items.slice(0, 6);
-
-    EL.activity.innerHTML = '';
-
-    if (top6.length === 0) {
-      EL.activity.innerHTML =
-        `<li class="activity-empty">` +
-          `<span class="ae-icon" aria-hidden="true">📭</span>` +
-          `<span class="ae-text">Sin actividad reciente</span>` +
-        `</li>`;
-      return;
-    }
-
-    const frag = document.createDocumentFragment();
-    top6.forEach(item =>
-      frag.appendChild(makeActivityItem(item.type, item.title, item.estado, item.ts, item.href))
-    );
-    EL.activity.appendChild(frag);
-  }
-
-  // ── Refresh parcial (sin mostrar skeleton) ─────────────────────
-  async function refreshStats() {
-    try {
-      await Promise.allSettled([loadStats(), loadActivity()]);
-      setSyncState(navigator.onLine ? 'synced' : 'offline');
-    } catch (e) {
-      console.warn('[ATSHEL] refresh error:', e.message);
-    }
-  }
-
-  // ── Carga principal del dashboard ──────────────────────────────
-  async function initDashboard() {
-    // Mostrar skeleton, ocultar estados anteriores
-    EL.skeleton.classList.remove('hidden');
-    EL.dashboard.classList.add('hidden');
-    EL.error.classList.add('hidden');
-    EL.vencidas.classList.add('hidden');
-    EL.ingresante.classList.add('hidden');
-    setSyncState('syncing');
-
-    try {
-      // Perfil de usuario (cargado por atshel-app.js antes del evento)
-      renderUser(window.ATSHEL?.user);
-
-      if (!navigator.onLine) applyOffline();
-
-      // Estadísticas y actividad en paralelo
-      await Promise.allSettled([loadStats(), loadActivity()]);
-
-      // Mostrar dashboard
-      EL.skeleton.classList.add('hidden');
-      EL.dashboard.classList.remove('hidden');
-      setSyncState(navigator.onLine ? 'synced' : 'offline');
-
-    } catch (err) {
-      console.error('[ATSHEL] initDashboard error:', err);
-      EL.skeleton.classList.add('hidden');
-      EL.errorMsg.textContent =
-        'No se pudo cargar el panel. ' + (err?.message ?? 'Error desconocido.');
-      EL.error.classList.remove('hidden');
-      setSyncState('error', err?.message);
-    }
-  }
-
-  // ── Exponer para retry en error state ──────────────────────────
-  window.initDashboard = initDashboard;
-
-  // ── Escuchar eventos de atshel-app.js ─────────────────────────
-  // 'atshel:ready' → auth OK + PowerSync inicializado
-  // 'atshel:synced' → ciclo de sync completado (actualizar datos)
-  let readyFired = false;
-
-  document.addEventListener('atshel:ready', function () {
-    readyFired = true;
-    initDashboard();
-  });
-
-  document.addEventListener('atshel:synced', function () {
-    if (!EL.dashboard.classList.contains('hidden')) {
-      setSyncState('syncing');
-      refreshStats();
-    }
-  });
-
-  // Fallback: si atshel-app.js no dispara el evento en 1.5s,
-  // cargamos el dashboard de todas formas (modo degradado)
-  document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(function () {
-      if (!readyFired) {
-        console.warn('[ATSHEL] atshel:ready no recibido, cargando en modo degradado');
-        initDashboard();
-      }
-    }, 1500);
-  });
-
-  </script>
+<div class="app">
+
+	<!-- ── Header ──────────────────────────────────────────── -->
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button
+				id="btn-back"
+				class="btn-back"
+				type="button"
+				aria-label="Volver a incidentes"
+			>
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<h1 class="app-header__title">Nuevo incidente</h1>
+		</div>
+	</header>
+
+	<!-- ── Formulario ──────────────────────────────────────── -->
+	<main class="form-main" id="main-content" role="main">
+
+		<!-- Error global (oculto por default) -->
+		<div id="form-error-banner" class="form-error-banner" role="alert" aria-live="assertive" hidden>
+			<span id="form-error-text"></span>
+		</div>
+
+		<!-- ── Tipo de incidente ────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-tipo">
+			<div id="label-tipo" class="form-section__label">
+				Tipo de incidente <abbr title="Requerido">*</abbr>
+			</div>
+			<div
+				class="tipo-grid"
+				role="group"
+				aria-labelledby="label-tipo"
+				aria-required="true"
+				id="tipo-grid"
+			>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Incidente real"
+					aria-pressed="false"
+					aria-label="Incidente real"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">⚠️</span>
+					<span class="tipo-card__label">Incidente real</span>
+				</button>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Cuasi-accidente"
+					aria-pressed="false"
+					aria-label="Cuasi-accidente"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">🔶</span>
+					<span class="tipo-card__label">Cuasi-accidente</span>
+				</button>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Acto inseguro"
+					aria-pressed="false"
+					aria-label="Acto inseguro"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">👁️</span>
+					<span class="tipo-card__label">Acto inseguro</span>
+				</button>
+				<button
+					class="tipo-card"
+					type="button"
+					data-tipo="Condición insegura"
+					aria-pressed="false"
+					aria-label="Condición insegura"
+				>
+					<span class="tipo-card__icon" aria-hidden="true">🔧</span>
+					<span class="tipo-card__label">Condición insegura</span>
+				</button>
+			</div>
+			<div id="error-tipo" class="field__error" aria-live="polite"></div>
+		</section>
+
+		<!-- ── Severidad ────────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-sev">
+			<div id="label-sev" class="form-section__label">
+				Severidad <abbr title="Requerido">*</abbr>
+			</div>
+			<div
+				class="sev-grid"
+				role="group"
+				aria-labelledby="label-sev"
+				aria-required="true"
+				id="sev-grid"
+			>
+				<button
+					class="sev-card sev-card--leve"
+					type="button"
+					data-sev="Leve"
+					aria-pressed="false"
+					aria-label="Severidad: Leve"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Leve</span>
+				</button>
+				<button
+					class="sev-card sev-card--moderado"
+					type="button"
+					data-sev="Moderado"
+					aria-pressed="false"
+					aria-label="Severidad: Moderado"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Moderado</span>
+				</button>
+				<button
+					class="sev-card sev-card--grave"
+					type="button"
+					data-sev="Grave"
+					aria-pressed="false"
+					aria-label="Severidad: Grave"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Grave</span>
+				</button>
+				<button
+					class="sev-card sev-card--catastrofico"
+					type="button"
+					data-sev="Catastrófico"
+					aria-pressed="false"
+					aria-label="Severidad: Catastrófico"
+				>
+					<span class="sev-card__dot" aria-hidden="true"></span>
+					<span class="sev-card__label">Catastrófico</span>
+				</button>
+			</div>
+			<div id="error-sev" class="field__error" aria-live="polite"></div>
+		</section>
+
+		<!-- ── Descripción ──────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-desc">
+			<div id="label-desc" class="form-section__label">
+				Descripción <abbr title="Requerido">*</abbr>
+			</div>
+			<div class="field">
+				<textarea
+					id="input-descripcion"
+					class="field__textarea"
+					rows="4"
+					placeholder="¿Qué ocurrió? Describí el incidente con el mayor detalle posible."
+					aria-labelledby="label-desc"
+					aria-required="true"
+					maxlength="2000"
+				></textarea>
+				<div id="error-descripcion" class="field__error" aria-live="polite"></div>
+			</div>
+		</section>
+
+		<!-- ── Fecha y hora ──────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-fechahora">
+			<div id="label-fechahora" class="form-section__label">
+				Fecha y hora <abbr title="Requerido">*</abbr>
+			</div>
+			<div class="field">
+				<input
+					id="input-fecha-hora"
+					class="field__datetime"
+					type="datetime-local"
+					aria-labelledby="label-fechahora"
+					aria-required="true"
+				>
+				<div id="error-fecha-hora" class="field__error" aria-live="polite"></div>
+			</div>
+		</section>
+
+		<!-- ── Lugar ─────────────────────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-lugar">
+			<div id="label-lugar" class="form-section__label">
+				Lugar <abbr title="Requerido">*</abbr>
+			</div>
+
+			<div class="field">
+				<label class="field__label" for="input-ubicacion">
+					Descripción del lugar <abbr title="Requerido">*</abbr>
+				</label>
+				<input
+					id="input-ubicacion"
+					class="field__input"
+					type="text"
+					placeholder="Ej: Área de manifold, Pozo N°12, Sector de válvulas..."
+					aria-required="true"
+					autocomplete="off"
+					maxlength="300"
+				>
+				<div id="error-ubicacion" class="field__error" aria-live="polite"></div>
+			</div>
+
+			<div class="field">
+				<label class="field__label" for="input-locacion-nombre">Nombre del sector (opcional)</label>
+				<input
+					id="input-locacion-nombre"
+					class="field__input"
+					type="text"
+					placeholder="Ej: Bloque Loma Campana, Pad 14-H..."
+					autocomplete="off"
+					maxlength="200"
+				>
+			</div>
+
+			<!-- Geolocalización -->
+			<div class="geo-row">
+				<button
+					id="btn-geo"
+					class="btn-geo"
+					type="button"
+					aria-label="Obtener mi ubicación actual"
+				>
+					📍 Usar mi ubicación
+				</button>
+				<span id="geo-status" class="geo-coords" aria-live="polite"></span>
+			</div>
+		</section>
+
+		<!-- ── Acciones inmediatas ───────────────────────────── -->
+		<section class="form-section" aria-labelledby="label-acciones">
+			<div id="label-acciones" class="form-section__label">Acciones inmediatas</div>
+			<div class="form-section__hint">
+				¿Qué medidas se tomaron en el momento?
+			</div>
+			<div id="acciones-list" class="acciones-list" aria-label="Lista de acciones inmediatas">
+				<!-- Los items se insertan dinámicamente -->
+			</div>
+			<button
+				id="btn-add-accion"
+				class="btn-add-accion"
+				type="button"
+				aria-label="Agregar acción inmediata"
+			>
+				<span aria-hidden="true">+</span> Agregar acción
+			</button>
+		</section>
+
+	</main>
+
+	<!-- ── Footer fijo ─────────────────────────────────────── -->
+	<footer class="form-footer" role="contentinfo">
+		<button
+			id="btn-guardar"
+			class="btn-guardar"
+			type="button"
+			aria-label="Guardar incidente"
+		>
+			<span id="btn-guardar-text">Guardar incidente</span>
+			<span id="btn-guardar-spinner" class="btn-guardar__spinner" hidden aria-hidden="true"></span>
+		</button>
+	</footer>
+
+</div><!-- /.app -->
+
+<!-- ── Vendor ──────────────────────────────────────────── -->
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<!-- ── Módulo ─────────────────────────────────────────── -->
+<script type="module">
+	/**
+	 * incidente-nuevo.html — reporte de nuevo incidente.
+	 *
+	 * Columnas verificadas MCP 2026-06-24:
+	 *   Requeridas (NOT NULL, sin default): tipo, severidad, descripcion,
+	 *     fecha_hora (timestamptz), ubicacion, empresa_id
+	 *   Opcionales: locacion_nombre, latitud, longitud,
+	 *     acciones_inmediatas (jsonb, default [])
+	 *   created_by → public.usuarios.id (NO auth.users.id)
+	 *
+	 * Idempotencia: atshel_local_id tiene UNIQUE constraint.
+	 *   Error code 23505 = duplicado, no es error real → buscar el existente.
+	 *
+	 * Numeración: trigger trigger_numerar_incidente genera INC-YY-XXXXX.
+	 *   También valida empresa_id == auth_empresa_id() del JWT.
+	 *
+	 * Nota fecha_hora: datetime-local da "YYYY-MM-DDTHH:mm" (con tiempo),
+	 *   por lo que new Date(value).toISOString() es seguro —
+	 *   no es el bug de date-only "YYYY-MM-DD".
+	 *
+	 * ── OFFLINE-FIRST (2026-08-20) ───────────────────────────────
+	 * Mismo patrón probado en accion-nueva.html: handleSubmit() intenta
+	 * primero executeLocal() (INSERT crudo en SQLite local — funciona
+	 * sin señal). numero e hash_contenido NO se generan acá: son
+	 * columnas server-side (trigger_numerar_incidente / trigger_hash_
+	 * incidente vía pgcrypto) — quedan null en la copia local hasta que
+	 * PowerSync sube la fila y el trigger corre en Postgres. Si
+	 * executeLocal falla o PowerSync no está listo, cae al INSERT
+	 * directo de siempre (sin cambios en ese camino).
+	 */
+
+	import {
+		initPowerSync,
+		isPowerSyncReady,
+		executeLocal,
+		stringifyJsonField,
+	} from '/src/js/atshel-powersync.js';
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+	} from '/src/js/atshel-supabase.js';
+
+	import {
+		generateLocalId,
+		sanitizeHTML,
+		showToast,
+	} from '/src/js/atshel-core.js';
+
+	// ── ID local (generado una sola vez para idempotencia) ───
+	const _localId = generateLocalId(); // atshel_local_id
+	const _newId   = generateLocalId(); // id (PK) — camino offline/local
+
+	// ── Estado del formulario ────────────────────────────────
+	let _tipo      = '';
+	let _severidad = '';
+	let _latitud   = null;
+	let _longitud  = null;
+	let _submitting = false;
+
+	// Acciones inmediatas: array de IDs de input (para leerlos al submit)
+	let _accionCount = 0;
+
+	// ── Referencias al DOM ───────────────────────────────────
+	const btnBackEl          = document.getElementById('btn-back');
+	const formErrorBannerEl  = document.getElementById('form-error-banner');
+	const formErrorTextEl    = document.getElementById('form-error-text');
+	const tipoGridEl         = document.getElementById('tipo-grid');
+	const sevGridEl          = document.getElementById('sev-grid');
+	const errorTipoEl        = document.getElementById('error-tipo');
+	const errorSevEl         = document.getElementById('error-sev');
+	const descripcionEl      = document.getElementById('input-descripcion');
+	const errorDescEl        = document.getElementById('error-descripcion');
+	const fechaHoraEl        = document.getElementById('input-fecha-hora');
+	const errorFechaEl       = document.getElementById('error-fecha-hora');
+	const ubicacionEl        = document.getElementById('input-ubicacion');
+	const errorUbicacionEl   = document.getElementById('error-ubicacion');
+	const locacionNombreEl   = document.getElementById('input-locacion-nombre');
+	const btnGeoEl           = document.getElementById('btn-geo');
+	const geoStatusEl        = document.getElementById('geo-status');
+	const accionesListEl     = document.getElementById('acciones-list');
+	const btnAddAccionEl     = document.getElementById('btn-add-accion');
+	const btnGuardarEl       = document.getElementById('btn-guardar');
+	const btnGuardarTextEl   = document.getElementById('btn-guardar-text');
+	const btnGuardarSpinEl   = document.getElementById('btn-guardar-spinner');
+
+	// ── Helpers de UI ────────────────────────────────────────
+	function setFieldError(inputEl, errorEl, msg) {
+		errorEl.textContent = msg;
+		if (msg) {
+			inputEl.setAttribute('aria-invalid', 'true');
+		} else {
+			inputEl.removeAttribute('aria-invalid');
+		}
+	}
+
+	function clearFieldError(inputEl, errorEl) {
+		setFieldError(inputEl, errorEl, '');
+	}
+
+	function showFormError(msg) {
+		formErrorTextEl.textContent = msg;
+		formErrorBannerEl.hidden    = false;
+		formErrorBannerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	function hideFormError() {
+		formErrorBannerEl.hidden = true;
+		formErrorTextEl.textContent = '';
+	}
+
+	function setBtnLoading(loading) {
+		_submitting             = loading;
+		btnGuardarEl.disabled   = loading;
+		btnGuardarTextEl.hidden = loading;
+		btnGuardarSpinEl.hidden = !loading;
+	}
+
+	// ── Selección de tipo (exclusive toggle) ─────────────────
+	function selectTipo(valor) {
+		_tipo = valor;
+		tipoGridEl.querySelectorAll('.tipo-card').forEach(card => {
+			const activo = card.dataset.tipo === valor;
+			card.setAttribute('aria-pressed', String(activo));
+		});
+		clearFieldError({ removeAttribute: () => {} }, errorTipoEl);
+	}
+
+	// ── Selección de severidad ───────────────────────────────
+	function selectSeveridad(valor) {
+		_severidad = valor;
+		sevGridEl.querySelectorAll('.sev-card').forEach(card => {
+			const activo = card.dataset.sev === valor;
+			card.setAttribute('aria-pressed', String(activo));
+		});
+		clearFieldError({ removeAttribute: () => {} }, errorSevEl);
+	}
+
+	// ── Geolocalización ──────────────────────────────────────
+	function obtenerUbicacion() {
+		if (!navigator.geolocation) {
+			geoStatusEl.textContent = 'Geolocalización no disponible.';
+			return;
+		}
+		btnGeoEl.disabled        = true;
+		btnGeoEl.className       = 'btn-geo';
+		geoStatusEl.textContent  = 'Obteniendo ubicación...';
+
+		navigator.geolocation.getCurrentPosition(
+			(pos) => {
+				_latitud  = parseFloat(pos.coords.latitude.toFixed(6));
+				_longitud = parseFloat(pos.coords.longitude.toFixed(6));
+				geoStatusEl.textContent = `${_latitud}, ${_longitud}`;
+				btnGeoEl.className      = 'btn-geo btn-geo--ok';
+				btnGeoEl.textContent    = '✓ Ubicación obtenida';
+				btnGeoEl.disabled       = false;
+			},
+			(err) => {
+				_latitud  = null;
+				_longitud = null;
+				const msgs = {
+					1: 'Permiso denegado.',
+					2: 'Posición no disponible.',
+					3: 'Tiempo de espera agotado.',
+				};
+				geoStatusEl.textContent = msgs[err.code] || 'Error desconocido.';
+				btnGeoEl.className      = 'btn-geo btn-geo--error';
+				btnGeoEl.textContent    = '📍 Reintentar';
+				btnGeoEl.disabled       = false;
+			},
+			{ enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+		);
+	}
+
+	// ── Acciones inmediatas ───────────────────────────────────
+	function addAccionRow(textoInicial = '') {
+		_accionCount++;
+		const id = `accion-${_accionCount}`;
+		const row = document.createElement('div');
+		row.className = 'accion-row';
+		row.dataset.accionId = id;
+
+		row.innerHTML = `
+			<input
+				id="${id}"
+				class="accion-row__input"
+				type="text"
+				placeholder="Ej: Evacuación del área, corte de energía..."
+				maxlength="300"
+				value="${sanitizeHTML(textoInicial)}"
+				aria-label="Acción inmediata ${_accionCount}"
+			>
+			<button
+				class="btn-remove-accion"
+				type="button"
+				aria-label="Eliminar esta acción"
+				data-remove="${id}"
+			>✕</button>`;
+
+		accionesListEl.appendChild(row);
+		row.querySelector(`#${id}`).focus();
+	}
+
+	function removeAccionRow(inputId) {
+		const row = accionesListEl.querySelector(`[data-accion-id="${inputId}"]`);
+		if (row) row.remove();
+	}
+
+	function getAcciones() {
+		return Array.from(accionesListEl.querySelectorAll('.accion-row__input'))
+			.map(el => el.value.trim())
+			.filter(v => v.length > 0);
+	}
+
+	// ── Validación ───────────────────────────────────────────
+	function validate() {
+		let ok = true;
+		hideFormError();
+
+		if (!_tipo) {
+			errorTipoEl.textContent = 'Seleccioná el tipo de incidente.';
+			ok = false;
+		} else {
+			errorTipoEl.textContent = '';
+		}
+
+		if (!_severidad) {
+			errorSevEl.textContent = 'Seleccioná la severidad.';
+			ok = false;
+		} else {
+			errorSevEl.textContent = '';
+		}
+
+		const desc = descripcionEl.value.trim();
+		if (!desc) {
+			setFieldError(descripcionEl, errorDescEl, 'Describí el incidente.');
+			ok = false;
+		} else if (desc.length < 10) {
+			setFieldError(descripcionEl, errorDescEl, 'La descripción es demasiado corta (mínimo 10 caracteres).');
+			ok = false;
+		} else {
+			clearFieldError(descripcionEl, errorDescEl);
+		}
+
+		const fechaVal = fechaHoraEl.value;
+		if (!fechaVal) {
+			setFieldError(fechaHoraEl, errorFechaEl, 'Indicá la fecha y hora del incidente.');
+			ok = false;
+		} else {
+			// Validar que no sea futura (más de 10 min en el futuro)
+			const fechaDate = new Date(fechaVal); // seguro: datetime-local tiene tiempo
+			const ahoraMs   = Date.now();
+			if (fechaDate.getTime() > ahoraMs + 10 * 60 * 1000) {
+				setFieldError(fechaHoraEl, errorFechaEl, 'La fecha no puede ser futura.');
+				ok = false;
+			} else {
+				clearFieldError(fechaHoraEl, errorFechaEl);
+			}
+		}
+
+		const ubic = ubicacionEl.value.trim();
+		if (!ubic) {
+			setFieldError(ubicacionEl, errorUbicacionEl, 'Indicá el lugar donde ocurrió.');
+			ok = false;
+		} else {
+			clearFieldError(ubicacionEl, errorUbicacionEl);
+		}
+
+		return ok;
+	}
+
+	// ── Mapeo de errores PostgreSQL → español ─────────────────
+	function mapDbError(err) {
+		if (!err) return 'Error desconocido al guardar.';
+		const code    = err.code ?? '';
+		const message = (err.message ?? '').toLowerCase();
+
+		// Unique violation en atshel_local_id = duplicado de reenvío (no es error real)
+		if (code === '23505' && message.includes('atshel_local_id')) {
+			return null; // señal de duplicado → recuperar registro existente
+		}
+		if (code === 'P0001' && message.includes('err_sec_01')) {
+			return 'Error de seguridad: empresa_id inválido. Cerrá sesión e ingresá de nuevo.';
+		}
+		if (code === 'P0001' && message.includes('err_val_01')) {
+			return 'Error al generar el número de incidente. Intentá de nuevo.';
+		}
+		if (message.includes('network') || message.includes('fetch') || code === '') {
+			return 'Sin conexión. Verificá tu red e intentá de nuevo.';
+		}
+		return `Error al guardar (${code}). Intentá de nuevo.`;
+	}
+
+	// ── Submit ───────────────────────────────────────────────
+	async function handleSubmit() {
+		if (_submitting) return;
+		if (!validate()) {
+			// Scroll al primer error
+			document.querySelector('[aria-invalid="true"]')?.scrollIntoView({
+				behavior: 'smooth', block: 'center',
+			});
+			return;
+		}
+
+		setBtnLoading(true);
+
+		try {
+			const usuario    = await getUsuario();
+			const empresaId  = usuario?.empresa_id ?? await getEmpresaId();
+
+			// datetime-local = "YYYY-MM-DDTHH:mm" (con tiempo = seguro con new Date)
+			const fechaISO     = new Date(fechaHoraEl.value).toISOString();
+			const descripcion  = descripcionEl.value.trim();
+			const ubicacion    = ubicacionEl.value.trim();
+			const locacion     = locacionNombreEl.value.trim() || null;
+			const acciones     = getAcciones();
+			const createdBy    = usuario?.id ?? null;
+			const nowISO       = new Date().toISOString();
+
+			// ── Camino offline-first: INSERT crudo en SQLite local ──
+			// numero / hash_contenido quedan null hasta que PowerSync
+			// suba la fila y los triggers de Postgres corran.
+			if (isPowerSyncReady()) {
+				const ok = await executeLocal(
+					`INSERT INTO incidentes
+						(id, atshel_local_id, empresa_id, tipo, severidad, descripcion,
+						 fecha_hora, ubicacion, locacion_nombre, latitud, longitud,
+						 acciones_inmediatas, estado, version,
+						 created_by, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					[
+						_newId, _localId, empresaId, _tipo, _severidad, descripcion,
+						fechaISO, ubicacion, locacion, _latitud, _longitud,
+						stringifyJsonField(acciones), 'Abierto', 1,
+						createdBy, nowISO, nowISO,
+					]
+				);
+
+				if (ok) {
+					showToast(
+						navigator.onLine
+							? 'Incidente guardado.'
+							: 'Guardado localmente — se sube solo cuando vuelva la señal.',
+						'success'
+					);
+					window.location.replace(`/incidente-detalle.html?id=${_newId}`);
+					return;
+				}
+
+				console.warn('[ATSHEL] executeLocal falló, cayendo al insert online directo.');
+			}
+
+			// ── Camino online directo (respaldo, o si PowerSync no está listo) ──
+			const payload = {
+				atshel_local_id:    _localId,
+				empresa_id:         empresaId,
+				tipo:               _tipo,
+				severidad:          _severidad,
+				descripcion:        descripcion,
+				fecha_hora:         fechaISO,
+				ubicacion:          ubicacion,
+				locacion_nombre:    locacion,
+				latitud:            _latitud,
+				longitud:           _longitud,
+				acciones_inmediatas: acciones,
+				created_by:         createdBy, // → public.usuarios.id
+			};
+
+			const { data, error } = await supabase
+				.from('incidentes')
+				.insert(payload)
+				.select('id')
+				.single();
+
+			if (error) {
+				const msg = mapDbError(error);
+
+				if (msg === null) {
+					// Duplicado: el registro ya fue guardado, buscar su id
+					const { data: existente } = await supabase
+						.from('incidentes')
+						.select('id')
+						.eq('atshel_local_id', _localId)
+						.is('deleted_at', null)
+						.single();
+
+					if (existente?.id) {
+						showToast('El incidente ya fue guardado.', 'info');
+						window.location.replace(`/incidente-detalle.html?id=${existente.id}`);
+						return;
+					}
+					showFormError('No se pudo verificar el incidente guardado. Revisá la lista de incidentes.');
+				} else {
+					showFormError(msg);
+				}
+				return;
+			}
+
+			showToast('Incidente guardado correctamente.', 'success');
+			window.location.replace(`/incidente-detalle.html?id=${data.id}`);
+
+		} catch (err) {
+			showFormError(err?.message || 'Error inesperado. Intentá de nuevo.');
+		} finally {
+			setBtnLoading(false);
+		}
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		// 1. Verificar sesión
+		await requireAuth('/login.html');
+
+		// 1.5 PowerSync — arranca en paralelo, no bloquea el resto del init.
+		initPowerSync().catch((err) => {
+			console.warn('[ATSHEL] PowerSync no disponible, se usará el camino online:', err.message);
+		});
+
+		// 2. Fecha y hora por defecto = ahora
+		// datetime-local no acepta .toISOString() directamente (tiene Z y milisegundos)
+		const ahora    = new Date();
+		const offset   = ahora.getTimezoneOffset();
+		const localISO = new Date(ahora.getTime() - offset * 60000)
+			.toISOString()
+			.slice(0, 16); // "YYYY-MM-DDTHH:mm"
+		fechaHoraEl.value = localISO;
+		fechaHoraEl.max   = localISO; // no permitir futuros (se actualiza en tiempo real)
+
+		// Actualizar max cada minuto para que el límite sea dinámico
+		setInterval(() => {
+			const n = new Date();
+			const off = n.getTimezoneOffset();
+			fechaHoraEl.max = new Date(n.getTime() - off * 60000).toISOString().slice(0, 16);
+		}, 60000);
+
+		// 3. Event listeners — todos aquí, event delegation donde aplica
+		btnBackEl.addEventListener('click', () => {
+			window.location.assign('/incidentes.html');
+		});
+
+		// Tipo — event delegation en el grid
+		tipoGridEl.addEventListener('click', (e) => {
+			const card = e.target.closest('.tipo-card[data-tipo]');
+			if (card) selectTipo(card.dataset.tipo);
+		});
+
+		// Severidad — event delegation en el grid
+		sevGridEl.addEventListener('click', (e) => {
+			const card = e.target.closest('.sev-card[data-sev]');
+			if (card) selectSeveridad(card.dataset.sev);
+		});
+
+		// Limpiar errores al escribir
+		descripcionEl.addEventListener('input', () => clearFieldError(descripcionEl, errorDescEl));
+		fechaHoraEl.addEventListener('change',  () => clearFieldError(fechaHoraEl,   errorFechaEl));
+		ubicacionEl.addEventListener('input',   () => clearFieldError(ubicacionEl,   errorUbicacionEl));
+
+		// Geolocalización
+		btnGeoEl.addEventListener('click', obtenerUbicacion);
+
+		// Acciones inmediatas — event delegation en la lista
+		accionesListEl.addEventListener('click', (e) => {
+			const btnRemove = e.target.closest('.btn-remove-accion[data-remove]');
+			if (btnRemove) removeAccionRow(btnRemove.dataset.remove);
+		});
+
+		btnAddAccionEl.addEventListener('click', () => addAccionRow());
+
+		// Guardar
+		btnGuardarEl.addEventListener('click', handleSubmit);
+
+		// Soporte para submit con Enter en campos de texto
+		[descripcionEl, ubicacionEl, locacionNombreEl].forEach(el => {
+			el.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' && e.ctrlKey) handleSubmit();
+			});
+		});
+	}
+
+	init();
+</script>
 </body>
 </html>
