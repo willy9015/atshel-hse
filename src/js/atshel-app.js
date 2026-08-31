@@ -53,7 +53,7 @@ import {
 } from './atshel-supabase.js';
 
 import { colaSubida } from './atshel-media.js';
-import { initPowerSync } from './atshel-powersync.js';
+import { initPowerSync, db } from './atshel-powersync.js';
 
 // ─────────────────────────────────────────────────────────────
 // LOGGER CENTRALIZADO
@@ -208,6 +208,35 @@ export const AppState = new Proxy(_appState, {
 		logger.warn(`AppState.${prop} es de solo lectura externamente.`);
 		return false;
 	},
+});
+
+// ─────────────────────────────────────────────────────────────
+// window.ATSHEL — namespace público para páginas que leen datos
+// localmente (patrón "PowerSync primero, Supabase de respaldo",
+// como dbCount()/dbRows() en index.html).
+//
+// Getters, no snapshot: siempre reflejan el estado actual aunque
+// PowerSync recién conecte en un reintento en segundo plano
+// (_paso7_powerSync reintenta con backoff sin bloquear el resto
+// del init).
+//
+// Agregado 2026-08-20 — index.html ya esperaba window.ATSHEL.db /
+// .supabase / .user desde que se escribió, pero nunca se creó acá.
+// window.ATSHEL era undefined siempre → todo lo que dependía de él
+// (estadísticas, saludo, actividad reciente) se quedaba en su
+// placeholder "—" para siempre, sin error visible.
+// ─────────────────────────────────────────────────────────────
+Object.defineProperty(window, 'ATSHEL', {
+	value: Object.freeze({
+		get db()        { return db; },
+		get supabase()  { return supabase; },
+		get user()      { return _appState.usuario; },
+		get session()   { return _appState.session; },
+		get empresaId() { return _appState.empresaId; },
+		get rol()       { return _appState.rol; },
+	}),
+	writable:     false,
+	configurable: false,
 });
 
 let _appLista         = false;
