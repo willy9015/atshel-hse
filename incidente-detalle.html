@@ -668,6 +668,17 @@
 	 *   supervisor    → 'supervisor'
 	 *   hse           → 'prevencionista', 'tecnico_hse'
 	 *   administrador → cualquiera
+	 *
+	 * ── OFFLINE-FIRST (2026-09-04) ────────────────────────────────
+	 * FIX: el incidente principal se leía SIEMPRE directo de Supabase.
+	 * Justo después de crearlo en incidente-nuevo.html (que escribe
+	 * primero en SQLite local vía executeLocal y recién después
+	 * PowerSync sube la fila), esta página caía acá antes de que el
+	 * upload terminara — Supabase respondía "no encontrado" aunque
+	 * el incidente existiera perfectamente en el dispositivo. Ahora
+	 * intenta leer del SQLite local primero (queryLocal) y solo cae a
+	 * Supabase si no está ahí. Mismo patrón que incidente-nuevo.html
+	 * y accion-nueva.html para escritura.
 	 */
 
 	import {
@@ -675,6 +686,12 @@
 		requireAuth,
 		getUsuario,
 	} from '/src/js/atshel-supabase.js';
+
+	import {
+		isPowerSyncReady,
+		queryLocal,
+		parseJsonField,
+	} from '/src/js/atshel-powersync.js';
 
 	import {
 		sanitizeHTML,
@@ -753,7 +770,7 @@
 
 	// ── Render: header ────────────────────────────────────────
 	function renderHeader(inc) {
-		headerNumeroEl.textContent = inc.numero || 'Sin número';
+		headerNumeroEl.textContent = inc.numero || 'Sin número (pendiente de sincronizar)';
 		const [cls, label] = ESTADO_CHIP[inc.estado] || ['neutral', inc.estado];
 		headerChipEl.innerHTML = `<span class="chip chip--${cls}">${sanitizeHTML(label)}</span>`;
 	}
@@ -1065,6 +1082,40 @@
 		}
 	}
 
+	// ── Carga del incidente principal (offline-first) ─────────
+	async function cargarIncidentePrincipal() {
+		// 1. Intentar SQLite local primero. Crítico justo después de
+		//    crear el incidente: puede no haber llegado a Supabase
+		//    todavía aunque ya exista perfectamente en el dispositivo.
+		if (isPowerSyncReady()) {
+			const filas = await queryLocal(
+				'SELECT * FROM incidentes WHERE id = ? AND deleted_at IS NULL',
+				[_incidenteId]
+			);
+			if (filas.length > 0) {
+				const row = filas[0];
+				return {
+					...row,
+					acciones_inmediatas:    parseJsonField(row.acciones_inmediatas, []),
+					fotos_urls:             parseJsonField(row.fotos_urls, []),
+					investigacion:          parseJsonField(row.investigacion, null),
+					factores_contribuyentes:parseJsonField(row.factores_contribuyentes, null),
+				};
+			}
+		}
+
+		// 2. No está local (o PowerSync no está listo) — Supabase directo.
+		const { data, error } = await supabase
+			.from('incidentes')
+			.select('*')
+			.eq('id', _incidenteId)
+			.is('deleted_at', null)
+			.single();
+
+		if (error) throw error;
+		return data;
+	}
+
 	// ── Carga de datos ────────────────────────────────────────
 	async function cargarDatos() {
 		if (!_incidenteId) {
@@ -1072,14 +1123,19 @@
 			return;
 		}
 
-		const [incResult, aprobResult, lesionesResult, adjuntosResult, invResult] =
-			await Promise.allSettled([
+		try {
+			_incidente = await cargarIncidentePrincipal();
+		} catch (err) {
+			showPageError(
+				err?.code === 'PGRST116'
+					? 'Incidente no encontrado o sin acceso.'
+					: (err?.message || 'No se pudo cargar el incidente.')
+			);
+			return;
+		}
 
-			supabase.from('incidentes')
-				.select('*')
-				.eq('id', _incidenteId)
-				.is('deleted_at', null)
-				.single(),
+		const [aprobResult, lesionesResult, adjuntosResult, invResult] =
+			await Promise.allSettled([
 
 			supabase.from('aprobaciones_incidente')
 				.select('id, rol_aprobador, estado, comentario, orden, usuario_id, solicitado_en, resuelto_en')
@@ -1105,18 +1161,6 @@
 				.maybeSingle(),
 		]);
 
-		// Verificar error del incidente principal
-		if (incResult.status === 'rejected' || incResult.value?.error) {
-			const err = incResult.value?.error || incResult.reason;
-			showPageError(
-				err?.code === 'PGRST116'
-					? 'Incidente no encontrado o sin acceso.'
-					: (err?.message || 'No se pudo cargar el incidente.')
-			);
-			return;
-		}
-
-		_incidente    = incResult.value.data;
 		_aprobaciones = aprobResult.value?.data  ?? [];
 
 		// Buscar nombre del creador si hay created_by
