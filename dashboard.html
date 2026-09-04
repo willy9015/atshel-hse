@@ -1008,12 +1008,23 @@
 		if (accionesResult.status === 'fulfilled' && !accionesResult.value?.error) {
 			const { data } = accionesResult.value;
 			// Contar totales pendientes (para badge)
-			const { count } = await supabase
-				.from('acciones_correctivas')
-				.select('id', { count: 'exact', head: true })
-				.in('estado', ['Pendiente', 'En curso', 'Vencida'])
-				.is('deleted_at', null);
-			renderAcciones(data, count ?? 0);
+			// FIX 2026-09-02: este conteo no estaba protegido — si fallaba
+			// por cualquier motivo (no solo red), la excepción escapaba de
+			// cargarDatos() y el catch de init() la confundía con "sin
+			// conexión" aunque hubiera wifi. Ahora un fallo acá deja el
+			// badge en 0 en vez de tirar todo el dashboard a offline.
+			let count = 0;
+			try {
+				const r = await supabase
+					.from('acciones_correctivas')
+					.select('id', { count: 'exact', head: true })
+					.in('estado', ['Pendiente', 'En curso', 'Vencida'])
+					.is('deleted_at', null);
+				count = r.count ?? 0;
+			} catch (err) {
+				console.error('Error contando acciones pendientes:', err);
+			}
+			renderAcciones(data, count);
 		} else {
 			renderSectionError(listAccionesEl, 'No se pudieron cargar las acciones.');
 		}
@@ -1021,13 +1032,20 @@
 		// Incidentes
 		if (incidentesResult.status === 'fulfilled' && !incidentesResult.value?.error) {
 			const { data } = incidentesResult.value;
-			// Contar abiertos para badge
-			const { count: cantAbiertas } = await supabase
-				.from('incidentes')
-				.select('id', { count: 'exact', head: true })
-				.in('estado', ['Abierto', 'En investigación'])
-				.is('deleted_at', null);
-			renderIncidentes(data, cantAbiertas ?? 0);
+			// Contar abiertos para badge (mismo fix que arriba: un fallo
+			// acá no debe confundirse con estar sin conexión)
+			let cantAbiertas = 0;
+			try {
+				const r = await supabase
+					.from('incidentes')
+					.select('id', { count: 'exact', head: true })
+					.in('estado', ['Abierto', 'En investigación'])
+					.is('deleted_at', null);
+				cantAbiertas = r.count ?? 0;
+			} catch (err) {
+				console.error('Error contando incidentes abiertos:', err);
+			}
+			renderIncidentes(data, cantAbiertas);
 		} else {
 			renderSectionError(listIncidentesEl, 'No se pudieron cargar los incidentes.');
 		}
