@@ -502,6 +502,16 @@
 	 *
 	 * Fechas: fecha_vencimiento y fecha_cierre son TIMESTAMPTZ.
 	 * Se muestran con formatFecha() — nunca parseLocalDate (que es para DATE).
+	 *
+	 * ── OFFLINE-FIRST (2026-09-04) ────────────────────────────────
+	 * FIX: la acción principal se leía siempre directo de Supabase.
+	 * Mismo problema que tenía incidente-detalle.html: justo después
+	 * de crear la acción en accion-nueva.html (que escribe primero en
+	 * SQLite local vía executeLocal), esta página caía acá antes de
+	 * que PowerSync terminara de subirla — Supabase respondía "no
+	 * encontrada" aunque la acción existiera perfectamente en el
+	 * dispositivo. Ahora intenta leer del SQLite local primero
+	 * (queryLocal) y solo cae a Supabase si no está ahí.
 	 */
 
 	import {
@@ -509,6 +519,11 @@
 		requireAuth,
 		getUsuario,
 	} from '/src/js/atshel-supabase.js';
+
+	import {
+		isPowerSyncReady,
+		queryLocal,
+	} from '/src/js/atshel-powersync.js';
 
 	import {
 		sanitizeHTML,
@@ -766,6 +781,31 @@
 		}
 	}
 
+	// ── Carga de la acción principal (offline-first) ──────────
+	async function cargarAccionPrincipal() {
+		// 1. Intentar SQLite local primero. Crítico justo después de
+		//    crear la acción: puede no haber llegado a Supabase
+		//    todavía aunque ya exista perfectamente en el dispositivo.
+		if (isPowerSyncReady()) {
+			const filas = await queryLocal(
+				'SELECT * FROM acciones_correctivas WHERE id = ? AND deleted_at IS NULL',
+				[_accionId]
+			);
+			if (filas.length > 0) return filas[0];
+		}
+
+		// 2. No está local (o PowerSync no está listo) — Supabase directo.
+		const { data, error } = await supabase
+			.from('acciones_correctivas')
+			.select('*')
+			.eq('id', _accionId)
+			.is('deleted_at', null)
+			.single();
+
+		if (error) throw error;
+		return data;
+	}
+
 	// ── Carga de datos ────────────────────────────────────────
 	async function cargarDatos() {
 		if (!_accionId) {
@@ -773,15 +813,9 @@
 			return;
 		}
 
-		// Carga en paralelo: acción + incidente (la acción es necesaria primero para el incidente)
-		const { data: accion, error: accionError } = await supabase
-			.from('acciones_correctivas')
-			.select('*')
-			.eq('id', _accionId)
-			.is('deleted_at', null)
-			.single();
-
-		if (accionError || !accion) {
+		try {
+			_accion = await cargarAccionPrincipal();
+		} catch (accionError) {
 			showPageError(
 				accionError?.code === 'PGRST116'
 					? 'Acción no encontrada o sin acceso.'
@@ -790,29 +824,29 @@
 			return;
 		}
 
-		_accion = accion;
-
 		// Carga paralela de datos relacionados
 		const [incResult, respResult, creadorResult] = await Promise.allSettled([
 
-			supabase.from('incidentes')
-				.select('id, numero, descripcion, tipo, severidad, estado')
-				.eq('id', accion.incidente_id)
-				.is('deleted_at', null)
-				.single(),
+			_accion.incidente_id
+				? supabase.from('incidentes')
+					.select('id, numero, descripcion, tipo, severidad, estado')
+					.eq('id', _accion.incidente_id)
+					.is('deleted_at', null)
+					.single()
+				: Promise.resolve({ data: null }),
 
-			accion.responsable_id
+			_accion.responsable_id
 				? supabase.from('usuarios')
 					.select('id, nombre_completo, rol')
-					.eq('id', accion.responsable_id)
+					.eq('id', _accion.responsable_id)
 					.is('deleted_at', null)
 					.single()
 				: Promise.resolve({ value: { data: null } }),
 
-			accion.created_by
+			_accion.created_by
 				? supabase.from('usuarios')
 					.select('nombre_completo')
-					.eq('id', accion.created_by)
+					.eq('id', _accion.created_by)
 					.is('deleted_at', null)
 					.single()
 				: Promise.resolve({ value: { data: null } }),
