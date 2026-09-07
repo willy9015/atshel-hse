@@ -680,7 +680,28 @@
 	 *
 	 * UX diferencial: éxito inline (no redirige) para reportar N near misses
 	 * sin fricción. Nuevo atshel_local_id en cada reset.
+	 *
+	 * ── OFFLINE-FIRST (2026-09-04) ────────────────────────────────
+	 * FIX: a diferencia de incidente-nuevo.html y accion-nueva.html,
+	 * esta página nunca tuvo el camino offline-first — guardaba
+	 * siempre con un INSERT directo a Supabase. Sin señal, eso
+	 * fallaba con "Sin conexión" y el reporte se perdía sin quedar
+	 * en ningún lado, justo el escenario para el que existe un botón
+	 * de near miss (reportar rápido, en el campo, sin garantía de
+	 * señal). Ahora sigue el mismo patrón: executeLocal() primero
+	 * (SQLite local, funciona sin conexión), Supabase directo como
+	 * respaldo si PowerSync no está listo. numero queda null en el
+	 * camino local hasta que el trigger corre server-side —
+	 * el estado de éxito ya maneja bien ese caso ("Reporte registrado"
+	 * sin número, en vez de un número vacío).
 	 */
+
+	import {
+		initPowerSync,
+		isPowerSyncReady,
+		executeLocal,
+		stringifyJsonField,
+	} from '/src/js/atshel-powersync.js';
 
 	import {
 		supabase,
@@ -696,7 +717,8 @@
 	} from '/src/js/atshel-core.js';
 
 	// ── Estado ───────────────────────────────────────────────
-	let _localId    = generateLocalId();
+	let _localId    = generateLocalId(); // atshel_local_id
+	let _newId      = generateLocalId(); // id (PK) — camino offline/local
 	let _severidad  = 'Leve'; // default
 	let _latitud    = null;
 	let _longitud   = null;
@@ -854,6 +876,7 @@
 	// ── Resetear formulario para nuevo reporte ────────────────
 	function resetForm() {
 		_localId           = generateLocalId();
+		_newId             = generateLocalId();
 		_latitud           = null;
 		_longitud          = null;
 		_severidad         = 'Leve';
@@ -909,18 +932,52 @@
 			const accionesTexto = accionesEl.value.trim();
 			const accionesList  = accionesTexto ? [accionesTexto] : [];
 
+			const descripcion = descripcionEl.value.trim();
+			const ubicacion   = ubicacionEl.value.trim();
+			const createdBy   = _usuario?.id ?? null; // → public.usuarios.id
+			const nowISO      = new Date().toISOString();
+
+			// ── Camino offline-first: INSERT crudo en SQLite local ──
+			// Mismo patrón que incidente-nuevo.html. numero queda null
+			// hasta que PowerSync suba la fila y el trigger corra en
+			// Postgres — showSuccess() ya maneja ese caso sin número.
+			if (isPowerSyncReady()) {
+				const ok = await executeLocal(
+					`INSERT INTO incidentes
+						(id, atshel_local_id, empresa_id, tipo, severidad, descripcion,
+						 fecha_hora, ubicacion, latitud, longitud,
+						 acciones_inmediatas, estado, version,
+						 created_by, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					[
+						_newId, _localId, empresaId, 'Cuasi-accidente', _severidad, descripcion,
+						fechaISO, ubicacion, _latitud, _longitud,
+						stringifyJsonField(accionesList), 'Abierto', 1,
+						createdBy, nowISO, nowISO,
+					]
+				);
+
+				if (ok) {
+					showSuccess(null);
+					return;
+				}
+
+				console.warn('[ATSHEL] executeLocal falló en near-miss, cayendo al insert online directo.');
+			}
+
+			// ── Camino online directo (respaldo, o si PowerSync no está listo) ──
 			const payload = {
 				atshel_local_id:     _localId,
 				empresa_id:          empresaId,
 				tipo:                'Cuasi-accidente',   // hardcoded
 				severidad:           _severidad,
-				descripcion:         descripcionEl.value.trim(),
+				descripcion,
 				fecha_hora:          fechaISO,
-				ubicacion:           ubicacionEl.value.trim(),
+				ubicacion,
 				latitud:             _latitud,
 				longitud:            _longitud,
 				acciones_inmediatas: accionesList,
-				created_by:          _usuario?.id ?? null, // → public.usuarios.id
+				created_by:          createdBy,
 			};
 
 			const { data, error } = await supabase
@@ -955,6 +1012,11 @@
 	async function init() {
 		// 1. Sesión
 		await requireAuth('/login.html');
+
+		// 1.5 PowerSync — arranca en paralelo, no bloquea el resto del init.
+		initPowerSync().catch((err) => {
+			console.warn('[ATSHEL] PowerSync no disponible, se usará el camino online:', err.message);
+		});
 
 		// 2. Usuario (para created_by)
 		_usuario = await getUsuario().catch(() => null);
