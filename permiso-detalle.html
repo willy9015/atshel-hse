@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Detalle de permiso de trabajo">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Permiso de trabajo — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		.app { display: flex; flex-direction: column; min-height: 100dvh; background: var(--surface-base); }
+
+		.app-header {
+			position: sticky; top: 0; z-index: 100;
+			display: flex; align-items: center; justify-content: space-between;
+			padding: 0 16px; height: 56px; background: var(--surface-01);
+			border-bottom: 1px solid var(--border-subtle);
+			padding-top: env(safe-area-inset-top); gap: 8px;
+		}
+		.app-header__left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+		.btn-back {
+			display: flex; align-items: center; justify-content: center;
+			width: 36px; height: 36px; border-radius: 8px; background: transparent;
+			border: none; color: var(--text-secondary); cursor: pointer; flex-shrink: 0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+		.app-header__title {
+			font-family: var(--font-condensed); font-size: var(--text-xl);
+			font-weight: 700; color: var(--text-primary); line-height: 1;
+		}
+
+		.chip {
+			display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px;
+			font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+			white-space: nowrap; flex-shrink: 0;
+		}
+		.chip--danger  { background: var(--color-danger-bg);  color: var(--color-danger);  }
+		.chip--warning { background: var(--color-warning-bg); color: var(--color-warning); }
+		.chip--success { background: var(--color-success-bg); color: var(--color-success); }
+		.chip--info    { background: var(--color-info-bg);    color: var(--color-info);    }
+		.chip--neutral { background: var(--surface-04);       color: var(--text-secondary);}
+
+		.detail-main {
+			flex: 1; padding: 16px 16px calc(96px + env(safe-area-inset-bottom));
+			display: flex; flex-direction: column; gap: 14px;
+		}
+
+		.card {
+			background: var(--surface-02); border: 1px solid var(--border-subtle);
+			border-radius: 10px; overflow: hidden;
+		}
+		.card__header {
+			display: flex; align-items: center; justify-content: space-between;
+			padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
+		}
+		.card__title {
+			font-family: var(--font-condensed); font-size: var(--text-lg);
+			font-weight: 700; color: var(--text-primary); line-height: 1;
+		}
+
+		.data-rows { padding: 0 16px; }
+		.data-row {
+			display: flex; gap: 12px; padding: 10px 0;
+			border-bottom: 1px solid var(--border-subtle); align-items: flex-start;
+		}
+		.data-row:last-child { border-bottom: none; }
+		.data-row__label {
+			font-size: 10px; font-weight: 700; color: var(--text-tertiary);
+			text-transform: uppercase; letter-spacing: 0.05em;
+			flex-shrink: 0; width: 100px; padding-top: 2px;
+		}
+		.data-row__value { font-size: var(--text-base); color: var(--text-primary); line-height: 1.4; flex: 1; min-width: 0; }
+		.data-row__value--mono { font-family: var(--font-mono); font-size: var(--text-sm); }
+		.data-row__value--desc { white-space: pre-wrap; word-break: break-word; }
+		.data-row__value--muted { color: var(--text-tertiary); font-style: italic; }
+
+		/* ── Precondición ATS ─────────────────────────────────── */
+		.ats-status {
+			display: flex; align-items: center; gap: 10px;
+			padding: 12px 14px; margin: 12px 16px; border-radius: 8px;
+			font-size: var(--text-sm); font-weight: 600; line-height: 1.4;
+		}
+		.ats-status--ok    { background: var(--color-success-bg); border: 1px solid var(--color-success); color: var(--color-success); }
+		.ats-status--falta { background: var(--color-danger-bg);  border: 1px solid var(--color-danger-border); color: var(--color-danger); }
+		.ats-status--otro  { background: var(--color-warning-bg); border: 1px solid var(--color-warning-border); color: var(--color-warning); }
+
+		/* ── Skeletons ────────────────────────────────────────── */
+		.skeleton-card { height: 110px; border-radius: 10px; background: var(--surface-02); animation: shimmer 1.5s ease-in-out infinite; }
+		@keyframes shimmer { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.4; } }
+
+		.page-error {
+			flex: 1; display: flex; flex-direction: column; align-items: center;
+			justify-content: center; padding: 32px 24px; text-align: center; gap: 8px;
+		}
+		.page-error__icon  { font-size: 40px; }
+		.page-error__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
+		.page-error__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
+
+		/* ── Footer ───────────────────────────────────────────── */
+		.action-footer {
+			position: fixed; bottom: 0; left: 0; right: 0;
+			padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+			background: var(--surface-01); border-top: 1px solid var(--border-subtle);
+			z-index: 100; display: flex; gap: 10px;
+		}
+		.btn-action {
+			flex: 1; padding: 13px; border-radius: 10px; border: none;
+			font-family: var(--font-sans); font-size: var(--text-base); font-weight: 700;
+			cursor: pointer; transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
+			display: flex; align-items: center; justify-content: center; gap: 6px;
+		}
+		.btn-action:active   { transform: scale(0.98); }
+		.btn-action:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+		.btn-action--primary { background: var(--accent); color: #000; }
+		.btn-action--primary:hover { background: var(--accent-hover); }
+		.btn-action--success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success); }
+		.btn-action--success:hover { background: var(--color-success); color: #fff; }
+		.btn-action--danger  { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border); }
+		.btn-action--danger:hover { background: var(--color-danger); color: #fff; }
+		.btn-action--secondary { background: var(--surface-03); color: var(--text-primary); border: 1px solid var(--border-subtle); }
+		.btn-action--secondary:hover { background: var(--surface-04); }
+
+		/* ── Modal ────────────────────────────────────────────── */
+		.modal-overlay {
+			position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6);
+			display: flex; align-items: flex-end; padding-bottom: env(safe-area-inset-bottom);
+		}
+		.modal-overlay[aria-hidden="true"] { display: none; }
+		.modal-sheet {
+			width: 100%; background: var(--surface-01); border-radius: 16px 16px 0 0;
+			padding: 24px 16px 20px; display: flex; flex-direction: column; gap: 16px;
+		}
+		.modal-sheet__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-primary); }
+		.modal-sheet__subtitle { font-size: var(--text-sm); color: var(--text-secondary); margin-top: -8px; }
+		.modal-textarea {
+			width: 100%; box-sizing: border-box; background: var(--surface-02);
+			border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px;
+			font-family: var(--font-sans); font-size: var(--text-base); color: var(--text-primary);
+			resize: vertical; min-height: 90px; outline: none;
+		}
+		.modal-textarea:focus { border-color: var(--accent); }
+		.modal-error { font-size: var(--text-xs); color: var(--color-danger); font-weight: 600; min-height: 16px; }
+		.modal-actions { display: flex; gap: 10px; }
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<header class="app-header" role="banner">
+		<div class="app-header__left">
+			<button id="btn-back" class="btn-back" type="button" aria-label="Volver a permisos">
+				<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+					<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+				</svg>
+			</button>
+			<span class="app-header__title">Permiso de trabajo</span>
+		</div>
+		<span id="header-chip"></span>
+	</header>
+
+	<main class="detail-main" id="main-content" role="main">
+
+		<div id="skeleton-area">
+			<div class="skeleton-card"></div>
+			<div class="skeleton-card"></div>
+		</div>
+
+		<div id="content-area" hidden>
+
+			<!-- Precondición ATS -->
+			<div id="ats-status" class="ats-status"></div>
+
+			<div class="card">
+				<div class="card__header"><span class="card__title">Datos del permiso</span></div>
+				<div class="data-rows">
+					<div class="data-row">
+						<span class="data-row__label">Tipo</span>
+						<span id="val-tipo" class="data-row__value"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Descripción</span>
+						<span id="val-desc" class="data-row__value data-row__value--desc"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Lugar</span>
+						<span id="val-ubicacion" class="data-row__value"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Vigencia</span>
+						<span id="val-vigencia" class="data-row__value data-row__value--mono"></span>
+					</div>
+					<div class="data-row" id="row-viento" hidden>
+						<span class="data-row__label">Viento</span>
+						<span id="val-viento" class="data-row__value data-row__value--mono"></span>
+					</div>
+					<div class="data-row">
+						<span class="data-row__label">Solicitó</span>
+						<span id="val-solicitante" class="data-row__value"></span>
+					</div>
+					<div class="data-row" id="row-aprobador" hidden>
+						<span class="data-row__label">Resolvió</span>
+						<span id="val-aprobador" class="data-row__value"></span>
+					</div>
+					<div class="data-row" id="row-observaciones" hidden>
+						<span class="data-row__label">Obs.</span>
+						<span id="val-observaciones" class="data-row__value data-row__value--desc"></span>
+					</div>
+					<div class="data-row" id="row-motivo-cierre" hidden>
+						<span class="data-row__label">Motivo</span>
+						<span id="val-motivo-cierre" class="data-row__value data-row__value--desc"></span>
+					</div>
+				</div>
+			</div>
+
+		</div><!-- /#content-area -->
+
+		<div id="page-error" class="page-error" hidden>
+			<div class="page-error__icon">⚡</div>
+			<div class="page-error__title">No se pudo cargar</div>
+			<div id="page-error-sub" class="page-error__sub"></div>
+		</div>
+
+	</main>
+
+	<footer id="action-footer" class="action-footer" role="contentinfo" hidden></footer>
+
+	<!-- Modal de rechazo / cierre (motivo obligatorio) -->
+	<div id="modal-motivo" class="modal-overlay" aria-hidden="true" aria-modal="true" role="dialog" aria-labelledby="modal-motivo-title">
+		<div class="modal-sheet">
+			<h2 id="modal-motivo-title" class="modal-sheet__title">Motivo</h2>
+			<p id="modal-motivo-subtitle" class="modal-sheet__subtitle"></p>
+			<textarea id="modal-motivo-texto" class="modal-textarea" rows="4" maxlength="500" aria-required="true" aria-label="Motivo"></textarea>
+			<div id="modal-motivo-error" class="modal-error" aria-live="polite"></div>
+			<div class="modal-actions">
+				<button id="btn-modal-cancelar"  class="btn-action btn-action--secondary" type="button">Cancelar</button>
+				<button id="btn-modal-confirmar" class="btn-action btn-action--danger"    type="button">Confirmar</button>
+			</div>
+		</div>
+	</div>
+
+</div><!-- /.app -->
+
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<script type="module">
+	/**
+	 * permiso-detalle.html — ver, aprobar, rechazar, activar, cerrar un
+	 * permiso de trabajo (PT). Este archivo NO EXISTÍA — permisos.html
+	 * ya enlazaba acá, dando 404. Sin él, un permiso creado quedaba
+	 * colgado en 'Solicitado' para siempre: nadie podía aprobarlo,
+	 * rechazarlo, ni cerrarlo.
+	 *
+	 * Estados verificados MCP 2026-09-07 vía pg_get_constraintdef en vivo
+	 * (Claude.md desactualizado: solo documentaba 4 de los 7 valores reales):
+	 *   'Solicitado' | 'En_revision' | 'Aprobado' | 'Activo' |
+	 *   'Suspendido' | 'Cerrado' | 'Cancelado'
+	 *
+	 * Trigger BEFORE INSERT/UPDATE tg_validar_permiso_trabajo
+	 * (fn_validar_permiso_trabajo), verificado vía pg_get_functiondef:
+	 *   - Al pasar a 'Aprobado' viniendo de 'En_revision': exige
+	 *     ats_instancia_id no nulo Y que ese ATS tenga estado='Firmado'.
+	 *     Si no, PT_ERROR. Por eso "Aprobar" acá primero empuja
+	 *     Solicitado→En_revision (si hace falta) y recién después intenta
+	 *     En_revision→Aprobado — es el único punto donde el trigger valida
+	 *     de verdad, y hay que pasar por ahí, no saltearlo.
+	 *   - aprobado_por se completa SOLO en esa transición (auth.jwt()->>'sub'),
+	 *     no hace falta mandarlo desde acá.
+	 *   - Al pasar a 'Cerrado' o 'Cancelado': motivo_cierre obligatorio
+	 *     (trigger lo exige), fecha_hora_cierre se completa sola.
+	 *
+	 * RLS (de permisos.html, mismo proyecto): pt_update solo para
+	 * supervisor/administrador — los botones de abajo ya filtran por rol,
+	 * pero el UPDATE también lo hace cumplir del lado del servidor.
+	 *
+	 * Offline-first: igual patrón que incidente-detalle.html y
+	 * accion-detalle.html — queryLocal primero, Supabase de respaldo.
+	 */
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+	} from '/src/js/atshel-supabase.js';
+
+	import {
+		isPowerSyncReady,
+		queryLocal,
+	} from '/src/js/atshel-powersync.js';
+
+	import {
+		sanitizeHTML,
+		formatFecha,
+		showToast,
+	} from '/src/js/atshel-core.js';
+
+	const _permisoId = new URLSearchParams(window.location.search).get('id');
+
+	let _permiso    = null;
+	let _atsEstado  = null; // estado del ATS vinculado (o null si no hay ATS)
+	let _usuario    = null;
+	let _submitting = false;
+	let _modalAccion = null; // 'rechazar' | 'cerrar'
+
+	const btnBackEl        = document.getElementById('btn-back');
+	const headerChipEl     = document.getElementById('header-chip');
+	const skeletonAreaEl   = document.getElementById('skeleton-area');
+	const contentAreaEl    = document.getElementById('content-area');
+	const pageErrorEl      = document.getElementById('page-error');
+	const pageErrorSubEl   = document.getElementById('page-error-sub');
+	const actionFooterEl   = document.getElementById('action-footer');
+	const atsStatusEl      = document.getElementById('ats-status');
+	const modalMotivoEl        = document.getElementById('modal-motivo');
+	const modalMotivoTitleEl   = document.getElementById('modal-motivo-title');
+	const modalMotivoSubEl     = document.getElementById('modal-motivo-subtitle');
+	const modalMotivoTextoEl   = document.getElementById('modal-motivo-texto');
+	const modalMotivoErrorEl   = document.getElementById('modal-motivo-error');
+	const btnModalCancelarEl   = document.getElementById('btn-modal-cancelar');
+	const btnModalConfirmarEl  = document.getElementById('btn-modal-confirmar');
+
+	const ESTADO_CHIP = {
+		'Solicitado':  ['neutral', 'Solicitado'],
+		'En_revision': ['warning', 'En revisión'],
+		'Aprobado':    ['info',    'Aprobado'],
+		'Activo':      ['success', 'Activo'],
+		'Suspendido':  ['warning', 'Suspendido'],
+		'Cerrado':     ['success', 'Cerrado'],
+		'Cancelado':   ['danger',  'Cancelado'],
+	};
+
+	const TIPO_LABEL = {
+		'General':              '📄 General',
+		'Trabajo_en_Caliente':  '🔥 Trabajo en caliente',
+		'Trabajo_en_Frio':      '🧰 Trabajo en frío',
+		'Trabajo_en_Altura':    '🧗 Trabajo en altura',
+		'Espacio_Confinado':    '🕳️ Espacio confinado',
+		'Excavacion':           '⛏️ Excavación',
+		'Electrico':            '⚡ Eléctrico',
+	};
+
+	// Roles que pueden resolver (aprobar/rechazar/activar/cerrar)
+	const ROLES_RESUELVEN = ['supervisor', 'administrador'];
+
+	function chip(value, map, fallback = 'neutral') {
+		const [cls, label] = map[value] || [fallback, value || '—'];
+		return `<span class="chip chip--${cls}">${sanitizeHTML(label)}</span>`;
+	}
+
+	function renderHeader(p) {
+		headerChipEl.innerHTML = chip(p.estado, ESTADO_CHIP);
+	}
+
+	function renderAtsStatus(p, atsEstado) {
+		if (!p.ats_instancia_id) {
+			atsStatusEl.className = 'ats-status ats-status--falta';
+			atsStatusEl.innerHTML = '⚠️ Sin ATS vinculado. No se puede aprobar hasta vincular uno firmado.';
+			return;
+		}
+		if (atsEstado === 'Firmado') {
+			atsStatusEl.className = 'ats-status ats-status--ok';
+			atsStatusEl.innerHTML = '✓ ATS vinculado y firmado. Cumple el requisito para aprobar.';
+			return;
+		}
+		atsStatusEl.className = 'ats-status ats-status--otro';
+		atsStatusEl.innerHTML = `⏳ ATS vinculado, pero todavía no está firmado (estado: ${sanitizeHTML(atsEstado || 'desconocido')}). No se puede aprobar hasta que se firme.`;
+	}
+
+	function renderDatos(p, solicitanteNombre, aprobadorNombre) {
+		document.getElementById('val-tipo').innerHTML = TIPO_LABEL[p.tipo_permiso] || sanitizeHTML(p.tipo_permiso || '—');
+		document.getElementById('val-desc').textContent = p.descripcion || '—';
+		document.getElementById('val-ubicacion').textContent = p.ubicacion || '—';
+		document.getElementById('val-vigencia').textContent =
+			`${p.fecha_inicio ? formatFecha(p.fecha_inicio) : '—'}  →  ${p.fecha_fin ? formatFecha(p.fecha_fin) : '—'}`;
+
+		if (p.velocidad_viento != null || p.rafaga_maxima != null) {
+			const partes = [];
+			if (p.velocidad_viento != null) partes.push(`${p.velocidad_viento} km/h`);
+			if (p.direccion_viento) partes.push(p.direccion_viento);
+			if (p.rafaga_maxima != null) partes.push(`ráfaga máx ${p.rafaga_maxima} km/h`);
+			document.getElementById('val-viento').textContent = partes.join(' · ');
+			document.getElementById('row-viento').hidden = false;
+		}
+
+		document.getElementById('val-solicitante').textContent = solicitanteNombre || '—';
+
+		if (aprobadorNombre) {
+			document.getElementById('val-aprobador').textContent = aprobadorNombre;
+			document.getElementById('row-aprobador').hidden = false;
+		}
+		if (p.observaciones) {
+			document.getElementById('val-observaciones').textContent = p.observaciones;
+			document.getElementById('row-observaciones').hidden = false;
+		}
+		if (p.motivo_cierre) {
+			document.getElementById('val-motivo-cierre').textContent = p.motivo_cierre;
+			document.getElementById('row-motivo-cierre').hidden = false;
+		}
+	}
+
+	function renderFooter(p, usuario, atsEstado) {
+		const puedeResolver = ROLES_RESUELVEN.includes(usuario?.rol);
+		if (!puedeResolver) return;
+
+		const puedeAprobar = p.ats_instancia_id && atsEstado === 'Firmado';
+
+		if (p.estado === 'Solicitado' || p.estado === 'En_revision') {
+			actionFooterEl.innerHTML = `
+				<button id="btn-rechazar" class="btn-action btn-action--danger" type="button">✕ Rechazar</button>
+				<button id="btn-aprobar" class="btn-action btn-action--primary" type="button" ${puedeAprobar ? '' : 'disabled'}>
+					✓ Aprobar
+				</button>`;
+			actionFooterEl.hidden = false;
+			document.getElementById('btn-rechazar').addEventListener('click', () => openModalMotivo('rechazar'));
+			document.getElementById('btn-aprobar').addEventListener('click', handleAprobar);
+			return;
+		}
+
+		if (p.estado === 'Aprobado') {
+			actionFooterEl.innerHTML = `
+				<button id="btn-activar" class="btn-action btn-action--success" type="button">▶ Activar</button>`;
+			actionFooterEl.hidden = false;
+			document.getElementById('btn-activar').addEventListener('click', () => handleCambiarEstado('Activo'));
+			return;
+		}
+
+		if (p.estado === 'Activo') {
+			actionFooterEl.innerHTML = `
+				<button id="btn-suspender" class="btn-action btn-action--secondary" type="button">⏸ Suspender</button>
+				<button id="btn-cerrar"    class="btn-action btn-action--success"   type="button">✓ Cerrar</button>`;
+			actionFooterEl.hidden = false;
+			document.getElementById('btn-suspender').addEventListener('click', () => handleCambiarEstado('Suspendido'));
+			document.getElementById('btn-cerrar').addEventListener('click', () => openModalMotivo('cerrar'));
+			return;
+		}
+
+		if (p.estado === 'Suspendido') {
+			actionFooterEl.innerHTML = `
+				<button id="btn-reactivar" class="btn-action btn-action--success" type="button">▶ Reactivar</button>
+				<button id="btn-cerrar"    class="btn-action btn-action--secondary" type="button">✓ Cerrar</button>`;
+			actionFooterEl.hidden = false;
+			document.getElementById('btn-reactivar').addEventListener('click', () => handleCambiarEstado('Activo'));
+			document.getElementById('btn-cerrar').addEventListener('click', () => openModalMotivo('cerrar'));
+			return;
+		}
+		// Cerrado / Cancelado: sin acciones, estado terminal.
+	}
+
+	// ── Aprobar: dos pasos si hace falta, para que el trigger valide ──
+	async function handleAprobar() {
+		if (_submitting) return;
+		_submitting = true;
+		const btn = document.getElementById('btn-aprobar');
+		if (btn) { btn.disabled = true; btn.textContent = 'Aprobando...'; }
+
+		try {
+			if (_permiso.estado === 'Solicitado') {
+				const { error: e1 } = await supabase
+					.from('permisos_trabajo')
+					.update({ estado: 'En_revision', version: _permiso.version + 1 })
+					.eq('id', _permisoId)
+					.eq('version', _permiso.version);
+				if (e1) throw e1;
+				_permiso.version += 1;
+			}
+
+			const { error: e2 } = await supabase
+				.from('permisos_trabajo')
+				.update({ estado: 'Aprobado', version: _permiso.version + 1 })
+				.eq('id', _permisoId)
+				.eq('version', _permiso.version);
+			if (e2) throw e2;
+
+			showToast('Permiso aprobado.', 'success');
+			window.location.reload();
+
+		} catch (err) {
+			showToast('Error al aprobar: ' + (err.message || 'intentá de nuevo.'), 'error');
+			if (btn) { btn.disabled = false; btn.textContent = '✓ Aprobar'; }
+		} finally {
+			_submitting = false;
+		}
+	}
+
+	async function handleCambiarEstado(nuevoEstado) {
+		if (_submitting) return;
+		_submitting = true;
+		try {
+			const { error } = await supabase
+				.from('permisos_trabajo')
+				.update({ estado: nuevoEstado, version: _permiso.version + 1 })
+				.eq('id', _permisoId)
+				.eq('version', _permiso.version);
+			if (error) throw error;
+			showToast('Permiso actualizado.', 'success');
+			window.location.reload();
+		} catch (err) {
+			showToast('Error: ' + (err.message || 'intentá de nuevo.'), 'error');
+		} finally {
+			_submitting = false;
+		}
+	}
+
+	// ── Modal de motivo (rechazar = Cancelado, cerrar = Cerrado) ──────
+	function openModalMotivo(accion) {
+		_modalAccion = accion;
+		modalMotivoTextoEl.value  = '';
+		modalMotivoErrorEl.textContent = '';
+		if (accion === 'rechazar') {
+			modalMotivoTitleEl.textContent = 'Rechazar permiso';
+			modalMotivoSubEl.textContent   = 'El motivo es obligatorio para justificar el rechazo.';
+		} else {
+			modalMotivoTitleEl.textContent = 'Cerrar permiso';
+			modalMotivoSubEl.textContent   = 'Indicá el motivo de cierre del trabajo.';
+		}
+		modalMotivoEl.removeAttribute('aria-hidden');
+		modalMotivoTextoEl.focus();
+	}
+	function closeModalMotivo() { modalMotivoEl.setAttribute('aria-hidden', 'true'); }
+
+	async function handleConfirmarModal() {
+		const motivo = modalMotivoTextoEl.value.trim();
+		if (!motivo) {
+			modalMotivoErrorEl.textContent = 'El motivo es obligatorio.';
+			modalMotivoTextoEl.focus();
+			return;
+		}
+		if (_submitting) return;
+		_submitting = true;
+		btnModalConfirmarEl.disabled = true;
+		btnModalConfirmarEl.textContent = 'Guardando...';
+
+		const nuevoEstado = _modalAccion === 'rechazar' ? 'Cancelado' : 'Cerrado';
+
+		try {
+			const { error } = await supabase
+				.from('permisos_trabajo')
+				.update({
+					estado: nuevoEstado,
+					motivo_cierre: motivo,
+					version: _permiso.version + 1,
+				})
+				.eq('id', _permisoId)
+				.eq('version', _permiso.version);
+
+			if (error) {
+				modalMotivoErrorEl.textContent = error.message || 'Error al guardar.';
+				return;
+			}
+
+			closeModalMotivo();
+			showToast(_modalAccion === 'rechazar' ? 'Permiso rechazado.' : 'Permiso cerrado.', 'info');
+			window.location.reload();
+
+		} catch (err) {
+			modalMotivoErrorEl.textContent = err.message || 'Error inesperado.';
+		} finally {
+			_submitting = false;
+			btnModalConfirmarEl.disabled = false;
+			btnModalConfirmarEl.textContent = 'Confirmar';
+		}
+	}
+
+	// ── Carga offline-first ───────────────────────────────────
+	async function cargarPermisoPrincipal() {
+		if (isPowerSyncReady()) {
+			const filas = await queryLocal(
+				'SELECT * FROM permisos_trabajo WHERE id = ? AND deleted_at IS NULL',
+				[_permisoId]
+			);
+			if (filas.length > 0) return filas[0];
+		}
+		const { data, error } = await supabase
+			.from('permisos_trabajo')
+			.select('*')
+			.eq('id', _permisoId)
+			.is('deleted_at', null)
+			.single();
+		if (error) throw error;
+		return data;
+	}
+
+	async function cargarDatos() {
+		if (!_permisoId) { showPageError('ID de permiso inválido.'); return; }
+
+		try {
+			_permiso = await cargarPermisoPrincipal();
+		} catch (err) {
+			showPageError(
+				err?.code === 'PGRST116'
+					? 'Permiso no encontrado o sin acceso.'
+					: (err?.message || 'No se pudo cargar el permiso.')
+			);
+			return;
+		}
+
+		const [atsResult, solicitanteResult, aprobadorResult] = await Promise.allSettled([
+			_permiso.ats_instancia_id
+				? supabase.from('ats_instancias').select('estado').eq('id', _permiso.ats_instancia_id).single()
+				: Promise.resolve({ data: null }),
+			_permiso.solicitado_por
+				? supabase.from('usuarios').select('nombre_completo').eq('id', _permiso.solicitado_por).single()
+				: Promise.resolve({ data: null }),
+			_permiso.aprobado_por
+				? supabase.from('usuarios').select('nombre_completo').eq('id', _permiso.aprobado_por).single()
+				: Promise.resolve({ data: null }),
+		]);
+
+		_atsEstado = atsResult.value?.data?.estado ?? null;
+
+		skeletonAreaEl.hidden = true;
+		contentAreaEl.hidden  = false;
+
+		renderHeader(_permiso);
+		renderAtsStatus(_permiso, _atsEstado);
+		renderDatos(_permiso, solicitanteResult.value?.data?.nombre_completo, aprobadorResult.value?.data?.nombre_completo);
+		renderFooter(_permiso, _usuario, _atsEstado);
+	}
+
+	function showPageError(msg) {
+		skeletonAreaEl.hidden = true;
+		pageErrorSubEl.textContent = msg;
+		pageErrorEl.hidden = false;
+	}
+
+	async function init() {
+		await requireAuth('/login.html');
+		_usuario = await getUsuario().catch(() => null);
+		await cargarDatos();
+
+		btnBackEl.addEventListener('click', () => window.location.assign('/permisos.html'));
+		btnModalCancelarEl.addEventListener('click', closeModalMotivo);
+		btnModalConfirmarEl.addEventListener('click', handleConfirmarModal);
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape' && !modalMotivoEl.hasAttribute('aria-hidden')) closeModalMotivo();
+		});
+		modalMotivoEl.addEventListener('click', (e) => { if (e.target === modalMotivoEl) closeModalMotivo(); });
+		modalMotivoTextoEl.addEventListener('input', () => { modalMotivoErrorEl.textContent = ''; });
+	}
+
+	init();
+</script>
+</body>
+</html>
