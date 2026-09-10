@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es-AR" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0A0C0E">
+	<meta name="description" content="ATSHEL HSE — Nuevo permiso de trabajo">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="manifest" href="/manifest.json">
+	<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+	<title>Nuevo permiso — ATSHEL HSE</title>
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+	<link rel="stylesheet" href="/css/atshel-theme.css">
+
+	<style>
+		.app { display: flex; flex-direction: column; min-height: 100dvh; background: var(--surface-base); }
+
+		.app-header {
+			position: sticky; top: 0; z-index: 100;
+			display: flex; align-items: center; gap: 10px;
+			padding: 0 16px; height: 56px;
+			background: var(--surface-01);
+			border-bottom: 1px solid var(--border-subtle);
+			padding-top: env(safe-area-inset-top);
+		}
+		.btn-back {
+			display: flex; align-items: center; justify-content: center;
+			width: 36px; height: 36px; border-radius: 8px;
+			background: transparent; border: none; color: var(--text-secondary);
+			cursor: pointer; flex-shrink: 0;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.btn-back:active { background: var(--surface-04); }
+		.app-header__title {
+			font-family: var(--font-condensed); font-size: var(--text-xl);
+			font-weight: 700; color: var(--text-primary); line-height: 1;
+		}
+
+		.form-main {
+			flex: 1; padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
+			display: flex; flex-direction: column; gap: 22px;
+		}
+
+		.section-title {
+			font-family: var(--font-condensed); font-size: var(--text-lg);
+			font-weight: 700; color: var(--text-primary); margin-bottom: 10px;
+		}
+		.section-hint {
+			font-size: var(--text-xs); color: var(--text-tertiary);
+			margin-top: -8px; margin-bottom: 10px; line-height: 1.4;
+		}
+
+		/* ── Tipo de permiso: grid de chips ───────────────────── */
+		.tipo-grid {
+			display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+		}
+		.tipo-card {
+			display: flex; align-items: center; gap: 8px;
+			padding: 12px; border-radius: 8px;
+			border: 2px solid var(--border-subtle);
+			background: var(--surface-02);
+			color: var(--text-secondary);
+			cursor: pointer; transition: all 0.15s ease;
+			-webkit-tap-highlight-color: transparent;
+			user-select: none;
+		}
+		.tipo-card:active { transform: scale(0.97); }
+		.tipo-card__icon { font-size: 18px; flex-shrink: 0; }
+		.tipo-card__label { font-size: var(--text-sm); font-weight: 600; line-height: 1.2; }
+		.tipo-card[aria-pressed="true"] {
+			border-color: var(--accent);
+			background: var(--accent-subtle);
+			color: var(--accent);
+		}
+
+		/* ── Campos ───────────────────────────────────────────── */
+		.field { display: flex; flex-direction: column; gap: 6px; }
+		.field__label {
+			font-size: 10px; font-weight: 700; color: var(--text-tertiary);
+			text-transform: uppercase; letter-spacing: 0.05em;
+		}
+		.field__label abbr { text-decoration: none; color: var(--color-danger); margin-left: 2px; }
+
+		.field__textarea, .field__input, .field__datetime, .field__select {
+			width: 100%; box-sizing: border-box;
+			background: var(--surface-02); border: 1px solid var(--border-subtle);
+			border-radius: 8px; padding: 11px 14px;
+			font-family: var(--font-sans); font-size: var(--text-base); color: var(--text-primary);
+			outline: none; transition: border-color 0.15s ease;
+			-webkit-appearance: none;
+		}
+		.field__textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+		.field__datetime { color-scheme: dark; }
+		.field__select { color-scheme: dark; }
+
+		.field__textarea:focus, .field__input:focus,
+		.field__datetime:focus, .field__select:focus { border-color: var(--accent); }
+
+		.field__textarea::placeholder, .field__input::placeholder { color: var(--text-tertiary); }
+
+		.field__textarea[aria-invalid="true"], .field__input[aria-invalid="true"],
+		.field__datetime[aria-invalid="true"], .field__select[aria-invalid="true"] { border-color: var(--color-danger); }
+
+		.field__error {
+			font-size: var(--text-xs); color: var(--color-danger);
+			font-weight: 600; min-height: 16px;
+		}
+
+		.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+		/* ── ATS vinculado ────────────────────────────────────── */
+		.ats-picker-empty {
+			padding: 12px 14px; border-radius: 8px;
+			background: var(--surface-02); border: 1px dashed var(--border-subtle);
+			font-size: var(--text-sm); color: var(--text-tertiary); line-height: 1.4;
+		}
+
+		/* ── Sección opcional colapsable ───────────────────────── */
+		.collapse-toggle {
+			display: flex; align-items: center; justify-content: space-between;
+			width: 100%; padding: 12px 14px; border-radius: 8px;
+			background: var(--surface-02); border: 1px solid var(--border-subtle);
+			color: var(--text-secondary); font-family: var(--font-sans);
+			font-size: var(--text-sm); font-weight: 600; cursor: pointer;
+			-webkit-tap-highlight-color: transparent;
+		}
+		.collapse-toggle__chevron { transition: transform 0.2s ease; }
+		.collapse-toggle[aria-expanded="true"] .collapse-toggle__chevron { transform: rotate(180deg); }
+		.collapse-body {
+			display: flex; flex-direction: column; gap: 12px;
+			margin-top: 10px;
+		}
+		.collapse-body[hidden] { display: none; }
+
+		/* ── Error banner ─────────────────────────────────────── */
+		.form-error-banner {
+			padding: 12px 14px; border-radius: 8px;
+			background: var(--color-danger-bg); border: 1px solid var(--color-danger-border);
+			color: var(--color-danger); font-size: var(--text-sm); font-weight: 500; line-height: 1.4;
+		}
+
+		/* ── Footer ───────────────────────────────────────────── */
+		.form-footer {
+			position: fixed; bottom: 0; left: 0; right: 0;
+			padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+			background: var(--surface-01); border-top: 1px solid var(--border-subtle);
+			z-index: 100;
+		}
+		.btn-guardar {
+			width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+			padding: 14px; border-radius: 10px; background: var(--accent); border: none;
+			color: #000; font-family: var(--font-sans); font-size: var(--text-base); font-weight: 700;
+			cursor: pointer; transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
+		}
+		.btn-guardar:hover { background: var(--accent-hover); }
+		.btn-guardar:active { transform: scale(0.99); }
+		.btn-guardar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+		.btn-spinner {
+			width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.25);
+			border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite;
+		}
+		@keyframes spin { to { transform: rotate(360deg); } }
+	</style>
+</head>
+<body>
+<div class="app">
+
+	<header class="app-header" role="banner">
+		<button id="btn-back" class="btn-back" type="button" aria-label="Volver a permisos">
+			<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+				<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
+			</svg>
+		</button>
+		<h1 class="app-header__title">Nuevo permiso de trabajo</h1>
+	</header>
+
+	<main class="form-main" id="main-content" role="main">
+
+		<div id="form-error-banner" class="form-error-banner" role="alert" aria-live="assertive" hidden>
+			<span id="form-error-text"></span>
+		</div>
+
+		<!-- Tipo de permiso -->
+		<div>
+			<div class="section-title">Tipo de permiso <abbr title="Requerido" style="text-decoration:none;color:var(--color-danger)">*</abbr></div>
+			<div class="tipo-grid" role="group" aria-label="Tipo de permiso" id="tipo-grid">
+				<button class="tipo-card" type="button" data-tipo="General"             aria-pressed="true">
+					<span class="tipo-card__icon" aria-hidden="true">📄</span><span class="tipo-card__label">General</span>
+				</button>
+				<button class="tipo-card" type="button" data-tipo="Trabajo_en_Caliente" aria-pressed="false">
+					<span class="tipo-card__icon" aria-hidden="true">🔥</span><span class="tipo-card__label">Trabajo en caliente</span>
+				</button>
+				<button class="tipo-card" type="button" data-tipo="Trabajo_en_Frio"     aria-pressed="false">
+					<span class="tipo-card__icon" aria-hidden="true">🧰</span><span class="tipo-card__label">Trabajo en frío</span>
+				</button>
+				<button class="tipo-card" type="button" data-tipo="Trabajo_en_Altura"   aria-pressed="false">
+					<span class="tipo-card__icon" aria-hidden="true">🧗</span><span class="tipo-card__label">Trabajo en altura</span>
+				</button>
+				<button class="tipo-card" type="button" data-tipo="Espacio_Confinado"   aria-pressed="false">
+					<span class="tipo-card__icon" aria-hidden="true">🕳️</span><span class="tipo-card__label">Espacio confinado</span>
+				</button>
+				<button class="tipo-card" type="button" data-tipo="Excavacion"          aria-pressed="false">
+					<span class="tipo-card__icon" aria-hidden="true">⛏️</span><span class="tipo-card__label">Excavación</span>
+				</button>
+				<button class="tipo-card" type="button" data-tipo="Electrico"           aria-pressed="false">
+					<span class="tipo-card__icon" aria-hidden="true">⚡</span><span class="tipo-card__label">Eléctrico</span>
+				</button>
+			</div>
+		</div>
+
+		<!-- Descripción y lugar -->
+		<div style="display:flex;flex-direction:column;gap:14px">
+			<div class="field">
+				<label class="field__label" for="input-descripcion">Descripción del trabajo <abbr title="Requerido">*</abbr></label>
+				<textarea id="input-descripcion" class="field__textarea" rows="3"
+					placeholder="Qué trabajo se va a realizar..." aria-required="true" maxlength="2000"></textarea>
+				<div id="error-descripcion" class="field__error" aria-live="polite"></div>
+			</div>
+
+			<div class="field">
+				<label class="field__label" for="input-ubicacion">Lugar <abbr title="Requerido">*</abbr></label>
+				<input id="input-ubicacion" class="field__input" type="text"
+					placeholder="Ej: Locación Fortín de Piedra, Pozo N°5..." aria-required="true" autocomplete="off" maxlength="300">
+				<div id="error-ubicacion" class="field__error" aria-live="polite"></div>
+			</div>
+		</div>
+
+		<!-- Vigencia -->
+		<div>
+			<div class="section-title">Vigencia</div>
+			<div class="field-row">
+				<div class="field">
+					<label class="field__label" for="input-fecha-inicio">Desde <abbr title="Requerido">*</abbr></label>
+					<input id="input-fecha-inicio" class="field__datetime" type="datetime-local" aria-required="true">
+					<div id="error-fecha-inicio" class="field__error" aria-live="polite"></div>
+				</div>
+				<div class="field">
+					<label class="field__label" for="input-fecha-fin">Hasta <abbr title="Requerido">*</abbr></label>
+					<input id="input-fecha-fin" class="field__datetime" type="datetime-local" aria-required="true">
+					<div id="error-fecha-fin" class="field__error" aria-live="polite"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ATS vinculado (opcional) -->
+		<div>
+			<div class="section-title">ATS vinculado</div>
+			<div class="section-hint">Opcional acá — pero el permiso no se puede aprobar sin un ATS firmado vinculado.</div>
+			<div id="ats-picker-container">
+				<div class="ats-picker-empty">Cargando ATS firmados disponibles...</div>
+			</div>
+		</div>
+
+		<!-- Datos de viento (colapsable, opcional) -->
+		<div>
+			<button id="btn-toggle-viento" class="collapse-toggle" type="button" aria-expanded="false" aria-controls="collapse-viento">
+				<span>Datos de viento (izaje / altura) — opcional</span>
+				<span class="collapse-toggle__chevron" aria-hidden="true">▾</span>
+			</button>
+			<div id="collapse-viento" class="collapse-body" hidden>
+				<div class="field-row">
+					<div class="field">
+						<label class="field__label" for="input-velocidad-viento">Velocidad (km/h)</label>
+						<input id="input-velocidad-viento" class="field__input" type="number" min="0" step="0.1" inputmode="decimal">
+					</div>
+					<div class="field">
+						<label class="field__label" for="input-rafaga">Ráfaga máx. (km/h)</label>
+						<input id="input-rafaga" class="field__input" type="number" min="0" step="0.1" inputmode="decimal">
+					</div>
+				</div>
+				<div class="field">
+					<label class="field__label" for="select-direccion-viento">Dirección</label>
+					<select id="select-direccion-viento" class="field__select">
+						<option value="">Sin especificar</option>
+						<option value="N">Norte (N)</option>
+						<option value="NE">Noreste (NE)</option>
+						<option value="E">Este (E)</option>
+						<option value="SE">Sureste (SE)</option>
+						<option value="S">Sur (S)</option>
+						<option value="SO">Suroeste (SO)</option>
+						<option value="O">Oeste (O)</option>
+						<option value="NO">Noroeste (NO)</option>
+						<option value="Calma">Calma</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<!-- Observaciones -->
+		<div class="field">
+			<label class="field__label" for="input-observaciones">Observaciones (opcional)</label>
+			<textarea id="input-observaciones" class="field__textarea" rows="2"
+				placeholder="Restricciones, condiciones especiales..." maxlength="1000"></textarea>
+		</div>
+
+	</main>
+
+	<footer class="form-footer" role="contentinfo">
+		<button id="btn-guardar" class="btn-guardar" type="button" aria-label="Solicitar permiso de trabajo">
+			<span id="btn-text">Solicitar permiso</span>
+			<span id="btn-spinner" class="btn-spinner" hidden aria-hidden="true"></span>
+		</button>
+	</footer>
+
+</div><!-- /.app -->
+
+<script src="/vendor/dompurify.min.js"></script>
+<script src="/vendor/phosphor-icons.min.js"></script>
+
+<script type="module">
+	/**
+	 * permiso-nuevo.html — solicitud de nuevo permiso de trabajo (PT).
+	 *
+	 * Columnas verificadas MCP 2026-09-07 directo contra Postgres en vivo
+	 * (Claude.md desactualizado para este módulo, no confiar en él):
+	 *   permisos_trabajo.estado        CHECK IN ('Solicitado','En_revision',
+	 *     'Aprobado','Activo','Suspendido','Cerrado','Cancelado') — default 'Solicitado'
+	 *   permisos_trabajo.tipo_permiso  CHECK IN ('General','Trabajo_en_Caliente',
+	 *     'Trabajo_en_Frio','Trabajo_en_Altura','Espacio_Confinado','Excavacion','Electrico')
+	 *   permisos_trabajo.direccion_viento CHECK IN ('N','NE','E','SE','S','SO','O','NO','Calma')
+	 *   permisos_trabajo.fecha_inicio / fecha_fin  TIMESTAMPTZ NOT NULL
+	 *   permisos_trabajo.solicitado_por UUID NOT NULL → public.usuarios.id (NO auth.uid())
+	 *   permisos_trabajo.ats_instancia_id UUID NULLABLE — opcional acá, pero
+	 *     trigger fn_validar_permiso_trabajo EXIGE que sea no-nulo y que el
+	 *     ATS esté 'Firmado' para poder pasar a estado 'Aprobado' después.
+	 *   permisos_trabajo.restricciones JSONB NOT NULL DEFAULT '[]'
+	 *
+	 * Trigger BEFORE INSERT/UPDATE tg_validar_permiso_trabajo:
+	 *   - fecha_fin debe ser > fecha_inicio (si no, error PT_ERROR)
+	 *   - motivo_cierre obligatorio solo al pasar a Cerrado/Cancelado (no aplica acá)
+	 *
+	 * Este archivo NO EXISTÍA — permisos.html ya enlazaba acá, dando 404.
+	 * Necesita entrada en vite.config.js (rollupOptions.input).
+	 */
+
+	import {
+		initPowerSync,
+		isPowerSyncReady,
+		executeLocal,
+		stringifyJsonField,
+	} from '/src/js/atshel-powersync.js';
+
+	import {
+		supabase,
+		requireAuth,
+		getUsuario,
+		getEmpresaId,
+	} from '/src/js/atshel-supabase.js';
+
+	import {
+		sanitizeHTML,
+		generateLocalId,
+	} from '/src/js/atshel-core.js';
+
+	// ── Estado ───────────────────────────────────────────────
+	let _localId     = generateLocalId(); // atshel_local_id
+	let _newId       = generateLocalId(); // id (PK) — camino offline
+	let _tipoPermiso = 'General';
+	let _atsId       = null; // ats_instancia_id seleccionada (o null)
+	let _submitting  = false;
+	let _usuario     = null;
+
+	// ── Referencias DOM ──────────────────────────────────────
+	const btnBackEl          = document.getElementById('btn-back');
+	const formErrorBannerEl  = document.getElementById('form-error-banner');
+	const formErrorTextEl    = document.getElementById('form-error-text');
+	const tipoGridEl         = document.getElementById('tipo-grid');
+	const descripcionEl      = document.getElementById('input-descripcion');
+	const errorDescEl        = document.getElementById('error-descripcion');
+	const ubicacionEl        = document.getElementById('input-ubicacion');
+	const errorUbicacionEl   = document.getElementById('error-ubicacion');
+	const fechaInicioEl      = document.getElementById('input-fecha-inicio');
+	const errorFechaInicioEl = document.getElementById('error-fecha-inicio');
+	const fechaFinEl         = document.getElementById('input-fecha-fin');
+	const errorFechaFinEl    = document.getElementById('error-fecha-fin');
+	const atsPickerContainer = document.getElementById('ats-picker-container');
+	const btnToggleVientoEl  = document.getElementById('btn-toggle-viento');
+	const collapseVientoEl   = document.getElementById('collapse-viento');
+	const velocidadVientoEl  = document.getElementById('input-velocidad-viento');
+	const rafagaEl           = document.getElementById('input-rafaga');
+	const direccionVientoEl  = document.getElementById('select-direccion-viento');
+	const observacionesEl    = document.getElementById('input-observaciones');
+	const btnGuardarEl       = document.getElementById('btn-guardar');
+	const btnTextEl          = document.getElementById('btn-text');
+	const btnSpinnerEl       = document.getElementById('btn-spinner');
+
+	// ── Helpers ───────────────────────────────────────────────
+	function showFormError(msg) {
+		formErrorTextEl.textContent = msg;
+		formErrorBannerEl.hidden    = false;
+		formErrorBannerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+	function hideFormError() {
+		formErrorBannerEl.hidden = true;
+		formErrorTextEl.textContent = '';
+	}
+	function setError(inputEl, errorEl, msg) {
+		errorEl.textContent = msg;
+		if (msg) inputEl.setAttribute('aria-invalid', 'true');
+		else     inputEl.removeAttribute('aria-invalid');
+	}
+	function clearError(inputEl, errorEl) { setError(inputEl, errorEl, ''); }
+	function setBtnLoading(loading) {
+		_submitting           = loading;
+		btnGuardarEl.disabled = loading;
+		btnTextEl.hidden      = loading;
+		btnSpinnerEl.hidden   = !loading;
+	}
+
+	// ── Tipo de permiso ──────────────────────────────────────
+	function selectTipo(valor) {
+		_tipoPermiso = valor;
+		tipoGridEl.querySelectorAll('.tipo-card').forEach(card => {
+			card.setAttribute('aria-pressed', String(card.dataset.tipo === valor));
+		});
+	}
+
+	// ── Cargar ATS firmados disponibles ──────────────────────
+	async function cargarAtsDisponibles(empresaId) {
+		const { data, error } = await supabase
+			.from('ats_instancias')
+			.select('id, creado_por, created_at')
+			.eq('empresa_id', empresaId)
+			.eq('estado', 'Firmado')
+			.is('deleted_at', null)
+			.order('created_at', { ascending: false })
+			.limit(30);
+
+		if (error || !data || data.length === 0) {
+			atsPickerContainer.innerHTML = `
+				<div class="ats-picker-empty">
+					No hay ATS firmados disponibles todavía. Podés dejarlo sin vincular
+					y agregarlo después — pero recordá que sin un ATS firmado vinculado,
+					este permiso no se va a poder aprobar.
+				</div>`;
+			return;
+		}
+
+		const options = data.map(a =>
+			`<option value="${sanitizeHTML(a.id)}">ATS del ${sanitizeHTML(new Date(a.created_at).toLocaleDateString('es-AR'))} — ${sanitizeHTML(a.id.substring(0,8))}</option>`
+		).join('');
+
+		atsPickerContainer.innerHTML = `
+			<select id="select-ats" class="field__select" aria-label="ATS vinculado">
+				<option value="">Sin vincular por ahora</option>
+				${options}
+			</select>`;
+
+		document.getElementById('select-ats').addEventListener('change', (e) => {
+			_atsId = e.target.value || null;
+		});
+	}
+
+	// ── Validación ────────────────────────────────────────────
+	function validate() {
+		let ok = true;
+		hideFormError();
+
+		const desc = descripcionEl.value.trim();
+		if (!desc) { setError(descripcionEl, errorDescEl, 'Describí el trabajo.'); ok = false; }
+		else       { clearError(descripcionEl, errorDescEl); }
+
+		const ubic = ubicacionEl.value.trim();
+		if (!ubic) { setError(ubicacionEl, errorUbicacionEl, 'Indicá el lugar.'); ok = false; }
+		else       { clearError(ubicacionEl, errorUbicacionEl); }
+
+		if (!fechaInicioEl.value) {
+			setError(fechaInicioEl, errorFechaInicioEl, 'Requerido.'); ok = false;
+		} else {
+			clearError(fechaInicioEl, errorFechaInicioEl);
+		}
+
+		if (!fechaFinEl.value) {
+			setError(fechaFinEl, errorFechaFinEl, 'Requerido.'); ok = false;
+		} else if (fechaInicioEl.value && new Date(fechaFinEl.value) <= new Date(fechaInicioEl.value)) {
+			// Mismo chequeo que el trigger (fn_validar_permiso_trabajo) —
+			// validar acá evita el viaje redondo para un error que ya sabemos.
+			setError(fechaFinEl, errorFechaFinEl, 'Debe ser posterior a la fecha de inicio.');
+			ok = false;
+		} else {
+			clearError(fechaFinEl, errorFechaFinEl);
+		}
+
+		return ok;
+	}
+
+	// ── Submit ────────────────────────────────────────────────
+	async function handleSubmit() {
+		if (_submitting) return;
+		if (!validate()) {
+			document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			return;
+		}
+
+		setBtnLoading(true);
+
+		try {
+			const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
+			const solicitadoPor = _usuario?.id ?? null;
+			const nowISO = new Date().toISOString();
+
+			const fechaInicioISO = new Date(fechaInicioEl.value).toISOString();
+			const fechaFinISO    = new Date(fechaFinEl.value).toISOString();
+
+			const descripcion   = descripcionEl.value.trim();
+			const ubicacion     = ubicacionEl.value.trim();
+			const observaciones = observacionesEl.value.trim() || null;
+
+			const velocidadViento = velocidadVientoEl.value ? parseFloat(velocidadVientoEl.value) : null;
+			const rafaga          = rafagaEl.value ? parseFloat(rafagaEl.value) : null;
+			const direccionViento = direccionVientoEl.value || null;
+
+			// ── Camino offline-first ──────────────────────────
+			if (isPowerSyncReady()) {
+				const ok = await executeLocal(
+					`INSERT INTO permisos_trabajo
+						(id, atshel_local_id, empresa_id, ats_instancia_id, tipo_permiso,
+						 descripcion, ubicacion, solicitado_por, fecha_inicio, fecha_fin,
+						 estado, observaciones, restricciones, version,
+						 velocidad_viento, direccion_viento, rafaga_maxima,
+						 created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					[
+						_newId, _localId, empresaId, _atsId, _tipoPermiso,
+						descripcion, ubicacion, solicitadoPor, fechaInicioISO, fechaFinISO,
+						'Solicitado', observaciones, stringifyJsonField([]), 1,
+						velocidadViento, direccionViento, rafaga,
+						nowISO, nowISO,
+					]
+				);
+
+				if (ok) {
+					window.location.replace(`/permiso-detalle.html?id=${_newId}`);
+					return;
+				}
+				console.warn('[ATSHEL] executeLocal falló en permiso-nuevo, cayendo al insert online directo.');
+			}
+
+			// ── Camino online directo (respaldo) ──────────────
+			const payload = {
+				atshel_local_id:  _localId,
+				empresa_id:       empresaId,
+				ats_instancia_id: _atsId,
+				tipo_permiso:     _tipoPermiso,
+				descripcion,
+				ubicacion,
+				solicitado_por:   solicitadoPor,
+				fecha_inicio:     fechaInicioISO,
+				fecha_fin:        fechaFinISO,
+				estado:           'Solicitado',
+				observaciones,
+				restricciones:    [],
+				velocidad_viento: velocidadViento,
+				direccion_viento: direccionViento,
+				rafaga_maxima:    rafaga,
+			};
+
+			const { data, error } = await supabase
+				.from('permisos_trabajo')
+				.insert(payload)
+				.select('id')
+				.single();
+
+			if (error) {
+				if (error.code === '23505' && error.message?.includes('atshel_local_id')) {
+					window.location.replace('/permisos.html');
+					return;
+				}
+				const msg = error.message?.includes('network') || error.message?.includes('fetch')
+					? 'Sin conexión. Verificá tu red e intentá de nuevo.'
+					: `Error al guardar (${error.code || '?'}). Intentá de nuevo.`;
+				showFormError(msg);
+				return;
+			}
+
+			window.location.replace(`/permiso-detalle.html?id=${data.id}`);
+
+		} catch (err) {
+			showFormError(err?.message || 'Error inesperado. Intentá de nuevo.');
+		} finally {
+			setBtnLoading(false);
+		}
+	}
+
+	// ── Init ─────────────────────────────────────────────────
+	async function init() {
+		await requireAuth('/login.html');
+
+		initPowerSync().catch((err) => {
+			console.warn('[ATSHEL] PowerSync no disponible, se usará el camino online:', err.message);
+		});
+
+		_usuario = await getUsuario().catch(() => null);
+		const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
+
+		// Fecha de inicio default = ahora
+		const ahora  = new Date();
+		const offset = ahora.getTimezoneOffset();
+		fechaInicioEl.value = new Date(ahora.getTime() - offset * 60000).toISOString().slice(0, 16);
+
+		await cargarAtsDisponibles(empresaId);
+
+		// Event listeners — todos aquí
+		tipoGridEl.addEventListener('click', (e) => {
+			const card = e.target.closest('.tipo-card[data-tipo]');
+			if (card) selectTipo(card.dataset.tipo);
+		});
+
+		descripcionEl.addEventListener('input', () => clearError(descripcionEl, errorDescEl));
+		ubicacionEl.addEventListener('input',   () => clearError(ubicacionEl, errorUbicacionEl));
+		fechaInicioEl.addEventListener('change',() => clearError(fechaInicioEl, errorFechaInicioEl));
+		fechaFinEl.addEventListener('change',   () => clearError(fechaFinEl, errorFechaFinEl));
+
+		btnToggleVientoEl.addEventListener('click', () => {
+			const expanded = btnToggleVientoEl.getAttribute('aria-expanded') === 'true';
+			btnToggleVientoEl.setAttribute('aria-expanded', String(!expanded));
+			collapseVientoEl.hidden = expanded;
+		});
+
+		btnBackEl.addEventListener('click', () => window.location.assign('/permisos.html'));
+		btnGuardarEl.addEventListener('click', handleSubmit);
+	}
+
+	init();
+</script>
+</body>
+</html>
