@@ -561,6 +561,18 @@
 		.page-error__icon  { font-size: 40px; }
 		.page-error__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
 		.page-error__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
+		.page-error__detail {
+			margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+			background: var(--surface-02); border: 1px solid var(--border-subtle);
+			font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);
+			text-align: left; max-width: 100%; word-break: break-word; white-space: pre-wrap;
+		}
+		.page-error__retry {
+			margin-top: 14px; padding: 10px 20px; border-radius: 8px;
+			background: var(--accent); border: none; color: #000;
+			font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 700;
+			cursor: pointer; -webkit-tap-highlight-color: transparent;
+		}
 	</style>
 </head>
 <body>
@@ -702,6 +714,8 @@
 			<div class="page-error__icon">⚡</div>
 			<div class="page-error__title">No se pudo cargar</div>
 			<div id="page-error-sub" class="page-error__sub"></div>
+			<div id="page-error-detail" class="page-error__detail" hidden></div>
+			<button id="btn-retry" class="page-error__retry" type="button">Reintentar</button>
 		</div>
 
 	</main>
@@ -736,6 +750,22 @@
 	 *   3. Si true: UPDATE ats_instancias SET estado='Firmado', version=v+1
 	 *      Trigger sets: bloqueado=true, firmado_en=now(), fecha_hora_firma=now()
 	 *   4. INSERT ats_firmas
+	 *
+	 * ── DIAGNÓSTICO Y OFFLINE-FIRST (2026-09-10) ──────────────────
+	 * FIX: esta pantalla nunca tenía camino offline (mismo patrón que
+	 * ya se corrigió en incidente-detalle.html, accion-detalle.html y
+	 * permiso-detalle.html) — sólo consultaba Supabase directo. Un
+	 * fallo de sesión, red o RLS caía siempre en el mismo mensaje
+	 * genérico "No se pudo cargar", sin mostrar la causa real.
+	 * Ahora:
+	 *   1. Intenta SQLite local primero (queryLocal) para los datos
+	 *      básicos del ATS.
+	 *   2. Si falla el camino online, muestra el mensaje de error REAL
+	 *      de Supabase/PostgREST (código + texto), no un genérico —
+	 *      incluye también el estado de la sesión (auth.uid() y
+	 *      empresa_id resuelta) para poder diagnosticar RLS/sesión
+	 *      sin necesitar la consola del navegador.
+	 *   3. Agrega un botón "Reintentar" en la pantalla de error.
 	 */
 
 	import {
@@ -746,6 +776,12 @@
 		crearNonce,
 		verificarPin,
 	} from '/src/js/atshel-supabase.js';
+
+	import {
+		isPowerSyncReady,
+		queryLocal,
+		parseJsonField,
+	} from '/src/js/atshel-powersync.js';
 
 	import {
 		sanitizeHTML,
@@ -778,6 +814,8 @@
 	const contentAreaEl      = document.getElementById('content-area');
 	const pageErrorEl        = document.getElementById('page-error');
 	const pageErrorSubEl     = document.getElementById('page-error-sub');
+	const pageErrorDetailEl  = document.getElementById('page-error-detail');
+	const btnRetryEl         = document.getElementById('btn-retry');
 	const camposRespondidosEl= document.getElementById('campos-respondidos');
 	const ipercListaEl       = document.getElementById('iperc-lista');
 	const ipercCountEl       = document.getElementById('iperc-count');
@@ -1249,6 +1287,41 @@
 		}
 	}
 
+	// ── Carga offline-first del ATS principal ──────────────────
+	async function cargarAtsPrincipal() {
+		if (isPowerSyncReady()) {
+			const filas = await queryLocal(
+				'SELECT * FROM ats_instancias WHERE id = ? AND deleted_at IS NULL',
+				[_instanciaId]
+			);
+			if (filas.length > 0) {
+				const row = filas[0];
+				return {
+					...row,
+					riesgos_evaluacion: parseJsonField(row.riesgos_evaluacion, []),
+					_fuente: 'local',
+				};
+			}
+		}
+
+		const { data, error } = await supabase
+			.from('ats_instancias')
+			.select(`
+				id, plantilla_id, empresa_id, creado_por, estado,
+				riesgos_evaluacion, bloqueado, firmado_en, version, created_at,
+				plantillas_ats!ats_instancias_plantilla_id_fkey(nombre_ats, tipo_trabajo),
+				ats_respuestas!ats_respuestas_instancia_id_fkey(
+					id, campo_id, valor, deleted_at
+				)
+			`)
+			.eq('id', _instanciaId)
+			.is('deleted_at', null)
+			.single();
+
+		if (error) throw error;
+		return { ...data, _fuente: 'supabase' };
+	}
+
 	// ── Carga de datos ────────────────────────────────────────
 	async function cargarDatos() {
 		if (!_instanciaId) {
@@ -1256,20 +1329,37 @@
 			return;
 		}
 
-		const [instResult, charlasResult, usuariosResult] = await Promise.allSettled([
+		let instancia;
+		try {
+			instancia = await cargarAtsPrincipal();
+		} catch (err) {
+			// Diagnóstico: mostrar el error REAL de Supabase/PostgREST,
+			// más el estado de sesión, en vez de un genérico mudo.
+			let sesionInfo = '';
+			try {
+				const { data: sess } = await supabase.auth.getSession();
+				const uid = sess?.session?.user?.id ?? '(sin sesión)';
+				const empresaResuelta = await getEmpresaId().catch(() => '(no se pudo resolver)');
+				sesionInfo = `auth.uid(): ${uid}\nempresa_id resuelta: ${empresaResuelta}`;
+			} catch {
+				sesionInfo = 'No se pudo leer el estado de sesión.';
+			}
 
-			supabase.from('ats_instancias')
-				.select(`
-					id, plantilla_id, empresa_id, creado_por, estado,
-					riesgos_evaluacion, bloqueado, firmado_en, version, created_at,
-					plantillas_ats!ats_instancias_plantilla_id_fkey(nombre_ats, tipo_trabajo),
-					ats_respuestas!ats_respuestas_instancia_id_fkey(
-						id, campo_id, valor, deleted_at
-					)
-				`)
-				.eq('id', _instanciaId)
-				.is('deleted_at', null)
-				.single(),
+			const msg = err?.code === 'PGRST116'
+				? 'ATS no encontrado o sin acceso (0 filas — probable problema de sesión/RLS, no de datos).'
+				: (err?.message || 'No se pudo cargar el ATS.');
+
+			showPageError(msg, `${err?.code ?? 'sin código'} · ${err?.details ?? ''}\n${sesionInfo}`);
+			return;
+		}
+
+		_instancia  = instancia;
+		_plantilla  = instancia.plantillas_ats ?? null;
+		_respuestas = (instancia.ats_respuestas ?? []).filter(r => !r.deleted_at);
+
+		// Si vino del camino local, plantilla/respuestas no vienen embebidas —
+		// se completan por separado más abajo (mismo bloque que ya existía).
+		const [charlasResult, usuariosResult] = await Promise.allSettled([
 
 			supabase.from('ats_capacitaciones_pre_trabajo')
 				.select(`
@@ -1289,17 +1379,7 @@
 				.order('nombre_completo', { ascending: true }),
 		]);
 
-		if (instResult.status === 'rejected' || instResult.value?.error) {
-			showPageError(instResult.value?.error?.code === 'PGRST116'
-				? 'ATS no encontrado o sin acceso.'
-				: (instResult.value?.error?.message || 'No se pudo cargar el ATS.'));
-			return;
-		}
-
-		_instancia  = instResult.value.data;
-		_plantilla  = _instancia.plantillas_ats ?? null;
-		_respuestas = (_instancia.ats_respuestas ?? []).filter(r => !r.deleted_at);
-		_usuarios   = usuariosResult.value?.data ?? [];
+		_usuarios = usuariosResult.value?.data ?? [];
 
 		// Normalizar charlas con nombres de asistentes
 		const charlasRaw = charlasResult.value?.data ?? [];
@@ -1310,6 +1390,26 @@
 				nombre_completo: a.usuarios?.nombre_completo ?? null,
 			})),
 		}));
+
+		// Si la plantilla no vino embebida (camino local), buscarla aparte
+		if (!_plantilla && _instancia.plantilla_id) {
+			const { data: pl } = await supabase
+				.from('plantillas_ats')
+				.select('nombre_ats, tipo_trabajo')
+				.eq('id', _instancia.plantilla_id)
+				.single();
+			_plantilla = pl ?? null;
+		}
+
+		// Si las respuestas no vinieron embebidas (camino local), buscarlas aparte
+		if (_respuestas.length === 0 && _instancia._fuente === 'local') {
+			const { data: resp } = await supabase
+				.from('ats_respuestas')
+				.select('id, campo_id, valor, deleted_at')
+				.eq('instancia_id', _instanciaId)
+				.is('deleted_at', null);
+			_respuestas = resp ?? [];
+		}
 
 		// Cargar campos de la plantilla
 		if (_instancia.plantilla_id) {
@@ -1347,9 +1447,16 @@
 	}
 
 	// ── Error de página ───────────────────────────────────────
-	function showPageError(msg) {
+	function showPageError(msg, detalle) {
 		skeletonAreaEl.hidden      = true;
+		contentAreaEl.hidden      = true;
 		pageErrorSubEl.textContent = msg;
+		if (detalle) {
+			pageErrorDetailEl.textContent = detalle;
+			pageErrorDetailEl.hidden = false;
+		} else {
+			pageErrorDetailEl.hidden = true;
+		}
 		pageErrorEl.hidden         = false;
 	}
 
@@ -1375,6 +1482,12 @@
 
 		charlaDurEl.addEventListener('input', () => {
 			charlaErrorEl.textContent = '';
+		});
+
+		btnRetryEl.addEventListener('click', () => {
+			pageErrorEl.hidden = true;
+			skeletonAreaEl.hidden = false;
+			cargarDatos();
 		});
 	}
 
