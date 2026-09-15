@@ -467,6 +467,9 @@
 			text-align:      center;
 			gap:             8px;
 		}
+		/* Sin esto, [hidden] pierde contra el display:flex de arriba y el
+		   cartel de error queda visible siempre, aunque no haya error. */
+		.page-error[hidden] { display: none; }
 		.page-error__icon  { font-size: 40px; }
 		.page-error__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
 		.page-error__sub   { font-size: var(--text-sm); color: var(--text-tertiary); }
