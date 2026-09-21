@@ -338,6 +338,18 @@
 	 *
 	 * Este archivo NO EXISTÍA — permisos.html ya enlazaba acá, dando 404.
 	 * Necesita entrada en vite.config.js (rollupOptions.input).
+	 *
+	 * ── PRESELECCIÓN DESDE ?ats_id=... (2026-09-17) ───────────────
+	 * FIX: al llegar acá desde "Crear Permiso de Trabajo" en
+	 * ats-supervisor.html (que arma la URL como
+	 * /permiso-nuevo.html?ats_id=<id>), el parámetro se ignoraba por
+	 * completo — no había ningún código que lo leyera, así que el
+	 * picker de ATS siempre arrancaba en "Sin vincular por ahora" y
+	 * el usuario tenía que volver a elegir el ATS a mano. Ahora
+	 * cargarAtsDisponibles() lo lee y lo preselecciona, pero SOLO si
+	 * el id aparece en la lista de ATS 'Firmado' recién traída — el
+	 * parámetro de URL no es la autoridad, se valida contra lo que
+	 * realmente devolvió Supabase antes de usarlo.
 	 */
 
 	import {
@@ -360,6 +372,11 @@
 	} from '/src/js/atshel-core.js';
 
 	// ── Estado ───────────────────────────────────────────────
+	// ats_id llega desde ats-supervisor.html tras firmar un ATS; se valida
+	// contra la lista real de ATS 'Firmado' en cargarAtsDisponibles() antes
+	// de usarlo — no se confía en el parámetro de URL por sí solo.
+	const _atsIdDesdeUrl = new URLSearchParams(window.location.search).get('ats_id');
+
 	let _localId     = generateLocalId(); // atshel_local_id
 	let _newId       = generateLocalId(); // id (PK) — camino offline
 	let _tipoPermiso = 'General';
@@ -451,9 +468,37 @@
 			<select id="select-ats" class="field__select" aria-label="ATS vinculado">
 				<option value="">Sin vincular por ahora</option>
 				${options}
-			</select>`;
+			</select>
+			<div id="ats-vinculado-hint" class="section-hint" style="margin-top:6px;margin-bottom:0" hidden>
+				Vinculado automáticamente al ATS que acabás de firmar.
+				<button id="btn-cambiar-ats" type="button" style="background:none;border:none;color:var(--accent);font-weight:600;font-size:inherit;padding:0;cursor:pointer;text-decoration:underline">Cambiar</button>
+			</div>`;
 
-		document.getElementById('select-ats').addEventListener('change', (e) => {
+		const selectAtsEl        = document.getElementById('select-ats');
+		const atsVinculadoHintEl = document.getElementById('ats-vinculado-hint');
+		const btnCambiarAtsEl    = document.getElementById('btn-cambiar-ats');
+
+		// Preseleccionar ?ats_id=... si vino en la URL y de verdad está en
+		// esta lista de ATS Firmado — si no aparece (otra empresa, no
+		// firmado, no existe), se ignora en silencio y queda "Sin vincular".
+		// Si coincide, el select queda BLOQUEADO (con botón "Cambiar" para
+		// desbloquear) — evita crear sin querer un permiso vinculado a un
+		// ATS distinto al que se acaba de firmar, sin sacar la opción de
+		// elegir otro a propósito.
+		if (_atsIdDesdeUrl && data.some(a => a.id === _atsIdDesdeUrl)) {
+			selectAtsEl.value    = _atsIdDesdeUrl;
+			_atsId               = _atsIdDesdeUrl;
+			selectAtsEl.disabled = true;
+			atsVinculadoHintEl.hidden = false;
+		}
+
+		btnCambiarAtsEl?.addEventListener('click', () => {
+			selectAtsEl.disabled = false;
+			atsVinculadoHintEl.hidden = true;
+			selectAtsEl.focus();
+		});
+
+		selectAtsEl.addEventListener('change', (e) => {
 			_atsId = e.target.value || null;
 		});
 	}
