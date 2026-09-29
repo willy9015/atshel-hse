@@ -918,11 +918,13 @@
        window.ATSHEL.supabase → cliente Supabase JS
        window.ATSHEL.user    → perfil del usuario autenticado
        ================================================================ -->
-  <script>
+  <script type="module">
   'use strict';
 
-  // ── Señal de página para atshel-app.js ─────────────────────────
-  window.__ATSHEL_PAGE = 'index';
+  // FIX 2026-09-22: agregamos syncStatus (estado REAL de PowerSync,
+  // no navigator.onLine) para no mostrar "sin conexión" en falso.
+  // Requiere type="module" en este script para poder importar.
+  import { syncStatus } from '/src/js/atshel-core.js';
 
   // ── Atajos DOM ──────────────────────────────────────────────────
   const g = id => document.getElementById(id);
@@ -971,8 +973,19 @@
   // ── Navegación helper ───────────────────────────────────────────
   function nav(url) { window.location.href = url; }
   function kpEnter(e, url) { if (e.key === 'Enter') nav(url); }
+  window.nav = nav;
+  window.kpEnter = kpEnter;
 
   // ── Conectividad ────────────────────────────────────────────────
+  // FIX 2026-09-22: navigator.onLine SOLO dice si el dispositivo tiene
+  // una interfaz de red activa — en iOS, sobre todo instalada como app
+  // (modo standalone), puede reportar `false` estando con wifi real.
+  // Antes esta pantalla confiaba ciegamente en navigator.onLine y
+  // mostraba "sin conexión" apenas cargaba, aunque hubiera señal.
+  // Ahora la fuente de verdad es syncStatus (PowerSync real), que
+  // solo pasa a 'desconectado'/'error' cuando de verdad no logra
+  // hablar con el servidor. navigator.onLine queda como señal
+  // secundaria, no como la única.
   function applyOnline()  {
     EL.offline.classList.remove('is-visible');
     document.body.classList.remove('is-offline');
@@ -980,11 +993,23 @@
   function applyOffline() {
     EL.offline.classList.add('is-visible');
     document.body.classList.add('is-offline');
-    setSyncState('offline');
   }
-  window.addEventListener('online',  () => { applyOnline();  setSyncState('syncing'); refreshStats(); });
-  window.addEventListener('offline', () => applyOffline());
-  if (!navigator.onLine) applyOffline();
+
+  function pareceRealmenteOffline() {
+    const psOk = syncStatus.estado === 'sincronizado' || syncStatus.estado === 'pendiente';
+    if (psOk) return false;               // PowerSync confirma conexión real → nunca offline
+    return !navigator.onLine;             // sin confirmación de PowerSync, recién ahí miramos el navegador
+  }
+
+  function evaluarConectividad() {
+    if (pareceRealmenteOffline()) applyOffline(); else applyOnline();
+  }
+
+  syncStatus.onChange(evaluarConectividad);
+  window.addEventListener('online',  () => { evaluarConectividad(); if (!pareceRealmenteOffline()) { setSyncState('syncing'); refreshStats(); } });
+  window.addEventListener('offline', evaluarConectividad);
+  // Ya NO se evalúa navigator.onLine solo al arrancar — se espera
+  // la primera señal real (de syncStatus o del evento offline).
 
   // ── Sync indicator ──────────────────────────────────────────────
   const SYNC_LABEL = { synced:'Listo', syncing:'Sync', offline:'Offline', error:'Error' };
@@ -1312,7 +1337,8 @@
   async function refreshStats() {
     try {
       await Promise.allSettled([loadStats(), loadActivity()]);
-      setSyncState(navigator.onLine ? 'synced' : 'offline');
+      evaluarConectividad();
+      setSyncState(pareceRealmenteOffline() ? 'offline' : 'synced');
     } catch (e) {
       console.warn('[ATSHEL] refresh error:', e.message);
     }
@@ -1332,7 +1358,7 @@
       // Perfil de usuario (cargado por atshel-app.js antes del evento)
       renderUser(window.ATSHEL?.user);
 
-      if (!navigator.onLine) applyOffline();
+      evaluarConectividad();
 
       // Estadísticas y actividad en paralelo
       await Promise.allSettled([loadStats(), loadActivity()]);
@@ -1340,7 +1366,7 @@
       // Mostrar dashboard
       EL.skeleton.classList.add('hidden');
       EL.dashboard.classList.remove('hidden');
-      setSyncState(navigator.onLine ? 'synced' : 'offline');
+      setSyncState(pareceRealmenteOffline() ? 'offline' : 'synced');
 
     } catch (err) {
       console.error('[ATSHEL] initDashboard error:', err);
