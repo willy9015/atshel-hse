@@ -654,7 +654,18 @@
 	 *   → Todo eso se gestiona en ats-supervisor.html
 	 *
 	 * Al guardar: INSERT ats_instancias (estado='En_curso') + INSERT ats_respuestas
+	 *   + subida de fotos pendientes (ver FIX 2026-09-22 más abajo)
 	 *   → redirect a /ats-supervisor.html?id={instanciaId}
+	 *
+	 * FIX 2026-09-22: los campos tipo 'foto' guardaban el archivo en
+	 * memoria (_fotosTemp) para la vista previa, pero nunca se subían
+	 * a Storage ni se registraban en `adjuntos` — atshel-media.js ya
+	 * tenía comprimirFoto/subirArchivo/registrarAdjunto/colaSubida
+	 * listos, simplemente no estaban conectados acá. Ahora, al guardar
+	 * el ATS, cada foto pendiente se comprime y se sube (o se encola
+	 * si no hay conexión, igual que cualquier otro adjunto de la app).
+	 * También se sacó el panel de diagnóstico (_diag) que quedó de una
+	 * sesión de debug y mostraba empresa_id y errores crudos en pantalla.
 	 */
 
 	import {
@@ -669,6 +680,14 @@
 		generateLocalId,
 		showToast,
 	} from '/src/js/atshel-core.js';
+
+	import {
+		comprimirFoto,
+		subirArchivo,
+		registrarAdjunto,
+		colaSubida,
+		TIPOS_ADJUNTO,
+	} from '/src/js/atshel-media.js';
 
 	// ── Estado global ─────────────────────────────────────────
 	const _instanciaLocalId = generateLocalId();
@@ -823,21 +842,6 @@
 
 	// ── Step 2: Cargar y renderizar campos ────────────────────
 	async function cargarCampos(plantillaId) {
-		// DIAGNÓSTICO: mostrar en pantalla qué pasa exactamente
-		const diag = (msg) => {
-			let box = document.getElementById('_diag');
-			if (!box) {
-				box = document.createElement('div');
-				box.id = '_diag';
-				box.style.cssText = 'background:#1a1a2e;color:#00ff88;font:11px monospace;padding:8px;margin:8px 0;border-radius:6px;border:1px solid #00ff8844;white-space:pre-wrap;';
-				camposListEl.parentNode.insertBefore(box, camposListEl);
-			}
-			box.textContent += msg + '\n';
-		};
-
-		diag('empresa_id usuario: ' + (_usuario?.empresa_id ?? 'NULL'));
-		diag('plantillaId: ' + plantillaId);
-
 		const { data, error } = await supabase
 			.from('campos_plantilla')
 			.select('id, etiqueta, tipo_campo, orden, requerido, opciones')
@@ -845,9 +849,6 @@
 			.eq('empresa_id', _usuario?.empresa_id)
 			.is('deleted_at', null)
 			.order('orden', { ascending: true });
-
-		diag('error: ' + (error ? JSON.stringify(error) : 'ninguno'));
-		diag('campos encontrados: ' + (data?.length ?? 0));
 
 		if (error) {
 			showStepError(2, 'Error: ' + error.message);
@@ -860,7 +861,7 @@
 			camposListEl.innerHTML = `
 			<div class="empty-state">
 				<div class="empty-state__icon">📄</div>
-				<div class="empty-state__title">Sin campos (empresa: ${_usuario?.empresa_id})</div>
+				<div class="empty-state__title">Sin campos</div>
 				<div class="empty-state__sub">La plantilla no devolvió campos para esta empresa.</div>
 			</div>`;
 			return;
@@ -1129,6 +1130,62 @@
 		return true;
 	}
 
+	// ── Fotos: subir o encolar todas las pendientes ────────────
+	// FIX 2026-09-22: antes esto no existía — _fotosTemp se llenaba
+	// al elegir la foto pero nunca se leía de nuevo. Se ejecuta
+	// después de crear el ATS, porque recién ahí existe un
+	// instanciaId real para usar como registro_id en `adjuntos`.
+	async function subirFotosPendientes(instanciaId, empresaId) {
+		const campoIds = Object.keys(_fotosTemp);
+		if (campoIds.length === 0) return;
+
+		let subidas = 0;
+		let encoladas = 0;
+
+		for (const campoId of campoIds) {
+			try {
+				const comprimida = await comprimirFoto(_fotosTemp[campoId]);
+
+				if (navigator.onLine) {
+					const res = await subirArchivo(comprimida, {
+						tablaReferencia: 'ats_instancias',
+						registroId:      instanciaId,
+						tipo:            TIPOS_ADJUNTO.FOTO,
+					});
+
+					if (res.ok) {
+						await registrarAdjunto({
+							tablaReferencia: 'ats_instancias',
+							registroId:      instanciaId,
+							storagePath:     res.path,
+							bucket:          res.bucket,
+							tipo:            TIPOS_ADJUNTO.FOTO,
+						});
+						subidas++;
+						continue;
+					}
+				}
+
+				// Sin conexión, o falló la subida directa — se encola
+				// y se sube sola cuando vuelva la señal (mismo patrón
+				// que el resto de los adjuntos de la app).
+				await colaSubida.agregar({
+					blob:            comprimida,
+					tablaReferencia: 'ats_instancias',
+					registroId:      instanciaId,
+					tipo:            TIPOS_ADJUNTO.FOTO,
+				});
+				encoladas++;
+
+			} catch (e) {
+				console.warn('[ATSHEL] No se pudo procesar la foto del campo', campoId, e);
+			}
+		}
+
+		if (subidas)   showToast(`${subidas} foto${subidas > 1 ? 's' : ''} subida${subidas > 1 ? 's' : ''}.`, 'success');
+		if (encoladas) showToast(`${encoladas} foto${encoladas > 1 ? 's' : ''} en cola — se ${encoladas > 1 ? 'suben' : 'sube'} al reconectar.`, 'info');
+	}
+
 	// ── Guardar ATS ───────────────────────────────────────────
 	async function guardarATS() {
 		setBtnLoading(true);
@@ -1203,6 +1260,9 @@
 					console.warn('Error al guardar respuestas:', respError.message);
 				}
 			}
+
+			// 3. Subir (o encolar) las fotos pendientes de los campos tipo 'foto'
+			await subirFotosPendientes(instanciaId, empresaId);
 
 			showToast('ATS creado. Completá la charla y firmá.', 'success');
 			window.location.replace(`/ats-supervisor.html?id=${instanciaId}`);
