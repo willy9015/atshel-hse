@@ -350,14 +350,27 @@
 	 * el id aparece en la lista de ATS 'Firmado' recién traída — el
 	 * parámetro de URL no es la autoridad, se valida contra lo que
 	 * realmente devolvió Supabase antes de usarlo.
+	 *
+	 * ── FIX 2026-09-29: se saca el camino "offline-first" ─────────
+	 * Este archivo escribía primero con executeLocal() en el SQLite
+	 * del celular (PowerSync) y, si esa escritura local funcionaba,
+	 * daba el permiso por creado y redirigía. El problema: un
+	 * executeLocal() exitoso solo confirma que se guardó EN EL
+	 * CELULAR — la subida real a Supabase la hace PowerSync en
+	 * segundo plano, y solo si de verdad logra conectarse. Además,
+	 * isPowerSyncReady() queda en true para siempre después de la
+	 * primera conexión exitosa, aunque la conexión real se haya
+	 * caído después — así que ni siquiera hacía falta estar
+	 * offline en el momento de guardar para pisar este bug.
+	 * Resultado real observado: el permiso "se creaba" en la
+	 * pantalla (redirigía a permiso-detalle.html) pero nunca
+	 * llegaba a existir en la base — permisos_trabajo quedaba
+	 * vacía. Ahora este archivo guarda siempre directo contra el
+	 * servidor, igual que ats-nuevo.html: si de verdad no hay
+	 * conexión, avisa con un error en vez de fingir que se guardó.
 	 */
 
-	import {
-		initPowerSync,
-		isPowerSyncReady,
-		executeLocal,
-		stringifyJsonField,
-	} from '/src/js/atshel-powersync.js';
+	import { initPowerSync } from '/src/js/atshel-powersync.js';
 
 	import {
 		supabase,
@@ -378,7 +391,6 @@
 	const _atsIdDesdeUrl = new URLSearchParams(window.location.search).get('ats_id');
 
 	let _localId     = generateLocalId(); // atshel_local_id
-	let _newId       = generateLocalId(); // id (PK) — camino offline
 	let _tipoPermiso = 'General';
 	let _atsId       = null; // ats_instancia_id seleccionada (o null)
 	let _submitting  = false;
@@ -549,7 +561,6 @@
 		try {
 			const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
 			const solicitadoPor = _usuario?.id ?? null;
-			const nowISO = new Date().toISOString();
 
 			const fechaInicioISO = new Date(fechaInicioEl.value).toISOString();
 			const fechaFinISO    = new Date(fechaFinEl.value).toISOString();
@@ -562,33 +573,7 @@
 			const rafaga          = rafagaEl.value ? parseFloat(rafagaEl.value) : null;
 			const direccionViento = direccionVientoEl.value || null;
 
-			// ── Camino offline-first ──────────────────────────
-			if (isPowerSyncReady()) {
-				const ok = await executeLocal(
-					`INSERT INTO permisos_trabajo
-						(id, atshel_local_id, empresa_id, ats_instancia_id, tipo_permiso,
-						 descripcion, ubicacion, solicitado_por, fecha_inicio, fecha_fin,
-						 estado, observaciones, restricciones, version,
-						 velocidad_viento, direccion_viento, rafaga_maxima,
-						 created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					[
-						_newId, _localId, empresaId, _atsId, _tipoPermiso,
-						descripcion, ubicacion, solicitadoPor, fechaInicioISO, fechaFinISO,
-						'Solicitado', observaciones, stringifyJsonField([]), 1,
-						velocidadViento, direccionViento, rafaga,
-						nowISO, nowISO,
-					]
-				);
-
-				if (ok) {
-					window.location.replace(`/permiso-detalle.html?id=${_newId}`);
-					return;
-				}
-				console.warn('[ATSHEL] executeLocal falló en permiso-nuevo, cayendo al insert online directo.');
-			}
-
-			// ── Camino online directo (respaldo) ──────────────
+			// Guardado directo contra el servidor — ver FIX 2026-09-29 arriba.
 			const payload = {
 				atshel_local_id:  _localId,
 				empresa_id:       empresaId,
