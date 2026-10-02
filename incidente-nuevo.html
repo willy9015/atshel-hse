@@ -756,22 +756,24 @@
 	 *   por lo que new Date(value).toISOString() es seguro —
 	 *   no es el bug de date-only "YYYY-MM-DD".
 	 *
-	 * ── OFFLINE-FIRST (2026-08-20) ───────────────────────────────
-	 * Mismo patrón probado en accion-nueva.html: handleSubmit() intenta
-	 * primero executeLocal() (INSERT crudo en SQLite local — funciona
-	 * sin señal). numero e hash_contenido NO se generan acá: son
-	 * columnas server-side (trigger_numerar_incidente / trigger_hash_
-	 * incidente vía pgcrypto) — quedan null en la copia local hasta que
-	 * PowerSync sube la fila y el trigger corre en Postgres. Si
-	 * executeLocal falla o PowerSync no está listo, cae al INSERT
-	 * directo de siempre (sin cambios en ese camino).
+	 * ── FIX 2026-10-02: se saca el camino "offline-first" ─────────
+	 * Esta página tenía el mismo patrón que accion-nueva.html y
+	 * permiso-nuevo.html: escribía primero con executeLocal() en el
+	 * SQLite del celular y, si esa escritura local funcionaba, daba
+	 * el incidente por guardado y redirigía. Un executeLocal()
+	 * exitoso solo confirma que se guardó EN EL CELULAR — la subida
+	 * real a Supabase la hace PowerSync en segundo plano, y solo si
+	 * de verdad logra conectarse. Con PowerSync sin conectar (caso
+	 * confirmado en esta cuenta), el reporte de incidente podía
+	 * quedar SOLO en el teléfono, invisible para el resto de la
+	 * empresa — el caso más grave de este bug, siendo esta la
+	 * pantalla de reporte de incidentes de seguridad. Ahora guarda
+	 * siempre directo contra el servidor: si de verdad no hay
+	 * conexión, avisa con un error en vez de fingir que se guardó.
 	 */
 
 	import {
 		initPowerSync,
-		isPowerSyncReady,
-		executeLocal,
-		stringifyJsonField,
 	} from '/src/js/atshel-powersync.js';
 
 	import {
@@ -789,7 +791,6 @@
 
 	// ── ID local (generado una sola vez para idempotencia) ───
 	const _localId = generateLocalId(); // atshel_local_id
-	const _newId   = generateLocalId(); // id (PK) — camino offline/local
 
 	// ── Estado del formulario ────────────────────────────────
 	let _tipo      = '';
@@ -1055,42 +1056,8 @@
 			const locacion     = locacionNombreEl.value.trim() || null;
 			const acciones     = getAcciones();
 			const createdBy    = usuario?.id ?? null;
-			const nowISO       = new Date().toISOString();
 
-			// ── Camino offline-first: INSERT crudo en SQLite local ──
-			// numero / hash_contenido quedan null hasta que PowerSync
-			// suba la fila y los triggers de Postgres corran.
-			if (isPowerSyncReady()) {
-				const ok = await executeLocal(
-					`INSERT INTO incidentes
-						(id, atshel_local_id, empresa_id, tipo, severidad, descripcion,
-						 fecha_hora, ubicacion, locacion_nombre, latitud, longitud,
-						 acciones_inmediatas, estado, version,
-						 created_by, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					[
-						_newId, _localId, empresaId, _tipo, _severidad, descripcion,
-						fechaISO, ubicacion, locacion, _latitud, _longitud,
-						stringifyJsonField(acciones), 'Abierto', 1,
-						createdBy, nowISO, nowISO,
-					]
-				);
-
-				if (ok) {
-					showToast(
-						navigator.onLine
-							? 'Incidente guardado.'
-							: 'Guardado localmente — se sube solo cuando vuelva la señal.',
-						'success'
-					);
-					window.location.replace(`/incidente-detalle.html?id=${_newId}`);
-					return;
-				}
-
-				console.warn('[ATSHEL] executeLocal falló, cayendo al insert online directo.');
-			}
-
-			// ── Camino online directo (respaldo, o si PowerSync no está listo) ──
+			// Guardado directo contra el servidor — ver FIX 2026-10-02 arriba.
 			const payload = {
 				atshel_local_id:    _localId,
 				empresa_id:         empresaId,
@@ -1153,7 +1120,7 @@
 
 		// 1.5 PowerSync — arranca en paralelo, no bloquea el resto del init.
 		initPowerSync().catch((err) => {
-			console.warn('[ATSHEL] PowerSync no disponible, se usará el camino online:', err.message);
+			console.warn('[ATSHEL] PowerSync no disponible:', err.message);
 		});
 
 		// 2. Fecha y hora por defecto = ahora
