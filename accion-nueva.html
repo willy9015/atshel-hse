@@ -455,22 +455,21 @@
 	 *   ?incidente_id=UUID  → pre-carga contexto del incidente
 	 *   (sin param)         → muestra select con incidentes abiertos
 	 *
-	 * ── EXPERIMENTO OFFLINE-FIRST (2026-08-18) ──────────────────
-	 * Primera página de ATSHEL que escribe por PowerSync en vez de ir
-	 * directo a Supabase. Motivo: initPowerSync() nunca se llamaba fuera
-	 * de index.html — ninguna pantalla tenía la conexión local activa,
-	 * pese a que el schema SQLite y el AtShelConnector (uploadData /
-	 * fetchCredentials) ya estaban completos en atshel-powersync.js.
-	 *
-	 * Camino: guardar() intenta primero executeLocal() (INSERT crudo en
-	 * SQLite local — funciona offline, PowerSync sube la fila sola
-	 * cuando hay señal). Si PowerSync no está listo o el insert local
-	 * falla, cae al INSERT directo contra Supabase de siempre — no se
-	 * quitó el camino online, se lo dejó como respaldo.
-	 *
-	 * Si esto funciona limpio en producción, es la plantilla para el
-	 * resto de los formularios de alta. Si no, mejor descubrirlo acá
-	 * y no en seis archivos a la vez.
+	 * ── FIX 2026-10-02: se saca el camino "offline-first" ─────────
+	 * Esta fue la PRIMERA página de ATSHEL en escribir por PowerSync
+	 * en vez de ir directo a Supabase (experimento 2026-08-18), y de
+	 * acá se copió el mismo patrón a incidente-nuevo.html, near-miss.html
+	 * y permiso-nuevo.html. El experimento nunca se validó de punta a
+	 * punta contra la base real — y tenía un problema de fondo: un
+	 * executeLocal() exitoso solo confirma que la fila quedó en el
+	 * SQLite del celular. La subida real a Supabase la hace PowerSync
+	 * en segundo plano, solo si de verdad logra conectarse. Con
+	 * PowerSync sin conectar (caso confirmado en esta cuenta), la
+	 * acción correctiva "se guardaba" en pantalla pero nunca llegaba
+	 * al servidor. Ahora esta página guarda siempre directo contra el
+	 * servidor, igual que el resto de los formularios ya corregidos:
+	 * si de verdad no hay conexión, avisa con un error en vez de
+	 * fingir que se guardó.
 	 */
 
 	import {
@@ -482,8 +481,6 @@
 
 	import {
 		initPowerSync,
-		isPowerSyncReady,
-		executeLocal,
 	} from '/src/js/atshel-powersync.js';
 
 	import {
@@ -500,7 +497,6 @@
 
 	// ── Estado ───────────────────────────────────────────────
 	const _localId    = generateLocalId(); // atshel_local_id — dedup en insert online
-	const _newId      = generateLocalId(); // id (PK) — usado en el camino offline/local
 	let _incidenteId  = _incIdFromUrl; // se confirma al cargar o al seleccionar
 	let _usuario      = null;
 	let _submitting   = false;
@@ -710,39 +706,8 @@
 			// Convertir fecha a fin de día TIMESTAMPTZ — sin new Date("YYYY-MM-DD")
 			const fechaVencISO = fechaAFinDeDia(fechaEl.value);
 			const descripcion  = descripcionEl.value.trim();
-			const nowISO       = new Date().toISOString();
 
-			// ── Camino offline-first: INSERT crudo en SQLite local ──
-			// PowerSync detecta el write y lo sube solo cuando hay señal.
-			if (isPowerSyncReady()) {
-				const ok = await executeLocal(
-					`INSERT INTO acciones_correctivas
-						(id, atshel_local_id, empresa_id, incidente_id, descripcion,
-						 responsable_id, fecha_vencimiento, estado, version,
-						 created_by, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					[
-						_newId, _localId, empresaId, incId, descripcion,
-						responsable, fechaVencISO, 'Pendiente', 1,
-						_usuario?.id ?? null, nowISO, nowISO,
-					]
-				);
-
-				if (ok) {
-					showToast(
-						navigator.onLine
-							? 'Acción correctiva guardada.'
-							: 'Guardada localmente — se sube sola cuando vuelva la señal.',
-						'success'
-					);
-					window.location.replace(`/accion-detalle.html?id=${_newId}`);
-					return;
-				}
-
-				console.warn('[ATSHEL] executeLocal falló, cayendo al insert online directo.');
-			}
-
-			// ── Camino online directo (respaldo, o si PowerSync no está listo) ──
+			// Guardado directo contra el servidor — ver FIX 2026-10-02 arriba.
 			const payload = {
 				atshel_local_id:   _localId,
 				empresa_id:        empresaId,
@@ -822,10 +787,11 @@
 		await requireAuth('/login.html');
 
 		// 1.5 PowerSync — arranca en paralelo, sin bloquear el resto del
-		//     init(). Si falla o tarda, guardar() simplemente cae al
-		//     camino online cuando llegue el momento.
+		//     init(). Ya no se usa para guardar (ver FIX arriba), pero se
+		//     deja encendido porque otras pantallas (accion-detalle.html)
+		//     sí usan la copia local para lectura.
 		initPowerSync().catch((err) => {
-			console.warn('[ATSHEL] PowerSync no disponible, se usará el camino online:', err.message);
+			console.warn('[ATSHEL] PowerSync no disponible:', err.message);
 		});
 
 		// 2. Usuario
