@@ -3,36 +3,21 @@
  * Punto de entrada de ATSHEL. 9 pasos de inicialización en orden.
  * Schema y columnas verificados con MCP Supabase (2026-06-14).
  *
- * v3.0.0 — 2026-07-29
+ * v3.1.0 — Blindaje Offline MPA, Ping CORS-Safe y Cierre de Sesión Coordinado
  *
- * Cambios sobre el original:
- *   1. Debug catcher solo en DEV — nunca llega a producción.
- *   2. Logger centralizado: info solo DEV, warn/error siempre.
- *   3. ATSHELError integrado — manejo de errores unificado con supabase.js.
- *   4. readyState check — funciona aunque el script cargue tarde.
- *   5. _redirect() centralizado con queueMicrotask + guard de pathname.
- *   6. _conTimeout() con AbortController que cancela el timer en finally.
- *   7. AbortController de init — cancela si el usuario hace logout.
- *   8. PASO 2: una sola query getUsuario() — empresa_id y rol del objeto.
- *      Sin consultas duplicadas al backend.
- *   9. PASO 2: manejo separado de usuario sin empresa (→ /registro.html).
- *  10. PASO 5: visibilitychange para verificar heartbeat al volver.
- *  11. PASO 5: modal IDB con autofocus, textContent (sin XSS), id único.
- *  12. PASO 6: SW update cada 60 min + controllerchange con flag anti-loop.
- *  13. PASO 7: retry exponencial cancelable de PowerSync.
- *  14. PASO 7: flag _powerSyncRunning evita reintentos simultáneos.
- *  15. PASO 8: _hayConexionReal() para verificar red real antes de cola.
- *  16. onAuthStateChange: detecta JWT vencido → limpia estado y redirige.
- *  17. logout() de supabase.js ya no redirige — la redirección la hace app.js.
- *  18. Sync badge: interval + evento syncStatus:change + listeners removibles.
- *  19. _swUpdateInterval, _listenerVisibility, _listenerSyncChange, online/offline
- *      — todos limpiables desde detenerListeners().
- *  20. AppState: Proxy de solo lectura + _setState() centralizado.
- *  21. getAppState() retorna structuredClone con fallback para WebViews antiguos.
- *  22. onReady(): ejecuta inmediatamente si la app ya inició.
- *  23. _mostrarErrorInicializacion(): textContent, sin XSS.
- *  24. safeHandler() exportado para event listeners de pantallas.
- *  25. RUTAS_PUBLICAS incluye /registro.html y /setup.html.
+ * Mejoras v3.1.0 sobre v3.0.0:
+ *   1. _hayConexionReal() corregido: usa `/auth/v1/health` con header `apikey`
+ *      para evitar falsos negativos por bloqueo CORS en Supabase Cloud.
+ *   2. Inicio protegido 0ms-wait: no bloquea el arranque de cada página MPA con un
+ *      ping de red de 3s; verifica internet en background solo cuando es necesario.
+ *   3. Protección de sesión offline en Paso 2: si `getUsuario()` falla estando sin
+ *      señal, NO ejecuta `logout()` (evita expulsar al operador en el pozo).
+ *   4. `cerrarSesionApp()` exportado y expuesto en `window.ATSHEL.logout`:
+ *      verifica si hay ATS/incidentes (`hasPendingCrud`) o fotos (`colaSubida`)
+ *      pendientes de subir antes de cerrar sesión, espera a `closePowerSync()`
+ *      y redirige sin race conditions.
+ *   5. `getAppState()` con try/catch sobre `structuredClone` para evitar `DataCloneError`.
+ *   6. Rutas de `NAV_POR_ROL` alineadas con las páginas reales del build de Vite.
  */
 
 import {
@@ -49,11 +34,15 @@ import {
 	getSession,
 	getUsuario,
 	logout,
-	invalidarCacheUsuario,
 } from './atshel-supabase.js';
 
 import { colaSubida } from './atshel-media.js';
-import { initPowerSync, db } from './atshel-powersync.js';
+import {
+	initPowerSync,
+	closePowerSync,
+	hasPendingCrud,
+	db,
+} from './atshel-powersync.js';
 
 // ─────────────────────────────────────────────────────────────
 // LOGGER CENTRALIZADO
@@ -135,37 +124,36 @@ export function safeHandler(fn, contexto = 'handler') {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CONSTANTES
+// CONSTANTES Y NAVEGACIÓN ALINEADA CON VITE.CONFIG.JS
 // ─────────────────────────────────────────────────────────────
 
 const RUTAS_PUBLICAS = [
 	'/login.html',
 	'/offline.html',
-	'/registro.html',
 	'/setup.html',
 ];
 
 const NAV_POR_ROL = {
 	hse: [
-		{ id: 'nav-inicio',     href: '/index.html',          icono: 'house',          label: 'Inicio'     },
-		{ id: 'nav-incidentes', href: '/incidentes.html',     icono: 'warning-circle', label: 'Incidentes' },
-		{ id: 'nav-ats',        href: '/ats-nuevo.html',      icono: 'clipboard-text', label: 'ATS'        },
-		{ id: 'nav-permisos',   href: '/permisos.html',       icono: 'key',            label: 'Permisos'   },
-		{ id: 'nav-perfil',     href: '/perfil.html',         icono: 'user-circle',    label: 'Perfil'     },
+		{ id: 'nav-inicio',     href: '/index.html',         icono: 'house',          label: 'Inicio'     },
+		{ id: 'nav-incidentes', href: '/incidentes.html',    icono: 'warning-circle', label: 'Incidentes' },
+		{ id: 'nav-ats',        href: '/ats-nuevo.html',     icono: 'clipboard-text', label: 'ATS'        },
+		{ id: 'nav-permisos',   href: '/permisos.html',      icono: 'key',            label: 'Permisos'   },
+		{ id: 'nav-conflictos', href: '/conflictos.html',    icono: 'arrows-clockwise', label: 'Sync'     },
 	],
 	supervisor: [
 		{ id: 'nav-inicio',     href: '/index.html',          icono: 'house',          label: 'Inicio'     },
 		{ id: 'nav-incidentes', href: '/incidentes.html',     icono: 'warning-circle', label: 'Incidentes' },
 		{ id: 'nav-ats',        href: '/ats-supervisor.html', icono: 'clipboard-text', label: 'ATS'        },
-		{ id: 'nav-acciones',   href: '/acciones.html',       icono: 'check-circle',   label: 'Acciones'   },
-		{ id: 'nav-perfil',     href: '/perfil.html',         icono: 'user-circle',    label: 'Perfil'     },
+		{ id: 'nav-permisos',   href: '/permisos.html',       icono: 'key',            label: 'Permisos'   },
+		{ id: 'nav-acciones',   href: '/accion-nueva.html',   icono: 'check-circle',   label: 'Acciones'   },
 	],
 	administrador: [
 		{ id: 'nav-inicio',     href: '/index.html',          icono: 'house',          label: 'Inicio'     },
-		{ id: 'nav-incidentes', href: '/incidentes.html',     icono: 'warning-circle', label: 'Incidentes' },
 		{ id: 'nav-dashboard',  href: '/dashboard.html',      icono: 'chart-bar',      label: 'Dashboard'  },
-		{ id: 'nav-equipos',    href: '/equipos.html',        icono: 'wrench',         label: 'Equipos'    },
-		{ id: 'nav-perfil',     href: '/perfil.html',         icono: 'user-circle',    label: 'Perfil'     },
+		{ id: 'nav-incidentes', href: '/incidentes.html',     icono: 'warning-circle', label: 'Incidentes' },
+		{ id: 'nav-plantillas', href: '/plantilla-admin.html', icono: 'files',         label: 'Plantillas' },
+		{ id: 'nav-permisos',   href: '/permisos.html',       icono: 'key',            label: 'Permisos'   },
 	],
 };
 
@@ -175,7 +163,6 @@ const SW_UPDATE_INTERVAL = 60 * 60 * 1_000;
 
 // ─────────────────────────────────────────────────────────────
 // ESTADO GLOBAL — Proxy de solo lectura externamente
-// Mutaciones internas via _setState()
 // ─────────────────────────────────────────────────────────────
 
 const _appState = {
@@ -188,8 +175,8 @@ const _appState = {
 	paginaActual: window.ATSHEL_PAGE ?? _detectarPagina(),
 };
 
-let _initializando   = true;
-let _forzarEstado    = false;
+let _initializando = true;
+let _forzarEstado  = false;
 
 function _setState(parcial) {
 	if (!_initializando && !_forzarEstado) {
@@ -211,21 +198,9 @@ export const AppState = new Proxy(_appState, {
 });
 
 // ─────────────────────────────────────────────────────────────
-// window.ATSHEL — namespace público para páginas que leen datos
-// localmente (patrón "PowerSync primero, Supabase de respaldo",
-// como dbCount()/dbRows() en index.html).
-//
-// Getters, no snapshot: siempre reflejan el estado actual aunque
-// PowerSync recién conecte en un reintento en segundo plano
-// (_paso7_powerSync reintenta con backoff sin bloquear el resto
-// del init).
-//
-// Agregado 2026-08-20 — index.html ya esperaba window.ATSHEL.db /
-// .supabase / .user desde que se escribió, pero nunca se creó acá.
-// window.ATSHEL era undefined siempre → todo lo que dependía de él
-// (estadísticas, saludo, actividad reciente) se quedaba en su
-// placeholder "—" para siempre, sin error visible.
+// window.ATSHEL — namespace público reactivo
 // ─────────────────────────────────────────────────────────────
+
 Object.defineProperty(window, 'ATSHEL', {
 	value: Object.freeze({
 		get db()        { return db; },
@@ -234,13 +209,15 @@ Object.defineProperty(window, 'ATSHEL', {
 		get session()   { return _appState.session; },
 		get empresaId() { return _appState.empresaId; },
 		get rol()       { return _appState.rol; },
+		logout:         (...args) => cerrarSesionApp(...args),
 	}),
 	writable:     false,
 	configurable: false,
 });
 
-let _appLista         = false;
-let _redireccionando  = false;
+let _appLista        = false;
+let _redireccionando = false;
+let _cerrandoSesion  = false;
 
 // ─────────────────────────────────────────────────────────────
 // HANDLES DE RECURSOS — todos limpiables
@@ -256,7 +233,7 @@ let _listenerOnline          = null;
 let _listenerOffline         = null;
 let _listenersRedRegistrados = false;
 let _unsubscribeAuth         = null;
-let _swRefreshing            = false; // anti-loop en controllerchange
+let _swRefreshing            = false;
 let _initAbortController     = new AbortController();
 
 function _detectarPagina() {
@@ -290,20 +267,24 @@ function _conTimeout(promesa, ms, mensajeError) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// _hayConexionReal() — verifica Internet real, no solo interfaz
+// _hayConexionReal() — verifica Internet real con header apikey (CORS-safe)
 // ─────────────────────────────────────────────────────────────
 
 async function _hayConexionReal() {
 	if (!navigator.onLine) return false;
 	try {
-		// Usar el propio endpoint de Supabase como ping — siempre existe
-		const url = `${import.meta.env.VITE_SUPABASE_URL}/health`;
+		const url    = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/health`;
+		const ctrl   = new AbortController();
+		const timer  = setTimeout(() => ctrl.abort(), 3_000);
+
 		const res = await fetch(url, {
-			method: 'HEAD',
-			cache:  'no-store',
-			signal: AbortSignal.timeout ? AbortSignal.timeout(3_000) : undefined,
-		});
-		return res.ok || res.status === 404; // 404 significa que el servidor responde
+			method:  'GET',
+			cache:   'no-store',
+			headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+			signal:  ctrl.signal,
+		}).finally(() => clearTimeout(timer));
+
+		return res.ok || res.status === 401 || res.status === 404;
 	} catch {
 		return false;
 	}
@@ -324,7 +305,8 @@ function _checkAbortado() {
 // ─────────────────────────────────────────────────────────────
 
 function _iniciar() {
-	const esPublica = RUTAS_PUBLICAS.some((r) => window.location.pathname.endsWith(r));
+	const pathname  = window.location.pathname;
+	const esPublica = RUTAS_PUBLICAS.some((r) => pathname.endsWith(r));
 	esPublica ? _initPublico() : _initProtegido();
 }
 
@@ -346,20 +328,19 @@ async function _initPublico() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// INICIALIZACIÓN PROTEGIDA — 9 PASOS
+// INICIALIZACIÓN PROTEGIDA — 9 PASOS (0ms OFFLINE DELAY)
 // ─────────────────────────────────────────────────────────────
 
 async function _initProtegido() {
 	try {
 		_initAbortController = new AbortController();
 
-		// Detección offline real antes de cualquier query
-		const hayRed = await _hayConexionReal();
-		if (!hayRed) {
+		// Verificación instantánea sin bloquear el arranque con fetch de 3s
+		if (!navigator.onLine) {
 			const sessionLocal = await getSession();
 			if (sessionLocal) {
 				logger.info('Inicio offline con sesión local.');
-				showToast('Sin conexión. Trabajando en modo offline.', 'warning', 5000);
+				showToast('Sin conexión. Trabajando en modo offline.', 'warning', 4000);
 			} else {
 				_redirect('/offline.html');
 				throw new ATSHELError('ERR_SYS_11', 'Sin sesión local y sin conexión.');
@@ -419,7 +400,7 @@ async function _initProtegido() {
 		_initializando = false;
 
 		document.dispatchEvent(new CustomEvent('atshel:ready', {
-			detail: { ..._appState },
+			detail: getAppState(),
 		}));
 
 	} catch (error) {
@@ -434,13 +415,14 @@ async function _initProtegido() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AUTH STATE CHANGE — detecta JWT vencido en sesión activa
+// AUTH STATE CHANGE — detecta JWT vencido o cierre externo
 // ─────────────────────────────────────────────────────────────
 
 function _registrarAuthStateChange() {
 	const { data } = supabase.auth.onAuthStateChange((event, session) => {
 		if (event === 'SIGNED_OUT') {
-			logger.warn('Sesión cerrada por Supabase (JWT vencido o logout remoto).');
+			if (_cerrandoSesion) return; // Ya manejado por cerrarSesionApp()
+			logger.warn('Sesión cerrada (SIGNED_OUT). Limpiando y redirigiendo a login.');
 			detenerListeners();
 			_redirect('/login.html');
 		}
@@ -470,14 +452,20 @@ async function _paso1_verificarSesion() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// PASO 2 — Cargar usuario (UNA sola query)
-// empresa_id y rol salen del objeto — sin consultas duplicadas.
+// PASO 2 — Cargar usuario (Resiliente Offline)
 // ─────────────────────────────────────────────────────────────
 
 async function _paso2_cargarUsuario() {
 	const usuario = await getUsuario();
 
 	if (!usuario) {
+		// Si estamos sin señal en el pozo, NUNCA destruir la sesión con logout()
+		if (!navigator.onLine) {
+			logger.warn('Sin conexión y sin caché local de perfil. Mostrando pantalla offline.');
+			_redirect('/offline.html');
+			throw new ATSHELError('ERR_SYS_11', 'Perfil no disponible offline.');
+		}
+
 		logger.error('ERR_SYS_23: Sin fila en public.usuarios.');
 		showToast('Error al cargar tu perfil. Contactá al administrador.', 'error', 6000);
 		await logout();
@@ -489,9 +477,8 @@ async function _paso2_cargarUsuario() {
 	const rol       = usuario.rol        ?? null;
 
 	if (!empresaId) {
-		// Usuario sin empresa → flujo de registro
-		logger.warn('Sin empresa — redirigiendo a registro.');
-		_redirect('/registro.html');
+		logger.warn('Sin empresa — redirigiendo a setup de empresa.');
+		_redirect('/setup.html?paso=empresa');
 		throw new ATSHELError('ERR_SYS_26', 'Sin empresa asignada.');
 	}
 
@@ -515,7 +502,6 @@ async function _paso2_cargarUsuario() {
 
 // ─────────────────────────────────────────────────────────────
 // PASO 3 — Verificar términos
-// Columna MCP: usuarios.terminos_aceptado_en (timestamptz)
 // ─────────────────────────────────────────────────────────────
 
 async function _paso3_verificarTerminos() {
@@ -604,7 +590,6 @@ function _mostrarModalIDBPerdido(ultimaActividad) {
 
 // ─────────────────────────────────────────────────────────────
 // PASO 6 — Service Worker
-// SW update cada 60 min + controllerchange con flag anti-loop
 // ─────────────────────────────────────────────────────────────
 
 async function _paso6_serviceWorker() {
@@ -623,12 +608,11 @@ async function _paso6_serviceWorker() {
 			const nuevoSW = registro.installing;
 			nuevoSW?.addEventListener('statechange', () => {
 				if (nuevoSW.state === 'installed' && navigator.serviceWorker.controller) {
-					showToast('Nueva versión disponible. Recargá para actualizar.', 'info', 8000);
+					showToast('Nueva versión disponible. Actualizando...', 'info', 4000);
 				}
 			});
 		});
 
-		// Anti-loop: solo recargar una vez por ciclo de vida
 		navigator.serviceWorker.addEventListener('controllerchange', () => {
 			if (_swRefreshing) return;
 			_swRefreshing = true;
@@ -653,7 +637,7 @@ async function _paso6_serviceWorker() {
 
 async function _paso7_powerSync(intentoActual = 0) {
 	if (_powerSyncRunning) {
-		logger.warn('PowerSync ya conectando — ignorando llamada duplicada.');
+		logger.warn('PowerSync ya iniciando — ignorando llamada duplicada.');
 		return;
 	}
 
@@ -666,12 +650,16 @@ async function _paso7_powerSync(intentoActual = 0) {
 
 	try {
 		await initPowerSync();
+		_forzarEstado = true;
 		_setState({ powersync: true });
-		logger.info('PowerSync conectado.');
+		_forzarEstado = false;
+		logger.info('PowerSync SQLite local activo.');
 
 	} catch (error) {
 		logger.warn(`PowerSync intento ${intentoActual + 1} falló:`, error.message);
+		_forzarEstado = true;
 		_setState({ powersync: false });
+		_forzarEstado = false;
 		syncStatus.actualizar({ estado: 'desconectado' });
 
 		if (intentoActual === 0) {
@@ -685,8 +673,6 @@ async function _paso7_powerSync(intentoActual = 0) {
 		const espera     = POWERSYNC_RETRY_MS[intentoActual] ?? POWERSYNC_RETRY_MS.at(-1);
 		const sigIntento = Math.min(intentoActual + 1, POWERSYNC_RETRY_MS.length - 1);
 
-		logger.info(`Reintentando PowerSync en ${espera / 1000}s...`);
-
 		_powerSyncRetryHandle = setTimeout(() => {
 			_powerSyncRunning = false;
 			_paso7_powerSync(sigIntento);
@@ -698,23 +684,23 @@ async function _paso7_powerSync(intentoActual = 0) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// PASO 8 — Cola de subida (con verificación de red real)
+// PASO 8 — Cola de subida (no bloquea el renderizado de la UI)
 // ─────────────────────────────────────────────────────────────
 
 async function _paso8_colaSubida() {
-	const hayRed = await _hayConexionReal();
-	if (!hayRed) return;
+	if (!navigator.onLine) return;
 
-	try {
-		const pendientes = await colaSubida.pendientes();
-		if (pendientes > 0) {
-			colaSubida.procesar().catch((e) =>
-				logger.warn('Error al procesar cola en init:', e.message)
-			);
+	// Ejecutar verificación y subida en background sin retrasar el Paso 9
+	(async () => {
+		try {
+			const pendientes = await colaSubida.pendientes();
+			if (pendientes > 0 && (await _hayConexionReal())) {
+				await colaSubida.procesar();
+			}
+		} catch (error) {
+			logger.warn('Error al procesar cola de subida en background:', error.message);
 		}
-	} catch (error) {
-		logger.warn('Error al verificar cola de subida:', error.message);
-	}
+	})();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -728,15 +714,10 @@ function _paso9_renderUI() {
 	_renderHeader(usuario);
 	_marcarNavActiva();
 
-	// Columna MCP: usuarios.es_nuevo_ingresante (bool)
 	if (usuario.es_nuevo_ingresante) _mostrarBadgeNuevoIngresante();
 
 	_iniciarSyncBadgeUpdater();
 }
-
-// ─────────────────────────────────────────────────────────────
-// RENDER: NAV
-// ─────────────────────────────────────────────────────────────
 
 function _renderNav(rol) {
 	const nav = document.querySelector('.app-nav');
@@ -763,10 +744,6 @@ function _marcarNavActiva() {
 	});
 }
 
-// ─────────────────────────────────────────────────────────────
-// RENDER: HEADER
-// ─────────────────────────────────────────────────────────────
-
 function _renderHeader(usuario) {
 	const nombreEl = document.getElementById('header-usuario-nombre');
 	if (nombreEl && usuario?.nombre_completo) {
@@ -774,10 +751,6 @@ function _renderHeader(usuario) {
 	}
 	renderSyncBadge();
 }
-
-// ─────────────────────────────────────────────────────────────
-// BADGE NUEVO INGRESANTE
-// ─────────────────────────────────────────────────────────────
 
 function _mostrarBadgeNuevoIngresante() {
 	const badge = document.getElementById('badge-nuevo-ingresante');
@@ -789,7 +762,6 @@ function _mostrarBadgeNuevoIngresante() {
 
 // ─────────────────────────────────────────────────────────────
 // SYNC BADGE UPDATER
-// interval + evento syncStatus:change + listeners removibles
 // ─────────────────────────────────────────────────────────────
 
 function _iniciarSyncBadgeUpdater() {
@@ -810,6 +782,9 @@ function _iniciarSyncBadgeUpdater() {
 				syncStatus.actualizar({ estado: 'sincronizando' });
 				renderSyncBadge();
 				document.dispatchEvent(new Event('syncStatus:change'));
+				// Al recuperar señal en el yacimiento, vaciar cola de fotos pendientes
+				const pendientes = await colaSubida.pendientes().catch(() => 0);
+				if (pendientes > 0) colaSubida.procesar().catch(() => {});
 			}
 		}, 'online');
 
@@ -836,7 +811,7 @@ function _mostrarErrorInicializacion(mensaje) {
 	contenido.innerHTML = '';
 
 	const wrapper = document.createElement('div');
-	wrapper.className    = 'empty-state';
+	wrapper.className        = 'empty-state';
 	wrapper.style.paddingTop = '80px';
 
 	const icono = document.createElement('div');
@@ -852,7 +827,7 @@ function _mostrarErrorInicializacion(mensaje) {
 	desc.textContent = mensaje ?? 'Ocurrió un error inesperado.';
 
 	const btn = document.createElement('button');
-	btn.className = 'btn btn--primary btn--full';
+	btn.className     = 'btn btn--primary btn--full';
 	btn.style.cssText = 'margin-top:24px;max-width:280px;';
 	btn.textContent   = 'Reintentar';
 	btn.addEventListener('click', safeHandler(() => window.location.reload(), 'reintentar'), { once: true });
@@ -869,6 +844,48 @@ function _mostrarErrorInicializacion(mensaje) {
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * Cierra la sesión de forma segura coordinando PowerSync, Cola de Media y Supabase Auth.
+ * Si existen datos o fotos creados offline aún sin subir, advierte al usuario antes de salir.
+ *
+ * @param {{ forzar?: boolean }} [opciones]
+ * @returns {Promise<boolean>} false si el usuario canceló el cierre de sesión
+ */
+export async function cerrarSesionApp({ forzar = false } = {}) {
+	if (_cerrandoSesion) return false;
+
+	try {
+		if (!forzar) {
+			const [hayCrudPendiente, fotosPendientes] = await Promise.all([
+				hasPendingCrud().catch(() => false),
+				colaSubida.pendientes().catch(() => 0),
+			]);
+
+			if (hayCrudPendiente || fotosPendientes > 0) {
+				const confirmar = window.confirm(
+					'Tenés registros o fotos guardados en el dispositivo que aún no se sincronizaron con el servidor.\n\n' +
+					'¿Querés cerrar sesión de todos modos? (Los datos pendientes se conservarán hasta que vuelva la señal).'
+				);
+				if (!confirmar) return false;
+			}
+		}
+
+		_cerrandoSesion = true;
+		detenerListeners();
+
+		await closePowerSync({ forceClear: forzar });
+		await logout();
+
+		_redirect('/login.html');
+		return true;
+
+	} catch (error) {
+		logger.error('Error en cerrarSesionApp:', error);
+		_redirect('/login.html');
+		return true;
+	}
+}
+
+/**
  * Ejecuta callback cuando la app está lista.
  * Si ya inició, ejecuta inmediatamente.
  *
@@ -883,15 +900,19 @@ export function onReady(callback) {
 }
 
 /**
- * Retorna copia profunda del estado — sin mutaciones accidentales.
- * Fallback para WebViews Android antiguos sin structuredClone.
+ * Retorna copia profunda del estado — blindado contra DataCloneError.
  *
  * @returns {object}
  */
 export function getAppState() {
-	return typeof structuredClone === 'function'
-		? structuredClone(_appState)
-		: JSON.parse(JSON.stringify(_appState));
+	try {
+		if (typeof structuredClone === 'function') {
+			return structuredClone(_appState);
+		}
+	} catch {
+		// Fallback silencioso si Session contiene referencias no clonables
+	}
+	return JSON.parse(JSON.stringify(_appState));
 }
 
 /**
@@ -912,7 +933,6 @@ export function verificarAcceso(...rolesPermitidos) {
 
 /**
  * Detiene interval y listener del sync badge.
- * Llamar al desmontar pantallas en implementaciones SPA.
  */
 export function detenerSyncBadge() {
 	if (_syncBadgeInterval) {
@@ -927,7 +947,6 @@ export function detenerSyncBadge() {
 
 /**
  * Limpia TODOS los recursos de la app.
- * Llamar en logout manual o cleanup total.
  */
 export function detenerListeners() {
 	detenerSyncBadge();
@@ -966,5 +985,5 @@ export function detenerListeners() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// FIN DE atshel-app.js v3.0.0
+// FIN DE atshel-app.js v3.1.0
 // ─────────────────────────────────────────────────────────────
