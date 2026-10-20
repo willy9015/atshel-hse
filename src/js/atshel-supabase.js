@@ -3,25 +3,26 @@
  * Cliente Supabase para ATSHEL HSE Manager.
  * Argumentos RPC verificados contra schema real (MCP 2026-06-14).
  *
- * v3.0.0 — 2026-07-29
+ * v3.1.0 — Blindaje Offline MPA y Aislamiento de Sesión
  *
- * Cambios sobre el original:
+ * Cambios incorporados:
  *   1. ATSHELError — clase de error unificada con código estandarizado.
- *   2. Caché de usuario con TTL de 5 minutos — evita stale data.
- *   3. _withRetry() — reintentos automáticos en RPC con backoff exponencial.
+ *   2. Caché de usuario en RAM + localStorage aislado por user.id (`atshel_usuario_cache_<uuid>`)
+ *      para que al navegar entre páginas MPA (index.html -> ats-nuevo.html) sin señal
+ *      no se pierda el perfil ni se produzcan cruces entre cuentas.
+ *   3. _withRetry() — reintentos automáticos en RPC con backoff exponencial y
+ *      corte instantáneo (0ms) si navigator.onLine === false.
  *   4. getEmpresaId() / getRol() — fallback a public.usuarios cuando el JWT
  *      no tiene app_metadata (hook ejecutado antes de que existiera la fila).
- *      Warning en consola para detectar cuándo el hook falla.
- *   5. getUsuario() — .maybeSingle() en lugar de .single().
- *   6. onAuthStateChange TOKEN_REFRESHED — guarda sesión nueva inmediatamente.
+ *   5. getUsuario() — .maybeSingle() + recuperación instantánea desde localStorage en offline.
+ *   6. onAuthStateChange (SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, SIGNED_OUT) —
+ *      detecta cambios de cuenta y purga cachés de usuario y media del Service Worker.
  *   7. terminos.aceptar() — RPC transaccional fn_aceptar_terminos().
  *      Lee empresa_id de public.usuarios, no del JWT.
  *   8. registrarEmpresa() — refreshSession() después de crear la empresa.
- *   9. logout() — no redirige directamente; devuelve control al caller.
- *      La redirección la hace atshel-app.js (un solo punto de navegación).
+ *   9. logout() — soporta cierre de sesión sin señal ({ scope: 'local' }), limpia
+ *      localStorage y devuelve control al caller (atshel-app.js).
  *  10. _validarPin() — validación de PIN centralizada.
- *  11. structuredClone con fallback para WebViews Android antiguos.
- *  12. JSDoc completo en todas las funciones públicas.
  *
  * Exporta:
  *   supabase, ATSHELError,
@@ -76,9 +77,9 @@ export class ATSHELError extends Error {
 	 */
 	constructor(codigo, mensaje, contexto = {}) {
 		super(`${codigo}: ${mensaje}`);
-		this.name    = 'ATSHELError';
-		this.codigo  = codigo;
-		this.mensaje = mensaje;
+		this.name     = 'ATSHELError';
+		this.codigo   = codigo;
+		this.mensaje  = mensaje;
 		this.contexto = contexto;
 	}
 
@@ -116,60 +117,119 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
 	},
 	global: {
 		headers: {
-			'X-Client-Info': 'atshel-hse/3.0',
+			'X-Client-Info': 'atshel-hse/3.1',
 		},
 	},
 });
 
 // ─────────────────────────────────────────────────────────────
-// 3. CACHÉ DE SESIÓN Y USUARIO
+// 3. CACHÉ DE SESIÓN Y USUARIO (RAM + LOCALSTORAGE AISLADO POR USER_ID)
 // ─────────────────────────────────────────────────────────────
 
-// TTL del caché de usuario en ms (5 minutos)
-const USUARIO_CACHE_TTL = 5 * 60 * 1_000;
+// TTL del caché de usuario en ms cuando hay señal (5 minutos)
+const USUARIO_CACHE_TTL    = 5 * 60 * 1_000;
+const USUARIO_STORAGE_PREF = 'atshel_usuario_cache_';
 
-let _sessionCache      = null;
-let _usuarioCache      = null;
-let _usuarioCacheTs    = 0;    // timestamp de última actualización del caché
+let _sessionCache   = null;
+let _usuarioCache   = null;
+let _usuarioCacheTs = 0;
 
 /**
- * Invalida el caché del usuario manualmente.
- * Llamar después de operaciones que modifican public.usuarios.
+ * Guarda el perfil en localStorage atado al UUID del usuario autenticado.
+ * Evita que al navegar entre páginas MPA (index.html -> ats-nuevo.html)
+ * sin señal en el pozo se pierda el perfil en RAM.
+ *
+ * @param {string} userId
+ * @param {Object} data
+ */
+function _guardarUsuarioStorage(userId, data) {
+	if (!userId || !data) return;
+	try {
+		localStorage.setItem(
+			`${USUARIO_STORAGE_PREF}${userId}`,
+			JSON.stringify({ data, ts: Date.now() })
+		);
+	} catch (e) {
+		_log.warn('No se pudo persistir caché de usuario en localStorage:', e);
+	}
+}
+
+/**
+ * Lee el perfil persistido únicamente si coincide exactamente con el userId actual.
+ *
+ * @param {string} userId
+ * @returns {{ data: Object, ts: number }|null}
+ */
+function _leerUsuarioStorage(userId) {
+	if (!userId) return null;
+	try {
+		const raw = localStorage.getItem(`${USUARIO_STORAGE_PREF}${userId}`);
+		if (!raw) return null;
+		const parsed = JSON.parse(raw);
+		if (parsed?.data?.id !== userId) return null; // Blindaje anti-cruce de cuentas
+		return parsed;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Invalida el caché del usuario en RAM y elimina todos los perfiles
+ * persistidos en localStorage.
+ * Llamar después de operaciones que modifican public.usuarios o al cerrar sesión.
  */
 export function invalidarCacheUsuario() {
 	_usuarioCache   = null;
 	_usuarioCacheTs = 0;
+	try {
+		for (let i = localStorage.length - 1; i >= 0; i--) {
+			const k = localStorage.key(i);
+			if (k && k.startsWith(USUARIO_STORAGE_PREF)) {
+				localStorage.removeItem(k);
+			}
+		}
+	} catch (e) {
+		_log.warn('Error limpiando localStorage de usuario:', e);
+	}
 }
 
 /**
- * FIX: TOKEN_REFRESHED guarda la nueva sesión inmediatamente
- * y limpia el caché de usuario — puede haber cambiado empresa_id.
- * SIGNED_OUT limpia todo pero NO redirige — la redirección
- * la maneja atshel-app.js via onAuthStateChange propio.
+ * Sincroniza el estado de sesión con eventos de Supabase Auth.
+ * Garantiza aislamiento estricto al cambiar de cuenta o cerrar sesión.
  */
 supabase.auth.onAuthStateChange((event, session) => {
-	if (event === 'TOKEN_REFRESHED' && session) {
+	if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session) {
+		const prevUserId = _sessionCache?.user?.id;
 		_sessionCache = session;
-		invalidarCacheUsuario();
-		_log.info('JWT renovado. Caché de sesión actualizado.');
+
+		// Si cambió el usuario autenticado, purgar todo el almacenamiento de perfiles
+		if (prevUserId && prevUserId !== session.user.id) {
+			invalidarCacheUsuario();
+		} else {
+			_usuarioCache   = null;
+			_usuarioCacheTs = 0;
+		}
+		_log.info(`Evento Auth [${event}]. Caché de sesión actualizado.`);
 	}
 
 	if (event === 'SIGNED_OUT') {
 		_sessionCache = null;
 		invalidarCacheUsuario();
-		_log.info('Sesión cerrada. Caché limpiado.');
+		navigator.serviceWorker?.controller?.postMessage({ tipo: 'CLEAR_MEDIA_CACHE' });
+		_log.info('Sesión cerrada. Caché de usuario y media limpiados.');
 	}
 });
 
 // ─────────────────────────────────────────────────────────────
-// 4. HELPER: RETRY CON BACKOFF EXPONENCIAL
+// 4. HELPER: RETRY CON BACKOFF EXPONENCIAL (CON CORTE RÁPIDO OFFLINE)
 // ─────────────────────────────────────────────────────────────
 
 const RETRY_DELAYS = [500, 1_500, 3_000]; // ms
 
 /**
  * Ejecuta una función async con reintentos automáticos.
- * Solo reintenta en errores de red — no en errores de negocio (RLS, 404, etc.).
+ * Solo reintenta en errores de red cuando el dispositivo tiene conexión.
+ * Si navigator.onLine === false, aborta en 0ms sin bloquear la UI.
  *
  * @template T
  * @param {() => Promise<T>} fn — Función a ejecutar
@@ -177,6 +237,10 @@ const RETRY_DELAYS = [500, 1_500, 3_000]; // ms
  * @returns {Promise<T>}
  */
 async function _withRetry(fn, maxIntentos = 3) {
+	if (typeof navigator !== 'undefined' && !navigator.onLine) {
+		throw new Error('Failed to fetch (dispositivo offline)');
+	}
+
 	let ultimoError;
 
 	for (let i = 0; i < maxIntentos; i++) {
@@ -185,14 +249,15 @@ async function _withRetry(fn, maxIntentos = 3) {
 		} catch (error) {
 			ultimoError = error;
 
-			// No reintentar errores de negocio
 			const esErrorDeRed =
 				error.message?.includes('fetch') ||
 				error.message?.includes('network') ||
 				error.message?.includes('Failed to fetch') ||
 				error.message?.includes('NetworkError');
 
-			if (!esErrorDeRed) throw error;
+			if (!esErrorDeRed || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+				throw error;
+			}
 
 			if (i < maxIntentos - 1) {
 				const espera = RETRY_DELAYS[i] ?? RETRY_DELAYS.at(-1);
@@ -206,7 +271,7 @@ async function _withRetry(fn, maxIntentos = 3) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 5. SESIÓN Y PERFIL
+// 5. SESIÓN Y PERFIL (OFFLINE-RESILIENT)
 // ─────────────────────────────────────────────────────────────
 
 /**
@@ -220,7 +285,7 @@ export async function getSession() {
 	if (_sessionCache) return _sessionCache;
 
 	const { data, error } = await supabase.auth.getSession();
-	if (error || !data.session) return null;
+	if (error || !data?.session) return null;
 
 	_sessionCache = data.session;
 	return _sessionCache;
@@ -228,10 +293,8 @@ export async function getSession() {
 
 /**
  * Retorna los datos del usuario desde public.usuarios.
- * Caché con TTL de 5 minutos para reducir queries al backend.
- *
- * FIX: usa .maybeSingle() — devuelve null sin excepción cuando
- * el registro aún no existe (usuario en proceso de onboarding).
+ * Caché en RAM + localStorage con TTL de 5 minutos cuando hay red,
+ * y fallback instantáneo sin vencimiento cuando el dispositivo está offline.
  *
  * Columnas verificadas MCP 2026-06-14:
  * id, empresa_id, rol, nombre_completo, oficio, tipo_trabajo_id,
@@ -241,15 +304,38 @@ export async function getSession() {
  * @returns {Promise<Object|null>}
  */
 export async function getUsuario() {
-	// Verificar TTL del caché
-	const ahora = Date.now();
-	if (_usuarioCache && (ahora - _usuarioCacheTs) < USUARIO_CACHE_TTL) {
+	const session = await getSession();
+	if (!session?.user?.id) return null;
+
+	const userId = session.user.id;
+	const ahora  = Date.now();
+
+	// 1. Verificar caché en RAM (validando que pertenezca al mismo userId)
+	if (_usuarioCache && _usuarioCache.id === userId && (ahora - _usuarioCacheTs) < USUARIO_CACHE_TTL) {
 		return _usuarioCache;
 	}
 
-	const session = await getSession();
-	if (!session) return null;
+	// 2. Leer respaldo persistido en localStorage para este userId
+	const persistido = _leerUsuarioStorage(userId);
 
+	// Si el operador está sin señal en campo, retornar respaldo local en 0ms
+	if (typeof navigator !== 'undefined' && !navigator.onLine) {
+		if (persistido?.data) {
+			_usuarioCache   = persistido.data;
+			_usuarioCacheTs = persistido.ts;
+			return _usuarioCache;
+		}
+		return null;
+	}
+
+	// Si el respaldo de localStorage fue guardado hace menos de 5 min (ej. cambio de página MPA), reutilizarlo
+	if (persistido?.data && (ahora - persistido.ts) < USUARIO_CACHE_TTL) {
+		_usuarioCache   = persistido.data;
+		_usuarioCacheTs = persistido.ts;
+		return _usuarioCache;
+	}
+
+	// 3. Consultar a Supabase cuando hay red y el TTL expiró
 	try {
 		const { data, error } = await _withRetry(() =>
 			supabase
@@ -268,35 +354,29 @@ export async function getUsuario() {
 					activo,
 					tutor_id
 				`)
-				.eq('id', session.user.id)
+				.eq('id', userId)
 				.is('deleted_at', null)
 				.maybeSingle()
 		);
 
 		if (error) {
 			_log.error('Error al cargar usuario:', error.message);
-			return null;
+			return persistido?.data ?? null;
 		}
 
-		_usuarioCache   = data; // puede ser null — maybeSingle() no lanza
+		_usuarioCache   = data;
 		_usuarioCacheTs = Date.now();
+		if (data) _guardarUsuarioStorage(userId, data);
 		return _usuarioCache;
 
 	} catch (error) {
-		_log.error('Error de red al cargar usuario:', error.message);
-		// Devolver caché expirado si existe — mejor que null en offline
-		return _usuarioCache ?? null;
+		_log.error('Error de red al cargar usuario (usando respaldo offline):', error.message);
+		return persistido?.data ?? _usuarioCache ?? null;
 	}
 }
 
 /**
  * Lee empresa_id — JWT primero, fallback a public.usuarios.
- *
- * FIX: el custom_access_token_hook puede ejecutarse antes de que
- * exista la fila en public.usuarios (primer login del usuario recién
- * creado). En ese caso el hook no inyecta empresa_id y el JWT queda
- * sin ese claim. El fallback lee desde la tabla directamente.
- * Warning en consola para detectar cuándo el hook está fallando.
  *
  * @returns {Promise<string|null>} UUID de empresa o null
  */
@@ -344,6 +424,7 @@ export async function getRol() {
 
 /**
  * Inicia sesión con email y contraseña.
+ * Limpia cualquier caché previo antes de establecer la nueva sesión.
  *
  * @param {string} email
  * @param {string} password
@@ -352,6 +433,8 @@ export async function getRol() {
 export async function login(email, password) {
 	showSpinner();
 	try {
+		invalidarCacheUsuario();
+
 		const { data, error } = await supabase.auth.signInWithPassword({
 			email:    email.trim().toLowerCase(),
 			password,
@@ -372,24 +455,32 @@ export async function login(email, password) {
 }
 
 /**
- * Cierra la sesión del usuario actual.
+ * Cierra la sesión del usuario actual (online y offline).
  *
- * FIX v3.0: NO redirige — devuelve control al caller.
- * La redirección la hace atshel-app.js para evitar
- * redirecciones duplicadas (race condition con onAuthStateChange).
+ * NO redirige — devuelve control al caller (atshel-app.js).
+ * Si el dispositivo está sin señal, fuerza el cierre local ({ scope: 'local' })
+ * y purga el almacenamiento para impedir que la sesión quede abierta.
  *
  * @returns {Promise<void>}
  */
 export async function logout() {
 	showSpinner();
 	try {
-		await supabase.auth.signOut();
+		if (typeof navigator !== 'undefined' && !navigator.onLine) {
+			await supabase.auth.signOut({ scope: 'local' });
+		} else {
+			await supabase.auth.signOut();
+		}
 	} catch (e) {
-		_log.error('Error en logout:', e);
-		// Continuar aunque falle — el caché se limpia igual
+		_log.error('Error en logout remoto, forzando cierre local:', e);
+		await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 	} finally {
 		_sessionCache = null;
 		invalidarCacheUsuario();
+		try {
+			localStorage.removeItem('atshel_session');
+		} catch {}
+		navigator.serviceWorker?.controller?.postMessage({ tipo: 'CLEAR_MEDIA_CACHE' });
 		hideSpinner();
 	}
 }
@@ -425,13 +516,13 @@ export async function recuperarPassword(email) {
  */
 function _traducirErrorAuth(msg) {
 	const map = {
-		'Invalid login credentials':  'Email o contraseña incorrectos.',
-		'Email not confirmed':         'Confirmá tu email antes de ingresar.',
-		'User not found':              'No existe una cuenta con ese email.',
-		'Password should be at least': 'La contraseña debe tener al menos 6 caracteres.',
-		'Too many requests':           'Demasiados intentos. Esperá unos minutos.',
-		'User is banned':              'Tu cuenta está suspendida. Contactá al administrador.',
-		'Network request failed':      'Sin conexión. Verificá tu señal.',
+		'Invalid login credentials':   'Email o contraseña incorrectos.',
+		'Email not confirmed':          'Confirmá tu email antes de ingresar.',
+		'User not found':               'No existe una cuenta con ese email.',
+		'Password should be at least':  'La contraseña debe tener al menos 6 caracteres.',
+		'Too many requests':            'Demasiados intentos. Esperá unos minutos.',
+		'User is banned':               'Tu cuenta está suspendida. Contactá al administrador.',
+		'Network request failed':       'Sin conexión. Verificá tu señal.',
 	};
 
 	for (const [key, value] of Object.entries(map)) {
@@ -660,9 +751,9 @@ export const terminos = {
 	/**
 	 * Registra la aceptación de los términos por parte del usuario.
 	 *
-	 * FIX v3.0: usa RPC transaccional fn_aceptar_terminos() que hace
+	 * Usa RPC transaccional fn_aceptar_terminos() que hace
 	 * INSERT en terminos_aceptaciones Y UPDATE en usuarios en una sola
-	 * transacción atómica. Nunca queda estado inconsistente.
+	 * transacción atómica.
 	 *
 	 * Lee empresa_id de public.usuarios — NO del JWT — para que funcione
 	 * incluso cuando el JWT aún no tiene empresa_id (primer login).
@@ -674,7 +765,6 @@ export const terminos = {
 		const session = await getSession();
 		if (!session) return { ok: false, error: 'ERR_SYS_09: Sesión inválida.' };
 
-		// Leer empresa_id de la tabla — NO del JWT
 		const usuario = await getUsuario();
 		if (!usuario?.empresa_id) {
 			return { ok: false, error: 'ERR_SYS_09: No se pudo cargar el perfil de usuario.' };
@@ -697,8 +787,7 @@ export const terminos = {
 				return { ok: false, error: `${data.error}: ${data.mensaje}` };
 			}
 
-			// Invalidar caché para que el próximo getUsuario() traiga
-			// terminos_aceptado_en actualizado
+			// Invalidar caché para que el próximo getUsuario() recargue terminos_aceptado_en
 			invalidarCacheUsuario();
 			return { ok: true, error: null };
 
@@ -716,22 +805,16 @@ export const terminos = {
 	async usuarioAcepto() {
 		const usuario = await getUsuario();
 		if (!usuario) return false;
-		return !!usuario.terminos_aceptado_en;
+		return Boolean(usuario.terminos_aceptado_en);
 	},
 };
 
 // ─────────────────────────────────────────────────────────────
-// 11. REGISTRO DE EMPRESA — NUEVO FLUJO
+// 11. REGISTRO DE EMPRESA — FLUJO TRANSACCIONAL
 // ─────────────────────────────────────────────────────────────
 
 /**
  * Registra una nueva empresa y asigna al usuario actual como administrador.
- *
- * Flujo v3.0:
- * 1. fn_registrar_empresa() — crea empresa + usuario en una transacción.
- * 2. Invalida caché de usuario y sesión.
- * 3. refreshSession() — el hook se ejecuta con la fila ya creada
- *    y el JWT nuevo trae empresa_id y rol correctamente.
  *
  * @param {{ nombreEmpresa: string, cuit: string, nombreCompleto: string }} datos
  * @returns {Promise<{ ok: boolean, empresaId: string|null, error: string|null }>}
@@ -752,11 +835,9 @@ export async function registrarEmpresa({ nombreEmpresa, cuit, nombreCompleto }) 
 		if (error) return { ok: false, empresaId: null, error: `ERR_SYS_30: ${error.message}` };
 		if (data?.error) return { ok: false, empresaId: null, error: `${data.error}: ${data.mensaje}` };
 
-		// Limpiar caché antes del refresh
 		_sessionCache = null;
 		invalidarCacheUsuario();
 
-		// Forzar refresh del JWT — el hook ahora puede leer la fila creada
 		const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
 
 		if (refreshError) {
@@ -785,8 +866,7 @@ export async function registrarEmpresa({ nombreEmpresa, cuit, nombreCompleto }) 
 
 /**
  * Verifica que hay sesión activa.
- * FIX v3.0: NO redirige — lanza ATSHELError.
- * La redirección la hace el caller (atshel-app.js).
+ * NO redirige — lanza ATSHELError. La redirección la hace el caller (atshel-app.js).
  *
  * @returns {Promise<import('@supabase/supabase-js').Session>}
  * @throws {ATSHELError} ERR_SYS_11 si no hay sesión
@@ -864,5 +944,5 @@ export function handleSupabaseError(error, contexto = '') {
 }
 
 // ─────────────────────────────────────────────────────────────
-// FIN DE atshel-supabase.js v3.0.0
+// FIN DE atshel-supabase.js v3.1.0
 // ─────────────────────────────────────────────────────────────
