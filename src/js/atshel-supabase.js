@@ -1,35 +1,27 @@
 /**
  * atshel-supabase.js
  * Cliente Supabase para ATSHEL HSE Manager.
- * Argumentos RPC verificados contra schema real (MCP 2026-06-14).
+ * Argumentos RPC verificados contra schema real (MCP 2026-10).
  *
- * v3.1.0 — Blindaje Offline MPA y Aislamiento de Sesión
+ * v3.2.0 — Firma Atómica de ATS (H-01, H-06, H-07) + Blindaje Offline MPA
  *
- * Cambios incorporados:
- *   1. ATSHELError — clase de error unificada con código estandarizado.
- *   2. Caché de usuario en RAM + localStorage aislado por user.id (`atshel_usuario_cache_<uuid>`)
- *      para que al navegar entre páginas MPA (index.html -> ats-nuevo.html) sin señal
- *      no se pierda el perfil ni se produzcan cruces entre cuentas.
- *   3. _withRetry() — reintentos automáticos en RPC con backoff exponencial y
- *      corte instantáneo (0ms) si navigator.onLine === false.
- *   4. getEmpresaId() / getRol() — fallback a public.usuarios cuando el JWT
- *      no tiene app_metadata (hook ejecutado antes de que existiera la fila).
- *   5. getUsuario() — .maybeSingle() + recuperación instantánea desde localStorage en offline.
- *   6. onAuthStateChange (SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, SIGNED_OUT) —
- *      detecta cambios de cuenta y purga cachés de usuario y media del Service Worker.
- *   7. terminos.aceptar() — RPC transaccional fn_aceptar_terminos().
- *      Lee empresa_id de public.usuarios, no del JWT.
- *   8. registrarEmpresa() — refreshSession() después de crear la empresa.
- *   9. logout() — soporta cierre de sesión sin señal ({ scope: 'local' }), limpia
- *      localStorage y devuelve control al caller (atshel-app.js).
- *  10. _validarPin() — validación de PIN centralizada.
+ * Cambios v3.2.0:
+ *   1. firmarAts({ instanciaId, pin, localId }) — nueva función que ejecuta el flujo
+ *      transaccional atómico fn_firmar_ats(p_instancia_id, p_nonce, p_pin, p_atshel_local_id):
+ *        - Solicita un nonce fresco de un solo uso con crearNonce(session.user.id).
+ *        - Envía la firma con clave de idempotencia (p_atshel_local_id) para resistir microcortes.
+ *        - Procesa respuestas JSON de negocio (ERR_PIN_03 con intentos_restantes, ERR_PIN_02, etc.).
+ *   2. ATSHELError — clase de error unificada con código estandarizado.
+ *   3. Caché de usuario en RAM + localStorage aislado por user.id (`atshel_usuario_cache_<uuid>`).
+ *   4. _withRetry() — reintentos automáticos con corte instantáneo (0ms) si navigator.onLine === false.
+ *   5. logout() — soporta cierre de sesión sin señal ({ scope: 'local' }).
  *
  * Exporta:
  *   supabase, ATSHELError,
  *   getSession(), getUsuario(), getEmpresaId(), getRol(),
  *   invalidarCacheUsuario(),
  *   login(), logout(), recuperarPassword(),
- *   crearNonce(), verificarPin(), establecerPin(),
+ *   crearNonce(), verificarPin(), establecerPin(), firmarAts(),
  *   verificarSesion(), calcularKpis(),
  *   terminos.{ obtenerVigente, aceptar, usuarioAcepto },
  *   registrarEmpresa(),
@@ -61,13 +53,6 @@ const _log = {
 
 /**
  * Error estándar de ATSHEL con código y contexto.
- * Todos los errores del módulo usan esta clase para
- * facilitar el manejo centralizado en atshel-app.js.
- *
- * Códigos ERR_SYS_XX: errores de infraestructura (auth, red, permisos)
- * Códigos ERR_HSE_XX: errores de dominio (PIN, gases, arnés)
- * Códigos ERR_REG_XX: errores de registro/onboarding
- * Códigos ERR_TRM_XX: errores de términos y condiciones
  */
 export class ATSHELError extends Error {
 	/**
@@ -83,7 +68,6 @@ export class ATSHELError extends Error {
 		this.contexto = contexto;
 	}
 
-	/** Retorna objeto plano para logs y telemetría */
 	toJSON() {
 		return {
 			name:     this.name,
@@ -117,7 +101,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
 	},
 	global: {
 		headers: {
-			'X-Client-Info': 'atshel-hse/3.1',
+			'X-Client-Info': 'atshel-hse/3.2',
 		},
 	},
 });
@@ -126,7 +110,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
 // 3. CACHÉ DE SESIÓN Y USUARIO (RAM + LOCALSTORAGE AISLADO POR USER_ID)
 // ─────────────────────────────────────────────────────────────
 
-// TTL del caché de usuario en ms cuando hay señal (5 minutos)
 const USUARIO_CACHE_TTL    = 5 * 60 * 1_000;
 const USUARIO_STORAGE_PREF = 'atshel_usuario_cache_';
 
@@ -134,14 +117,6 @@ let _sessionCache   = null;
 let _usuarioCache   = null;
 let _usuarioCacheTs = 0;
 
-/**
- * Guarda el perfil en localStorage atado al UUID del usuario autenticado.
- * Evita que al navegar entre páginas MPA (index.html -> ats-nuevo.html)
- * sin señal en el pozo se pierda el perfil en RAM.
- *
- * @param {string} userId
- * @param {Object} data
- */
 function _guardarUsuarioStorage(userId, data) {
 	if (!userId || !data) return;
 	try {
@@ -154,19 +129,13 @@ function _guardarUsuarioStorage(userId, data) {
 	}
 }
 
-/**
- * Lee el perfil persistido únicamente si coincide exactamente con el userId actual.
- *
- * @param {string} userId
- * @returns {{ data: Object, ts: number }|null}
- */
 function _leerUsuarioStorage(userId) {
 	if (!userId) return null;
 	try {
 		const raw = localStorage.getItem(`${USUARIO_STORAGE_PREF}${userId}`);
 		if (!raw) return null;
 		const parsed = JSON.parse(raw);
-		if (parsed?.data?.id !== userId) return null; // Blindaje anti-cruce de cuentas
+		if (parsed?.data?.id !== userId) return null;
 		return parsed;
 	} catch {
 		return null;
@@ -174,9 +143,7 @@ function _leerUsuarioStorage(userId) {
 }
 
 /**
- * Invalida el caché del usuario en RAM y elimina todos los perfiles
- * persistidos en localStorage.
- * Llamar después de operaciones que modifican public.usuarios o al cerrar sesión.
+ * Invalida el caché del usuario en RAM y elimina los perfiles persistidos en localStorage.
  */
 export function invalidarCacheUsuario() {
 	_usuarioCache   = null;
@@ -193,16 +160,11 @@ export function invalidarCacheUsuario() {
 	}
 }
 
-/**
- * Sincroniza el estado de sesión con eventos de Supabase Auth.
- * Garantiza aislamiento estricto al cambiar de cuenta o cerrar sesión.
- */
 supabase.auth.onAuthStateChange((event, session) => {
 	if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session) {
 		const prevUserId = _sessionCache?.user?.id;
 		_sessionCache = session;
 
-		// Si cambió el usuario autenticado, purgar todo el almacenamiento de perfiles
 		if (prevUserId && prevUserId !== session.user.id) {
 			invalidarCacheUsuario();
 		} else {
@@ -221,21 +183,11 @@ supabase.auth.onAuthStateChange((event, session) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// 4. HELPER: RETRY CON BACKOFF EXPONENCIAL (CON CORTE RÁPIDO OFFLINE)
+// 4. HELPER: RETRY CON BACKOFF EXPONENCIAL (CORTE RÁPIDO OFFLINE)
 // ─────────────────────────────────────────────────────────────
 
-const RETRY_DELAYS = [500, 1_500, 3_000]; // ms
+const RETRY_DELAYS = [500, 1_500, 3_000];
 
-/**
- * Ejecuta una función async con reintentos automáticos.
- * Solo reintenta en errores de red cuando el dispositivo tiene conexión.
- * Si navigator.onLine === false, aborta en 0ms sin bloquear la UI.
- *
- * @template T
- * @param {() => Promise<T>} fn — Función a ejecutar
- * @param {number} [maxIntentos=3] — Máximo de intentos
- * @returns {Promise<T>}
- */
 async function _withRetry(fn, maxIntentos = 3) {
 	if (typeof navigator !== 'undefined' && !navigator.onLine) {
 		throw new Error('Failed to fetch (dispositivo offline)');
@@ -274,13 +226,6 @@ async function _withRetry(fn, maxIntentos = 3) {
 // 5. SESIÓN Y PERFIL (OFFLINE-RESILIENT)
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Retorna la sesión actual o null si no hay sesión activa.
- * Lee de localStorage primero (sin red) — solo va al servidor
- * cuando el token expira y autoRefreshToken lo renueva.
- *
- * @returns {Promise<import('@supabase/supabase-js').Session|null>}
- */
 export async function getSession() {
 	if (_sessionCache) return _sessionCache;
 
@@ -291,18 +236,6 @@ export async function getSession() {
 	return _sessionCache;
 }
 
-/**
- * Retorna los datos del usuario desde public.usuarios.
- * Caché en RAM + localStorage con TTL de 5 minutos cuando hay red,
- * y fallback instantáneo sin vencimiento cuando el dispositivo está offline.
- *
- * Columnas verificadas MCP 2026-06-14:
- * id, empresa_id, rol, nombre_completo, oficio, tipo_trabajo_id,
- * es_nuevo_ingresante, fecha_ingreso, induccion_completada,
- * terminos_aceptado_en, activo, tutor_id.
- *
- * @returns {Promise<Object|null>}
- */
 export async function getUsuario() {
 	const session = await getSession();
 	if (!session?.user?.id) return null;
@@ -310,15 +243,12 @@ export async function getUsuario() {
 	const userId = session.user.id;
 	const ahora  = Date.now();
 
-	// 1. Verificar caché en RAM (validando que pertenezca al mismo userId)
 	if (_usuarioCache && _usuarioCache.id === userId && (ahora - _usuarioCacheTs) < USUARIO_CACHE_TTL) {
 		return _usuarioCache;
 	}
 
-	// 2. Leer respaldo persistido en localStorage para este userId
 	const persistido = _leerUsuarioStorage(userId);
 
-	// Si el operador está sin señal en campo, retornar respaldo local en 0ms
 	if (typeof navigator !== 'undefined' && !navigator.onLine) {
 		if (persistido?.data) {
 			_usuarioCache   = persistido.data;
@@ -328,14 +258,12 @@ export async function getUsuario() {
 		return null;
 	}
 
-	// Si el respaldo de localStorage fue guardado hace menos de 5 min (ej. cambio de página MPA), reutilizarlo
 	if (persistido?.data && (ahora - persistido.ts) < USUARIO_CACHE_TTL) {
 		_usuarioCache   = persistido.data;
 		_usuarioCacheTs = persistido.ts;
 		return _usuarioCache;
 	}
 
-	// 3. Consultar a Supabase cuando hay red y el TTL expiró
 	try {
 		const { data, error } = await _withRetry(() =>
 			supabase
@@ -375,11 +303,6 @@ export async function getUsuario() {
 	}
 }
 
-/**
- * Lee empresa_id — JWT primero, fallback a public.usuarios.
- *
- * @returns {Promise<string|null>} UUID de empresa o null
- */
 export async function getEmpresaId() {
 	const session = await getSession();
 	if (!session) return null;
@@ -387,21 +310,10 @@ export async function getEmpresaId() {
 	const fromJwt = session.user?.app_metadata?.empresa_id ?? null;
 	if (fromJwt) return fromJwt;
 
-	_log.warn(
-		'JWT sin empresa_id en app_metadata. ' +
-		'Usando fallback a public.usuarios. ' +
-		'Verificar custom_access_token_hook → Supabase Dashboard → Auth → Hooks.'
-	);
 	const usuario = await getUsuario();
 	return usuario?.empresa_id ?? null;
 }
 
-/**
- * Lee rol — JWT primero, fallback a public.usuarios.
- * Valores válidos verificados MCP: 'administrador' | 'supervisor' | 'hse'
- *
- * @returns {Promise<string|null>}
- */
 export async function getRol() {
 	const session = await getSession();
 	if (!session) return null;
@@ -409,11 +321,6 @@ export async function getRol() {
 	const fromJwt = session.user?.app_metadata?.rol ?? null;
 	if (fromJwt) return fromJwt;
 
-	_log.warn(
-		'JWT sin rol en app_metadata. ' +
-		'Usando fallback a public.usuarios. ' +
-		'Verificar custom_access_token_hook → Supabase Dashboard → Auth → Hooks.'
-	);
 	const usuario = await getUsuario();
 	return usuario?.rol ?? null;
 }
@@ -422,14 +329,6 @@ export async function getRol() {
 // 6. AUTENTICACIÓN
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Inicia sesión con email y contraseña.
- * Limpia cualquier caché previo antes de establecer la nueva sesión.
- *
- * @param {string} email
- * @param {string} password
- * @returns {Promise<{ ok: boolean, error: string|null }>}
- */
 export async function login(email, password) {
 	showSpinner();
 	try {
@@ -454,15 +353,6 @@ export async function login(email, password) {
 	}
 }
 
-/**
- * Cierra la sesión del usuario actual (online y offline).
- *
- * NO redirige — devuelve control al caller (atshel-app.js).
- * Si el dispositivo está sin señal, fuerza el cierre local ({ scope: 'local' })
- * y purga el almacenamiento para impedir que la sesión quede abierta.
- *
- * @returns {Promise<void>}
- */
 export async function logout() {
 	showSpinner();
 	try {
@@ -485,12 +375,6 @@ export async function logout() {
 	}
 }
 
-/**
- * Envía email de recuperación de contraseña.
- *
- * @param {string} email
- * @returns {Promise<{ ok: boolean, error: string|null }>}
- */
 export async function recuperarPassword(email) {
 	showSpinner();
 	try {
@@ -509,11 +393,6 @@ export async function recuperarPassword(email) {
 	}
 }
 
-/**
- * Traduce mensajes de error de Supabase Auth a español argentino.
- * @param {string} msg
- * @returns {string}
- */
 function _traducirErrorAuth(msg) {
 	const map = {
 		'Invalid login credentials':   'Email o contraseña incorrectos.',
@@ -536,11 +415,6 @@ function _traducirErrorAuth(msg) {
 // 7. VALIDACIÓN DE PIN — CENTRALIZADA
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Valida formato de PIN antes de enviarlo al backend.
- * @param {string} pin
- * @returns {{ valido: boolean, error: string|null }}
- */
 function _validarPin(pin) {
 	if (!pin || typeof pin !== 'string') {
 		return { valido: false, error: 'ERR_HSE_11: PIN requerido.' };
@@ -555,18 +429,18 @@ function _validarPin(pin) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 8. PIN — RPC VERIFICADOS CON MCP
+// 8. PIN Y FIRMA ATÓMICA DE ATS — RPC VERIFICADOS CON MCP
 //
 //    fn_crear_nonce(p_usuario_id uuid) → uuid
 //    fn_verificar_pin(p_usuario_id uuid, p_pin text) → boolean
 //    fn_establecer_pin(p_usuario_id uuid, p_pin text) → void
+//    fn_firmar_ats(p_instancia_id uuid, p_nonce uuid, p_pin text, p_atshel_local_id text) → jsonb
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Solicita un nonce de firma de un solo uso.
- * Llamar inmediatamente antes de verificarPin().
+ * Solicita un nonce de firma de un solo uso (expira en 5 minutos).
  *
- * @param {string} usuarioId — UUID del usuario que va a firmar
+ * @param {string} usuarioId — UUID del usuario autenticado
  * @returns {Promise<{ ok: boolean, nonceId: string|null, error: string|null }>}
  */
 export async function crearNonce(usuarioId) {
@@ -587,13 +461,12 @@ export async function crearNonce(usuarioId) {
 		return { ok: true, nonceId: data, error: null };
 
 	} catch (e) {
-		return { ok: false, nonceId: null, error: 'ERR_SYS_03: Sin conexión para crear nonce.' };
+		return { ok: false, nonceId: null, error: 'ERR_SYS_03: Sin conexión para crear código de firma.' };
 	}
 }
 
 /**
- * Verifica el PIN del usuario para completar una firma digital.
- * El backend realiza el bcrypt compare y maneja los intentos fallidos.
+ * Verifica el PIN del usuario de forma independiente (cuando no es firma de ATS).
  *
  * @param {string} usuarioId — UUID del usuario
  * @param {string} pin — PIN en texto plano (4-6 dígitos numéricos)
@@ -614,16 +487,16 @@ export async function verificarPin(usuarioId, pin) {
 
 		if (error) {
 			const msg = error.message || '';
-			if (msg.includes('bloqueado') || msg.includes('BLOQUEADO')) {
-				return { ok: false, error: 'ERR_HSE_13: Cuenta bloqueada por intentos fallidos. Esperá 15 minutos.' };
+			if (msg.includes('ERR_PIN_02') || msg.includes('bloquead')) {
+				return { ok: false, error: 'ERR_PIN_02: Cuenta bloqueada por intentos fallidos. Esperá 15 minutos.' };
 			}
-			if (msg.includes('intentos')) {
-				return { ok: false, error: `ERR_HSE_14: PIN incorrecto. ${msg}` };
+			if (msg.includes('ERR_PIN_01')) {
+				return { ok: false, error: 'ERR_PIN_01: Todavía no configuraste tu PIN de firma.' };
 			}
-			return { ok: false, error: `ERR_HSE_15: Error al verificar PIN. ${msg}` };
+			return { ok: false, error: `ERR_HSE_15: ${msg}` };
 		}
 
-		if (!data) return { ok: false, error: 'ERR_HSE_16: PIN incorrecto.' };
+		if (!data) return { ok: false, error: 'ERR_PIN_03: PIN incorrecto.' };
 		return { ok: true, error: null };
 
 	} catch (e) {
@@ -634,8 +507,7 @@ export async function verificarPin(usuarioId, pin) {
 }
 
 /**
- * Establece el PIN inicial del usuario (solo en setup.html).
- * No llamar si el usuario ya tiene PIN configurado.
+ * Establece el PIN inicial del usuario (setup.html).
  *
  * @param {string} usuarioId — UUID del usuario
  * @param {string} pin — PIN en texto plano (4-6 dígitos numéricos)
@@ -668,14 +540,136 @@ export async function establecerPin(usuarioId, pin) {
 	}
 }
 
+/**
+ * Firma un ATS de forma atómica en el servidor (Remediación H-06 y H-07).
+ *
+ * Contrato verificado contra Migración 1 y 2 en Supabase:
+ *   1. Pide un nonce fresco con fn_crear_nonce(session.user.id).
+ *      Cada intento de firma (incluso con PIN fallido) quema el nonce en servidor.
+ *   2. Invoca fn_firmar_ats({ p_instancia_id, p_nonce, p_pin, p_atshel_local_id }).
+ *   3. Si ocurre un corte de red en medio de la respuesta, _withRetry reintenta con
+ *      el mismo p_atshel_local_id y recibe { ok: true, ya_firmado: true } sin duplicar firma.
+ *   4. Lee errores de negocio desde data.error (incluyendo ERR_PIN_03 con intentos_restantes).
+ *
+ * @param {{ instanciaId: string, pin: string, localId?: string }} params
+ * @returns {Promise<{
+ *   ok: boolean,
+ *   firmaId?: string|null,
+ *   firmadoEn?: string|null,
+ *   yaFirmado?: boolean,
+ *   codigoError?: string,
+ *   intentosRestantes?: number,
+ *   error: string|null
+ * }>}
+ */
+export async function firmarAts({ instanciaId, pin, localId = null }) {
+	if (!instanciaId) {
+		return { ok: false, error: 'ERR_FIR_01: ID de ATS requerido para firmar.' };
+	}
+
+	const { valido, error: errorFormato } = _validarPin(pin);
+	if (!valido) return { ok: false, error: errorFormato };
+
+	if (typeof navigator !== 'undefined' && !navigator.onLine) {
+		return {
+			ok:    false,
+			error: 'ERR_SYS_03: Se requiere conexión a internet para verificar tu PIN y firmar el ATS.',
+		};
+	}
+
+	const session = await getSession();
+	if (!session?.user?.id) {
+		return { ok: false, error: 'ERR_SYS_01: Sesión no válida. Iniciá sesión nuevamente.' };
+	}
+
+	const idempotencyKey = localId || (
+		typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+			? crypto.randomUUID()
+			: `${Date.now()}-${Math.random().toString(16).slice(2)}`
+	);
+
+	showSpinner();
+	try {
+		// 1. Generar nonce nuevo (se consume siempre en el intento)
+		const nonceRes = await crearNonce(session.user.id);
+		if (!nonceRes.ok || !nonceRes.nonceId) {
+			return {
+				ok:    false,
+				error: nonceRes.error || 'ERR_FIR_05: No se pudo generar el código único de firma.',
+			};
+		}
+
+		// 2. Ejecutar RPC transaccional fn_firmar_ats
+		const { data, error } = await _withRetry(() =>
+			supabase.rpc('fn_firmar_ats', {
+				p_instancia_id:    instanciaId,
+				p_nonce:           nonceRes.nonceId,
+				p_pin:             pin,
+				p_atshel_local_id: idempotencyKey,
+			})
+		);
+
+		if (error) {
+			_log.error('Error RPC en fn_firmar_ats:', error.message);
+			return {
+				ok:    false,
+				error: handleSupabaseError(error, 'fn_firmar_ats'),
+			};
+		}
+
+		// 3. Errores de negocio devueltos como JSON { error, mensaje, intentos_restantes }
+		if (data?.error) {
+			if (data.error === 'ERR_PIN_03') {
+				const rest = data.intentos_restantes;
+				const detalle = typeof rest === 'number'
+					? ` Te quedan ${rest} intento${rest === 1 ? '' : 's'}.`
+					: '';
+				return {
+					ok:                false,
+					codigoError:       data.error,
+					intentosRestantes: rest,
+					error:             `ERR_PIN_03: PIN incorrecto.${detalle}`,
+				};
+			}
+
+			if (data.error === 'ERR_PIN_02') {
+				return {
+					ok:          false,
+					codigoError: data.error,
+					error:       `ERR_PIN_02: ${data.mensaje || 'Cuenta bloqueada por 15 minutos por intentos fallidos.'}`,
+				};
+			}
+
+			return {
+				ok:          false,
+				codigoError: data.error,
+				error:       `${data.error}: ${data.mensaje || 'No se pudo firmar el ATS.'}`,
+			};
+		}
+
+		return {
+			ok:        true,
+			firmaId:   data?.firma_id ?? null,
+			firmadoEn: data?.firmado_en ?? null,
+			yaFirmado: Boolean(data?.ya_firmado),
+			error:     null,
+		};
+
+	} catch (e) {
+		_log.error('Excepción de red en firmarAts:', e);
+		return {
+			ok:    false,
+			error: 'ERR_SYS_03: Error de conexión al firmar el ATS. Intentá de nuevo.',
+		};
+	} finally {
+		hideSpinner();
+	}
+}
+
 // ─────────────────────────────────────────────────────────────
 // 9. FUNCIONES RPC DE NEGOCIO
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Verifica que la sesión actual es válida.
- * @returns {Promise<Object|null>}
- */
 export async function verificarSesion() {
 	try {
 		const { data, error } = await supabase.rpc('fn_verificar_sesion');
@@ -686,12 +680,6 @@ export async function verificarSesion() {
 	}
 }
 
-/**
- * Calcula KPIs de seguridad para el dashboard.
- *
- * @param {{ desde?: Date, hasta?: Date }} opciones
- * @returns {Promise<Object|null>}
- */
 export async function calcularKpis({ desde = null, hasta = null } = {}) {
 	const empresaId = await getEmpresaId();
 
@@ -721,10 +709,6 @@ export async function calcularKpis({ desde = null, hasta = null } = {}) {
 
 export const terminos = {
 
-	/**
-	 * Obtiene la versión de términos vigente (activa = true).
-	 * @returns {Promise<{ id: string, version: string, contenido: string, hash_sha256: string }|null>}
-	 */
 	async obtenerVigente() {
 		try {
 			const { data, error } = await _withRetry(() =>
@@ -748,19 +732,6 @@ export const terminos = {
 		}
 	},
 
-	/**
-	 * Registra la aceptación de los términos por parte del usuario.
-	 *
-	 * Usa RPC transaccional fn_aceptar_terminos() que hace
-	 * INSERT en terminos_aceptaciones Y UPDATE en usuarios en una sola
-	 * transacción atómica.
-	 *
-	 * Lee empresa_id de public.usuarios — NO del JWT — para que funcione
-	 * incluso cuando el JWT aún no tiene empresa_id (primer login).
-	 *
-	 * @param {string} versionId — UUID de terminos_versiones.id
-	 * @returns {Promise<{ ok: boolean, error: string|null }>}
-	 */
 	async aceptar(versionId) {
 		const session = await getSession();
 		if (!session) return { ok: false, error: 'ERR_SYS_09: Sesión inválida.' };
@@ -787,7 +758,6 @@ export const terminos = {
 				return { ok: false, error: `${data.error}: ${data.mensaje}` };
 			}
 
-			// Invalidar caché para que el próximo getUsuario() recargue terminos_aceptado_en
 			invalidarCacheUsuario();
 			return { ok: true, error: null };
 
@@ -798,10 +768,6 @@ export const terminos = {
 		}
 	},
 
-	/**
-	 * Verifica si el usuario ya aceptó los términos vigentes.
-	 * @returns {Promise<boolean>}
-	 */
 	async usuarioAcepto() {
 		const usuario = await getUsuario();
 		if (!usuario) return false;
@@ -813,12 +779,6 @@ export const terminos = {
 // 11. REGISTRO DE EMPRESA — FLUJO TRANSACCIONAL
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Registra una nueva empresa y asigna al usuario actual como administrador.
- *
- * @param {{ nombreEmpresa: string, cuit: string, nombreCompleto: string }} datos
- * @returns {Promise<{ ok: boolean, empresaId: string|null, error: string|null }>}
- */
 export async function registrarEmpresa({ nombreEmpresa, cuit, nombreCompleto }) {
 	const session = await getSession();
 	if (!session) return { ok: false, empresaId: null, error: 'ERR_SYS_09: Sesión inválida.' };
@@ -841,14 +801,9 @@ export async function registrarEmpresa({ nombreEmpresa, cuit, nombreCompleto }) 
 		const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
 
 		if (refreshError) {
-			_log.warn(
-				'Empresa creada OK pero refreshSession() falló:',
-				refreshError.message,
-				'— fallback en getEmpresaId() se encargará.'
-			);
+			_log.warn('Empresa creada OK pero refreshSession() falló:', refreshError.message);
 		} else if (refreshData?.session) {
 			_sessionCache = refreshData.session;
-			_log.info('JWT refrescado — empresa_id inyectado correctamente.');
 		}
 
 		return { ok: true, empresaId: data.empresa_id, error: null };
@@ -864,13 +819,6 @@ export async function registrarEmpresa({ nombreEmpresa, cuit, nombreCompleto }) 
 // 12. GUARDS DE NAVEGACIÓN
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Verifica que hay sesión activa.
- * NO redirige — lanza ATSHELError. La redirección la hace el caller (atshel-app.js).
- *
- * @returns {Promise<import('@supabase/supabase-js').Session>}
- * @throws {ATSHELError} ERR_SYS_11 si no hay sesión
- */
 export async function requireAuth() {
 	const session = await getSession();
 
@@ -881,14 +829,6 @@ export async function requireAuth() {
 	return session;
 }
 
-/**
- * Verifica que el usuario tiene uno de los roles requeridos.
- * Roles válidos MCP: 'administrador' | 'supervisor' | 'hse'
- *
- * @param {...string} rolesPermitidos
- * @returns {Promise<string>} El rol del usuario si tiene acceso
- * @throws {ATSHELError} ERR_SYS_12 si el rol no tiene acceso
- */
 export async function requireRole(...rolesPermitidos) {
 	await requireAuth();
 
@@ -910,14 +850,6 @@ export async function requireRole(...rolesPermitidos) {
 // 13. HELPER: MANEJO DE ERRORES DE SUPABASE
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Maneja errores de Supabase de forma consistente.
- * Traduce códigos técnicos a mensajes legibles para el usuario.
- *
- * @param {Object} error — objeto error de Supabase
- * @param {string} [contexto=''] — descripción de la operación para el log
- * @returns {string} Mensaje de error para mostrar al usuario
- */
 export function handleSupabaseError(error, contexto = '') {
 	if (!error) return '';
 
@@ -926,6 +858,18 @@ export function handleSupabaseError(error, contexto = '') {
 
 	if (msg.startsWith('IDEMPOTENT:')) {
 		return 'Este registro ya fue guardado anteriormente.';
+	}
+
+	if (msg.includes('ATS_LOCK')) {
+		return 'Este ATS ya está firmado y bloqueado. No admite modificaciones.';
+	}
+
+	if (msg.includes('ERR_HSE_18')) {
+		return 'ERR_HSE_18: La firma del ATS requiere validación de PIN en el servidor.';
+	}
+
+	if (msg.includes('ERR_HSE_19')) {
+		return 'ERR_HSE_19: Las firmas registradas son inmutables y no pueden modificarse.';
 	}
 
 	if (msg.includes('version') && msg.includes('ERR_HSE')) {
@@ -944,5 +888,5 @@ export function handleSupabaseError(error, contexto = '') {
 }
 
 // ─────────────────────────────────────────────────────────────
-// FIN DE atshel-supabase.js v3.1.0
+// FIN DE atshel-supabase.js v3.2.0
 // ─────────────────────────────────────────────────────────────
