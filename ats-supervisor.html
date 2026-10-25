@@ -797,116 +797,17 @@
 	/**
 	 * ats-supervisor.html — revisión, charla pre-trabajo y firma PIN.
 	 *
-	 * Funciones RPC verificadas MCP 2026-06-24:
-	 *   fn_verificar_pin(p_usuario_id uuid, p_pin text) → boolean
-	 *   fn_crear_nonce(p_usuario_id uuid) → uuid (anti-replay)
-	 *
-	 * Errores del trigger fn_bloqueo_ats_instancias (BEFORE UPDATE en
-	 * ats_instancias, ERRCODE P0001):
-	 *   ERR_HSE_04: induccion_completada = false
-	 *   ERR_HSE_05: no charla pre-trabajo para esta instancia
-	 *   ERR_HSE_06: firmante no figura como asistente
-	 *   ATS_LOCK:   ATS ya bloqueado/firmado
-	 *
-	 * ── ATOMICIDAD ats_instancias ↔ ats_firmas (verificado 2026-09-20
-	 * vía pg_get_functiondef en vivo — NO existe una RPC ni mecanismo
-	 * transaccional que una ambos pasos; son dos triggers en tablas
-	 * separadas, cada INSERT/UPDATE de supabase-js es su propia
-	 * transacción autocommit) ────────────────────────────────────
-	 * ats_firmas tiene DOS triggers BEFORE INSERT propios:
-	 *   fn_bloqueo_ats_firmas: EXIGE que ats_instancias.bloqueado=true
-	 *     y estado='Firmado' ANTES de aceptar la fila (ERR_HSE_17 si
-	 *     no) — por eso el orden UPDATE→INSERT de handleFirmar() no es
-	 *     una preferencia de estilo, es el ÚNICO orden que el backend
-	 *     permite. También rechaza una segunda firma para la misma
-	 *     instancia con ATS_LOCK, y repite induccion/asistente
-	 *     (ERR_HSE_04/06).
-	 *   validar_y_forzar_firma_ats: si el puesto de trabajo del ATS
-	 *     requiere_certificacion y el operario tiene un vencimiento
-	 *     'Vencido' en mantenimientos_y_vencimientos, rechaza con
-	 *     ERR_HSE_02 — y esto puede pasar CON ats_instancias YA EN
-	 *     'Firmado', porque fn_bloqueo_ats_instancias no chequea
-	 *     vencimientos normativos al permitir la transición de estado.
-	 *     Ahí está el hueco real de inconsistencia: un ATS puede quedar
-	 *     Firmado+bloqueado para un operario que después no pasa este
-	 *     segundo chequeo. Arreglo mínimo de backend propuesto (no
-	 *     aplicado desde este archivo): mover/duplicar el chequeo de
-	 *     mantenimientos_y_vencimientos a fn_bloqueo_ats_instancias,
-	 *     para que bloquee en el MISMO gate que induccion/charla/
-	 *     asistente, antes de que el ATS llegue a Firmado.
-	 *     Mientras tanto: handleFirmar() distingue este código
-	 *     (ERR_HSE_02/03/17) del resto y avisa con un mensaje
-	 *     específico — no lo oculta, pero tampoco puede resolverlo
-	 *     desde el frontend.
-	 *
-	 * ats_capacitacion_asistentes: sin deleted_at (no soft-delete)
-	 *   eficacia: 'Bueno'|'Regular'|'Malo' (nullable)
-	 *
-	 * Flujo de firma:
-	 *   1. fn_crear_nonce(usuario.id) → nonce UUID (anti-replay)
-	 *   2. fn_verificar_pin(usuario.id, pin) → boolean
-	 *   3. Si true: UPDATE ats_instancias SET estado='Firmado', version=v+1
-	 *      Trigger sets: bloqueado=true, firmado_en=now(), fecha_hora_firma=now()
-	 *   4. INSERT ats_firmas
-	 *
-	 * ── DIAGNÓSTICO Y OFFLINE-FIRST (2026-09-10) ──────────────────
-	 * FIX: esta pantalla nunca tenía camino offline (mismo patrón que
-	 * ya se corrigió en incidente-detalle.html, accion-detalle.html y
-	 * permiso-detalle.html) — sólo consultaba Supabase directo. Un
-	 * fallo de sesión, red o RLS caía siempre en el mismo mensaje
-	 * genérico "No se pudo cargar", sin mostrar la causa real.
-	 * Ahora:
-	 *   1. Intenta SQLite local primero (queryLocal) para los datos
-	 *      básicos del ATS.
-	 *   2. Si falla el camino online, muestra el mensaje de error REAL
-	 *      de Supabase/PostgREST (código + texto), no un genérico —
-	 *      incluye también el estado de la sesión (auth.uid() y
-	 *      empresa_id resuelta) para poder diagnosticar RLS/sesión
-	 *      sin necesitar la consola del navegador.
-	 *   3. Agrega un botón "Reintentar" en la pantalla de error.
-	 *
-	 * ── CONTINUACIÓN POST-FIRMA (2026-09-17) ──────────────────────
-	 * FIX: al firmar, la pantalla llegaba a "ATS Firmado" y quedaba sin
-	 * salida — no había forma de continuar al Permiso de Trabajo desde
-	 * acá. Ahora:
-	 *   1. El branch 'Firmado' de renderFirma() agrega "Crear Permiso
-	 *      de Trabajo" (navega a /permiso-nuevo.html?ats_id=<id real,
-	 *      nunca hardcodeado>) y "Volver a ATS".
-	 *   2. handleFirmar() usa crearNonce() y verificarPin() (ya
-	 *      importadas) en vez de descartar el nonce y llamar
-	 *      fn_verificar_pin por rpc() directo.
-	 *   3. Tras firmar, se actualiza _instancia en memoria con la fila
-	 *      que devuelve el propio UPDATE y se vuelve a renderizar (sin
-	 *      window.location.reload()) — evita el reload completo y una
-	 *      posible carrera con PowerSync si el mirror local todavía no
-	 *      bajó el cambio recién escrito online.
-	 *   4. init() atrapa el error de requireAuth() (no toma argumento
-	 *      ni redirige sola) y redirige a /login.html — antes, sin
-	 *      sesión, el error quedaba sin atrapar y la pantalla se
-	 *      colgaba en el skeleton.
-	 *
-	 * ── ROBUSTEZ (2026-09-18) ──────────────────────────────────────
-	 * - cargarAtsPrincipal(): la lectura local de PowerSync ahora está
-	 *   en try/catch — un error real (no sólo "no listo") ya no se
-	 *   confundía con un error de Supabase en el diagnóstico de cargarDatos().
-	 * - getUsuario() nulo ya no deja la pantalla a medio autenticar:
-	 *   cargarUsuarioYDatos() corta con error claro y reintentable
-	 *   (invalidarCacheUsuario() antes de reintentar).
-	 * - _usuarios (roster completo de la empresa) se dejó de traer en
-	 *   cada carga de página — ahora es lazy, en abrirFormCharla().
-	 * - El insert en ats_capacitacion_asistentes ahora se chequea: antes
-	 *   una charla podía quedar creada sin ningún asistente, sin aviso,
-	 *   bloqueando la firma de todos sin explicación.
-	 * - handleSupabaseError() (ya exportada, sin usar en este archivo)
-	 *   reemplaza el manejo de errores ad-hoc en guardar charla e
-	 *   insertar ats_firmas.
-	 * - ats_firmas: un reintento simple ante fallo; si igual falla, aviso
-	 *   VISIBLE (toast) en vez de sólo console.warn — no bloquea el
-	 *   flujo, el ATS ya quedó Firmado y bloqueado en el paso 3.
-	 * - Conflicto de versión al firmar: en vez de pedir recargar la
-	 *   página a mano, se trae el estado real y se re-renderiza en el
-	 *   momento (aviso por toast, no por pinErrorEl, que renderFirma()
-	 *   puede reemplazar).
+	 * Flujo de firma atómica (Remediación H-06 y H-07 — verificado MCP 2026-10):
+	 *   Usa `firmarAts({ instanciaId, pin, localId })` de `/src/js/atshel-supabase.js`,
+	 *   que solicita un nonce fresco con `fn_crear_nonce(auth.uid())` y ejecuta la RPC
+	 *   transaccional `fn_firmar_ats(p_instancia_id, p_nonce, p_pin, p_atshel_local_id)`.
+	 *   En una única transacción en Postgres:
+	 *     - Verifica `auth.uid()` y pertenencia a la empresa.
+	 *     - Consume atómicamente el nonce (anti-replay).
+	 *     - Verifica el PIN (confirmando el incremento de `pin_intentos_fallidos` si falla).
+	 *     - Valida inducción, charla pre-trabajo, asistencia y vencimientos normativos.
+	 *     - Actualiza `ats_instancias` (`estado = 'Firmado'`, `bloqueado = true`, `version + 1`)
+	 *       e inserta la fila inmutable en `ats_firmas`.
 	 */
 
 	import {
@@ -914,8 +815,7 @@
 		requireAuth,
 		getUsuario,
 		getEmpresaId,
-		crearNonce,
-		verificarPin,
+		firmarAts,
 		handleSupabaseError,
 		invalidarCacheUsuario,
 	} from '/src/js/atshel-supabase.js';
@@ -948,7 +848,7 @@
 	let _usuario      = null;
 	let _usuarios     = [];  // todos los usuarios de la empresa
 	let _submitting   = false;
-	let _pinIntentos  = 0;
+	let _firmaLocalId = null; // clave de idempotencia conservada solo ante reintentos de red
 
 	// ── Referencias DOM ──────────────────────────────────────
 	const btnBackEl          = document.getElementById('btn-back');
@@ -1070,9 +970,6 @@
 
 	// ── Render: charlas ───────────────────────────────────────
 	function renderCharlas(charlas) {
-		// No confundir "todavía no hay charlas" con "no se pudo consultar":
-		// antes, un error de red/consulta dejaba _charlas en [] y esto se
-		// veía idéntico a "sin charlas registradas".
 		if (_charlasError) {
 			charlasCountEl.textContent = '⚠';
 			charlasCountEl.className   = 'chip chip--danger';
@@ -1112,8 +1009,6 @@
 
 	// ── Render: sección de firma ──────────────────────────────
 	function renderFirma(instancia, charlas) {
-		// Si ya está firmado (y por lo tanto bloqueado — el trigger del
-		// backend garantiza que estado='Firmado' implica bloqueado=true)
 		if (instancia.estado === 'Firmado') {
 			firmaEstadoChipEl.innerHTML = '<span class="chip chip--success">Firmado</span>';
 			firmaBodyEl.innerHTML = `
@@ -1132,9 +1027,7 @@
 				</div>
 			</div>`;
 
-			// Listeners para el DOM recién creado (mismo patrón que el input de PIN)
 			document.getElementById('btn-crear-permiso').addEventListener('click', () => {
-				// El ID se toma dinámicamente del ATS cargado — nunca hardcodeado.
 				const url = `/permiso-nuevo.html?ats_id=${encodeURIComponent(instancia.id)}`;
 				window.location.assign(url);
 			});
@@ -1144,16 +1037,11 @@
 			return;
 		}
 
-		// Si está cancelado
 		if (instancia.estado === 'Cancelado') {
 			firmaBodyEl.innerHTML = `<p class="empty-note" style="text-align:center;padding:20px">ATS cancelado — no se puede firmar ni modificar.</p>`;
 			return;
 		}
 
-		// Si la última consulta de charlas falló, no calcular prerequisitos
-		// con datos que sabemos que están incompletos — eso mostraría
-		// "○ Pendiente" para algo que en realidad no se pudo verificar,
-		// indistinguible de "todavía no registraste la charla".
 		if (_charlasError) {
 			firmaEstadoChipEl.innerHTML = '<span class="chip chip--danger">Error</span>';
 			firmaBodyEl.innerHTML = `
@@ -1174,7 +1062,6 @@
 		const tieneInduccion = _usuario?.induccion_completada === true;
 		const puedeFirmar    = tieneCharla && esAsistente && tieneInduccion;
 
-		// Mostrar estado de pre-requisitos
 		const prereqs = `
 		<div class="firma-bloqueada">
 			<div class="firma-bloqueada__icon" aria-hidden="true">🔏</div>
@@ -1202,7 +1089,6 @@
 
 		firmaEstadoChipEl.innerHTML = '<span class="chip chip--info">Listo para firmar</span>';
 
-		// Mostrar prereqs + input PIN
 		firmaBodyEl.innerHTML = `
 		${prereqs}
 		<div class="pin-wrap">
@@ -1228,7 +1114,6 @@
 			</button>
 		</div>`;
 
-		// Agregar listener del PIN inmediatamente (no en init, porque este DOM se crea ahora)
 		const pinInputEl  = document.getElementById('pin-input');
 		const pinErrorEl  = document.getElementById('pin-error');
 		const btnFirmarEl = document.getElementById('btn-firmar');
@@ -1244,7 +1129,6 @@
 			if (e.key === 'Enter') handleFirmar(pinInputEl, pinErrorEl, btnFirmarEl);
 		});
 
-		// Focus automático al PIN
 		setTimeout(() => pinInputEl.focus(), 100);
 	}
 
@@ -1260,7 +1144,6 @@
 				return;
 			}
 
-			// Recoger asistentes seleccionados
 			const seleccionados = Array.from(
 				asistentesWrapEl.querySelectorAll('input[type="checkbox"]:checked')
 			).map(cb => cb.value);
@@ -1278,7 +1161,7 @@
 					ats_instancia_id:  _instanciaId,
 					empresa_id:        empresaId,
 					dictada_por:       _usuario?.id,
-					tipo:              charlaTipoEl.value,    // 'Charla_pre_trabajo'|'Induccion'|'Capacitacion'
+					tipo:              charlaTipoEl.value,
 					temas:             charlaTemasEl.value.trim() || null,
 					duracion_minutos:  duracion,
 					fecha_hora:        new Date().toISOString(),
@@ -1291,7 +1174,6 @@
 				return;
 			}
 
-			// Insertar asistentes (sin soft-delete en esta tabla)
 			const asistentesPayload = seleccionados.map(trabajadorId => ({
 				capacitacion_id: charla.id,
 				trabajador_id:   trabajadorId,
@@ -1305,13 +1187,6 @@
 				.insert(asistentesPayload);
 
 			if (asistentesErr) {
-				// La charla ya quedó creada (tiene id), pero sin asistentes
-				// no cuenta para "esAsistente" — antes este resultado no se
-				// chequeaba: podía quedar una charla "registrada" que en la
-				// práctica no habilitaba la firma de nadie, sin ninguna
-				// pista de por qué. No hay forma de reintentar sólo los
-				// asistentes de esta charla puntual desde esta pantalla, así
-				// que se avisa con claridad en vez de fingir que se guardó bien.
 				showToast(
 					`La charla se guardó, pero no se pudieron registrar los asistentes: ${handleSupabaseError(asistentesErr, 'Insertar asistentes')}`,
 					'warning'
@@ -1323,7 +1198,6 @@
 
 			showToast('Charla registrada correctamente.', 'success');
 			cerrarFormCharla();
-			// Recargar charlas y actualizar firma
 			await recargarCharlas();
 
 		} catch (err) {
@@ -1344,8 +1218,6 @@
 			.order('fecha_hora', { ascending: false });
 
 		if (error) {
-			// Antes esto se descartaba (sólo se leía { data }): un error acá
-			// dejaba _charlas en [] y se veía igual que "no hay charlas".
 			console.error('[ATSHEL] Error al recargar charlas:', error.message);
 			_charlasError = handleSupabaseError(error, 'Recargar charlas');
 			renderCharlas(_charlas);
@@ -1355,7 +1227,6 @@
 
 		_charlasError = null;
 
-		// Normalizar nombres de asistentes
 		_charlas = (data ?? []).map(ch => ({
 			...ch,
 			ats_capacitacion_asistentes: (ch.ats_capacitacion_asistentes ?? []).map(a => ({
@@ -1369,15 +1240,12 @@
 	}
 
 	async function abrirFormCharla() {
-		charlaFormWrapEl.hidden  = false;
-		btnAddCharlaWrap.hidden  = true;
-		charlaDurEl.value        = '15';
-		charlaTemasEl.value      = '';
+		charlaFormWrapEl.hidden   = false;
+		btnAddCharlaWrap.hidden   = true;
+		charlaDurEl.value         = '15';
+		charlaTemasEl.value       = '';
 		charlaErrorEl.textContent = '';
 
-		// _usuarios se carga acá, una sola vez (se cachea en el módulo) —
-		// antes se traía siempre en cargarDatos() aunque el supervisor
-		// nunca llegara a abrir este formulario.
 		if (_usuarios.length === 0) {
 			asistentesWrapEl.innerHTML = `<p class="empty-note">Cargando usuarios de la empresa...</p>`;
 
@@ -1389,15 +1257,12 @@
 				.order('nombre_completo', { ascending: true });
 
 			if (error) {
-				// Antes, si esta consulta fallaba, los checkboxes quedaban
-				// vacíos sin ninguna explicación.
 				asistentesWrapEl.innerHTML = `<p class="empty-note">${sanitizeHTML(handleSupabaseError(error, 'Cargar usuarios'))}</p>`;
 				return;
 			}
 			_usuarios = data ?? [];
 		}
 
-		// Popular checkboxes con usuarios
 		asistentesWrapEl.innerHTML = _usuarios.map(u => `
 		<label class="asistente-check">
 			<input type="checkbox" value="${sanitizeHTML(u.id)}"
@@ -1412,13 +1277,34 @@
 		btnAddCharlaWrap.hidden = false;
 	}
 
-	// ── Firmar con PIN ────────────────────────────────────────
+	/**
+	 * Verifica que no queden ediciones locales pendientes en `ps_crud` para este ATS
+	 * antes de bloquearlo en el servidor con `fn_firmar_ats`.
+	 */
+	async function esperarSincronizacionLocalAts(instanciaId, timeoutMs = 6000) {
+		if (!isPowerSyncReady()) return true;
+		const inicio = Date.now();
+
+		while (Date.now() - inicio < timeoutMs) {
+			try {
+				const filas = await queryLocal(
+					'SELECT count(*) as total FROM ps_crud WHERE data LIKE ?',
+					[`%${instanciaId}%`]
+				);
+				const pendientes = Number(filas?.[0]?.total ?? 0);
+				if (pendientes === 0) return true;
+			} catch {
+				return true;
+			}
+			await new Promise(r => setTimeout(r, 400));
+		}
+		return false;
+	}
+
+	// ── Firmar con PIN (Flujo Atómico fn_firmar_ats — H-06 y H-07) ──
 	async function handleFirmar(pinInputEl, pinErrorEl, btnFirmarEl) {
 		if (_submitting) return;
 
-		// Defensa adicional: este formulario no debería estar visible si el
-		// ATS ya está Firmado (renderFirma no lo renderiza), pero si llega
-		// a dispararse de todos modos, no reintentar la firma.
 		if (_instancia.estado === 'Firmado') {
 			showToast('Este ATS ya está firmado y bloqueado.', 'info');
 			renderFirma(_instancia, _charlas);
@@ -1432,9 +1318,10 @@
 			pinInputEl.focus();
 			return;
 		}
-		if (!/^\d+$/.test(pin)) {
-			pinErrorEl.textContent = 'El PIN debe contener solo números.';
+		if (!/^\d+$/.test(pin) || pin.length < 4 || pin.length > 6) {
+			pinErrorEl.textContent = 'El PIN debe contener entre 4 y 6 números.';
 			pinInputEl.setAttribute('aria-invalid', 'true');
+			pinInputEl.focus();
 			return;
 		}
 
@@ -1444,161 +1331,84 @@
 		document.getElementById('btn-firmar-spinner').hidden = false;
 
 		try {
-			// 1. Crear nonce anti-replay — usando crearNonce() del módulo
-			// (antes el resultado se descartaba sin chequear error)
-			const nonceResult = await crearNonce(_usuario.id);
-			if (!nonceResult.ok) {
-				pinErrorEl.textContent = nonceResult.error || 'No se pudo generar el código de firma. Intentá de nuevo.';
-				pinInputEl.setAttribute('aria-invalid', 'true');
+			// 1. Asegurar que no queden cambios locales sin subir en ps_crud para este ATS
+			const syncOk = await esperarSincronizacionLocalAts(_instanciaId, 6000);
+			if (!syncOk) {
+				pinErrorEl.textContent = 'Aún hay cambios de este ATS sincronizándose con el servidor. Esperá unos segundos y volvé a intentar.';
 				return;
 			}
 
-			// 2. Verificar PIN — usando verificarPin() del módulo (antes se
-			// llamaba supabase.rpc('fn_verificar_pin', ...) directo pese a
-			// que verificarPin() ya estaba importada sin usarse)
-			const pinResult = await verificarPin(_usuario.id, pin);
+			// 2. Generar (o reusar tras corte de red) el identificador local de la firma
+			if (!_firmaLocalId) {
+				_firmaLocalId = generateLocalId();
+			}
 
-			if (!pinResult.ok) {
-				const esBloqueo = pinResult.error?.toUpperCase().includes('ERR_HSE_13');
-				if (esBloqueo) {
-					pinErrorEl.textContent = 'Cuenta bloqueada por múltiples intentos fallidos. Esperá 15 minutos.';
-				} else {
-					_pinIntentos++;
-					const restantes = Math.max(0, 5 - _pinIntentos);
-					pinErrorEl.textContent = restantes > 0
-						? `PIN incorrecto. ${restantes} intento${restantes !== 1 ? 's' : ''} restante${restantes !== 1 ? 's' : ''}.`
-						: 'PIN incorrecto. Cuenta bloqueada por 15 minutos.';
+			// 3. Ejecutar firma atómica (crea nonce fresco y llama a fn_firmar_ats en una transacción)
+			const res = await firmarAts({
+				instanciaId: _instanciaId,
+				pin,
+				localId:     _firmaLocalId,
+			});
+
+			if (!res.ok) {
+				// Si el servidor respondió con un código de negocio/PIN, rotar _firmaLocalId
+				if (res.codigoError) {
+					_firmaLocalId = null;
 				}
+
+				const code = res.codigoError || '';
+
+				if (code === 'ERR_PIN_03') {
+					const rest = res.intentosRestantes;
+					pinErrorEl.textContent = typeof rest === 'number' && rest > 0
+						? `PIN incorrecto. ${rest} intento${rest !== 1 ? 's' : ''} restante${rest !== 1 ? 's' : ''}.`
+						: 'PIN incorrecto. Cuenta bloqueada por 15 minutos.';
+				} else if (code === 'ERR_PIN_02') {
+					pinErrorEl.textContent = 'Cuenta bloqueada por múltiples intentos fallidos. Esperá 15 minutos.';
+				} else if (code === 'ERR_PIN_01' || code === 'ERR_PIN_05') {
+					pinErrorEl.textContent = 'Todavía no configuraste tu PIN de firma.';
+				} else if (code === 'ERR_HSE_04') {
+					pinErrorEl.textContent = 'Tu inducción general no está completa. Completala antes de firmar.';
+				} else if (code === 'ERR_HSE_05') {
+					pinErrorEl.textContent = 'Registrá una charla pre-trabajo antes de firmar.';
+				} else if (code === 'ERR_HSE_06') {
+					pinErrorEl.textContent = 'Debés figurar como asistente en la charla pre-trabajo.';
+				} else if (code === 'ERR_HSE_02') {
+					pinErrorEl.textContent = 'Operario no apto por vencimiento normativo (certificación vencida).';
+				} else if (code === 'ERR_FIR_03') {
+					// El ATS ya había sido firmado por otra sesión/intento -> refrescar vista
+					const { data: actual } = await supabase
+						.from('ats_instancias')
+						.select('id, estado, firmado_en, bloqueado, version')
+						.eq('id', _instanciaId)
+						.single();
+					if (actual) _instancia = { ..._instancia, ...actual };
+					showToast('Este ATS ya se encontraba firmado.', 'info');
+					renderHeader(_instancia, _plantilla);
+					renderFirma(_instancia, _charlas);
+					return;
+				} else {
+					pinErrorEl.textContent = res.error || 'No se pudo completar la firma. Intentá de nuevo.';
+				}
+
 				pinInputEl.setAttribute('aria-invalid', 'true');
 				pinInputEl.value = '';
 				pinInputEl.focus();
 				return;
 			}
 
-			_pinIntentos = 0;
+			// 4. Éxito atómico (ats_instancias + ats_firmas confirmados en la misma transacción)
+			_firmaLocalId = null;
+			showToast('¡ATS firmado correctamente!', 'success');
 
-			// 3. UPDATE ats_instancias SET estado='Firmado'
-			// Trigger fn_bloqueo_ats_instancias valida inducción + charla + asistente
-			const { data: updated, error: updateErr } = await supabase
-				.from('ats_instancias')
-				.update({
-					estado:  'Firmado',
-					version: _instancia.version + 1,
-				})
-				.eq('id', _instanciaId)
-				.eq('version', _instancia.version)
-				.select('id, estado, firmado_en, version')
-				.single();
+			_instancia = {
+				..._instancia,
+				estado:     'Firmado',
+				bloqueado:  true,
+				firmado_en: res.firmadoEn || new Date().toISOString(),
+				version:    (_instancia.version || 1) + 1,
+			};
 
-			if (updateErr) {
-				// Mapear errores del trigger
-				const msg = updateErr.message || '';
-				if (msg.includes('ERR_HSE_04')) {
-					pinErrorEl.textContent = 'Tu inducción general no está completa. Completala antes de firmar.';
-				} else if (msg.includes('ERR_HSE_05')) {
-					pinErrorEl.textContent = 'Registrá una charla pre-trabajo antes de firmar.';
-				} else if (msg.includes('ERR_HSE_06')) {
-					pinErrorEl.textContent = 'Debés figurar como asistente en la charla pre-trabajo.';
-				} else if (msg.includes('ATS_LOCK')) {
-					pinErrorEl.textContent = 'Este ATS ya fue firmado.';
-				} else {
-					pinErrorEl.textContent = `Error al firmar: ${msg || 'Intentá de nuevo.'}`;
-				}
-				return;
-			}
-
-			if (!updated) {
-				// Antes esto pedía "recargá la página a mano". Ahora se trae
-				// el estado real (alguien más lo modificó mientras tanto) y
-				// se re-renderiza en el momento. El aviso va por toast, no
-				// por pinErrorEl: renderFirma() puede reemplazar ese nodo.
-				const { data: actual, error: actualErr } = await supabase
-					.from('ats_instancias')
-					.select('id, estado, firmado_en, bloqueado, version')
-					.eq('id', _instanciaId)
-					.single();
-
-				if (actualErr) console.error('[ATSHEL] No se pudo releer ats_instancias tras conflicto de versión:', actualErr.message);
-				if (actual) _instancia = { ..._instancia, ...actual };
-
-				showToast('Este ATS cambió mientras firmabas — probablemente otra persona lo modificó. Se actualizó la pantalla con el estado actual.', 'warning');
-				renderHeader(_instancia, _plantilla);
-				renderFirma(_instancia, _charlas);
-				return;
-			}
-
-			// 4. INSERT ats_firmas (registro del evento de firma). Un
-			// reintento simple ante fallo — no se usa _withRetry() de
-			// atshel-supabase.js porque es privada del módulo, no exportada.
-			//
-			// Verificado en vivo (pg_get_functiondef) que ats_firmas tiene
-			// DOS triggers BEFORE INSERT propios, además de lo que ya está
-			// documentado arriba:
-			//   fn_bloqueo_ats_firmas: exige que el ATS YA esté bloqueado=true
-			//     y estado='Firmado' (ERR_HSE_17 si no), rechaza una segunda
-			//     firma para la misma instancia (ATS_LOCK) y repite induc-
-			//     ción/asistente (ERR_HSE_04/06).
-			//   validar_y_forzar_firma_ats: si el puesto de trabajo del ATS
-			//     requiere_certificacion y el operario tiene un vencimiento
-			//     'Vencido' en mantenimientos_y_vencimientos, rechaza con
-			//     ERR_HSE_02 — ESTO PUEDE PASAR CON ats_instancias YA EN
-			//     'Firmado' (ver nota de atomicidad en la cabecera de este
-			//     archivo). También ERR_HSE_03 si la instancia todavía no
-			//     está visible en el servidor (orden de sync offline).
-			const empresaId = _usuario?.empresa_id ?? await getEmpresaId();
-			const insertarFirma = () => supabase.from('ats_firmas').insert({
-				atshel_local_id:     generateLocalId(),
-				instancia_id:        _instanciaId,
-				usuario_id:          _usuario.id,
-				empresa_id:          empresaId,
-				fecha_firma_local:   new Date().toISOString(),
-			});
-
-			// ATS_LOCK acá significa "ya existe una firma para este ATS" —
-			// no es un fallo: puede pasar si el primer intento sí llegó al
-			// servidor pero la respuesta no volvió (ej. corte de red justo
-			// después de escribir). Tratarlo como fallo y reintentar lo
-			// único que lograría es un ATS_LOCK de nuevo, y mostrarle al
-			// usuario "no se pudo registrar" cuando en realidad sí se
-			// registró.
-			const esFirmaYaRegistrada = (err) => err?.message?.includes('ATS_LOCK');
-
-			let { error: firmaInsertErr } = await insertarFirma();
-			if (firmaInsertErr && !esFirmaYaRegistrada(firmaInsertErr)) {
-				({ error: firmaInsertErr } = await insertarFirma());
-			}
-
-			const firmaFalloDeVerdad = firmaInsertErr && !esFirmaYaRegistrada(firmaInsertErr);
-
-			if (firmaFalloDeVerdad) {
-				const msg = firmaInsertErr.message || '';
-				let detalle;
-				if (msg.includes('ERR_HSE_02')) {
-					detalle = 'el operario tiene un vencimiento normativo pendiente (certificación vencida). El ATS quedó Firmado en el sistema, pero esta firma no cumple el requisito de aptitud — revisar antes de continuar al permiso.';
-				} else if (msg.includes('ERR_HSE_03')) {
-					detalle = 'la instancia todavía no está disponible en el servidor. Esperá a que sincronice e intentá de nuevo desde este mismo ATS.';
-				} else if (msg.includes('ERR_HSE_17')) {
-					detalle = 'inconsistencia de estado — el servidor todavía no ve el ATS como Firmado pese a que la actualización anterior fue exitosa.';
-				} else {
-					detalle = handleSupabaseError(firmaInsertErr, 'Insertar ats_firmas');
-				}
-				// No bloquea el flujo: el ATS ya quedó Firmado y bloqueado en
-				// el paso 3 — eso es lo que importa operativamente. Esto es
-				// el registro secundario del evento de firma, pero antes el
-				// fallo sólo se veía en consola; ahora se avisa de forma
-				// visible para que la inconsistencia quede trazada, no oculta.
-				console.error('[ATSHEL] ats_firmas insert falló tras el UPDATE a Firmado:', firmaInsertErr.message);
-				showToast(`ATS firmado y bloqueado correctamente. La evidencia de firma no se registró: ${detalle}`, 'warning');
-			} else {
-				showToast('¡ATS firmado correctamente!', 'success');
-			}
-
-			// Actualizar la pantalla con los datos reales que devolvió el
-			// UPDATE (estado, firmado_en, version) en vez de recargar toda
-			// la página: es más rápido, no pierde el scroll, y evita releer
-			// SQLite local antes de que PowerSync haya bajado el cambio que
-			// se acaba de escribir directo a Supabase.
-			_instancia = { ..._instancia, ...updated };
 			renderHeader(_instancia, _plantilla);
 			renderFirma(_instancia, _charlas);
 			return;
@@ -1634,11 +1444,6 @@
 					};
 				}
 			} catch (localErr) {
-				// Una falla acá no debe tumbar la carga: se cae al camino
-				// online. Antes, un error real de PowerSync (no sólo "no
-				// listo todavía") se propagaba sin atrapar y el catch de
-				// cargarDatos() lo trataba como si fuera un error de
-				// Supabase/PostgREST, confundiendo el diagnóstico.
 				console.warn('[ATSHEL] Lectura local (PowerSync) falló, se usa Supabase:', localErr?.message);
 			}
 		}
@@ -1672,8 +1477,6 @@
 		try {
 			instancia = await cargarAtsPrincipal();
 		} catch (err) {
-			// Diagnóstico: mostrar el error REAL de Supabase/PostgREST,
-			// más el estado de sesión, en vez de un genérico mudo.
 			let sesionInfo = '';
 			try {
 				const { data: sess } = await supabase.auth.getSession();
@@ -1696,8 +1499,6 @@
 		_plantilla  = instancia.plantillas_ats ?? null;
 		_respuestas = (instancia.ats_respuestas ?? []).filter(r => !r.deleted_at);
 
-		// Si vino del camino local, plantilla/respuestas no vienen embebidas —
-		// se completan por separado más abajo (mismo bloque que ya existía).
 		const { data: charlasData, error: charlasErr } = await supabase.from('ats_capacitaciones_pre_trabajo')
 			.select(`
 				id, tipo, temas, duracion_minutos, fecha_hora, dictada_por,
@@ -1709,22 +1510,12 @@
 			.eq('ats_instancia_id', _instanciaId)
 			.order('fecha_hora', { ascending: false });
 
-		// _usuarios (roster completo de la empresa) ya no se trae acá: sólo
-		// lo necesita el form de "agregar charla", así que ahora se carga
-		// bajo demanda en abrirFormCharla() la primera vez que se abre —
-		// evita una consulta que la mayoría de las visitas a esta pantalla
-		// (sólo revisar o firmar) nunca llega a usar.
-
 		if (charlasErr) {
-			// No confundir "sin charlas" con "no se pudo consultar": antes,
-			// charlasResult.data ?? [] convertía cualquier error acá en una
-			// lista vacía, indistinguible de "todavía no hay charla".
 			console.error('[ATSHEL] Error al cargar charlas:', charlasErr.message);
 			_charlasError = handleSupabaseError(charlasErr, 'Cargar charlas');
 			_charlas = [];
 		} else {
 			_charlasError = null;
-			// Normalizar charlas con nombres de asistentes
 			_charlas = (charlasData ?? []).map(ch => ({
 				...ch,
 				ats_capacitacion_asistentes: (ch.ats_capacitacion_asistentes ?? []).map(a => ({
@@ -1734,7 +1525,6 @@
 			}));
 		}
 
-		// Si la plantilla no vino embebida (camino local), buscarla aparte
 		if (!_plantilla && _instancia.plantilla_id) {
 			const { data: pl, error: plErr } = await supabase
 				.from('plantillas_ats')
@@ -1745,7 +1535,6 @@
 			_plantilla = pl ?? null;
 		}
 
-		// Si las respuestas no vinieron embebidas (camino local), buscarlas aparte
 		if (_respuestas.length === 0 && _instancia._fuente === 'local') {
 			const { data: resp, error: respErr } = await supabase
 				.from('ats_respuestas')
@@ -1756,7 +1545,6 @@
 			_respuestas = resp ?? [];
 		}
 
-		// Cargar campos de la plantilla
 		if (_instancia.plantilla_id) {
 			const { data: campos, error: camposErr } = await supabase
 				.from('campos_plantilla')
@@ -1768,7 +1556,6 @@
 			_campos = campos ?? [];
 		}
 
-		// Cargar creador
 		let creadorNombre = null;
 		if (_instancia.creado_por) {
 			const { data: creador, error: creadorErr } = await supabase
@@ -1780,11 +1567,9 @@
 			creadorNombre = creador?.nombre_completo ?? null;
 		}
 
-		// Ocultar skeleton, mostrar contenido
 		skeletonAreaEl.hidden = true;
 		contentAreaEl.hidden  = false;
 
-		// Renderizar todo
 		renderHeader(_instancia, _plantilla);
 		renderDatos(_instancia, _plantilla, creadorNombre);
 		renderCampos(_campos, _respuestas);
@@ -1796,7 +1581,7 @@
 	// ── Error de página ───────────────────────────────────────
 	function showPageError(msg, detalle) {
 		skeletonAreaEl.hidden      = true;
-		contentAreaEl.hidden      = true;
+		contentAreaEl.hidden       = true;
 		pageErrorSubEl.textContent = msg;
 		if (detalle) {
 			pageErrorDetailEl.textContent = detalle;
@@ -1809,17 +1594,10 @@
 
 	// ── Usuario + datos (reutilizable desde init() y Reintentar) ─
 	async function cargarUsuarioYDatos() {
-		// invalidarCacheUsuario() antes de leer: si esto se llama desde
-		// "Reintentar" tras un fallo, evita que getUsuario() devuelva de
-		// nuevo el mismo null cacheado en vez de reintentar de verdad.
 		invalidarCacheUsuario();
 		_usuario = await getUsuario().catch(() => null);
 
 		if (!_usuario) {
-			// Antes, si esto fallaba, el código seguía igual con _usuario en
-			// null: la pantalla renderizaba a medias (sin nombre de usuario
-			// para "esAsistente"/inducción) sin explicar por qué nunca se
-			// podía firmar. Ahora se corta acá con un error claro.
 			showPageError('No se pudo cargar tu perfil de usuario. Verificá tu conexión e intentá de nuevo.');
 			return;
 		}
@@ -1829,10 +1607,6 @@
 
 	// ── Init ─────────────────────────────────────────────────
 	async function init() {
-		// 1. Sesión — requireAuth() no recibe argumentos y no redirige por
-		// sí sola: lanza ATSHELError si no hay sesión (ver atshel-supabase.js).
-		// Esta pantalla no carga atshel-app.js (donde normalmente se
-		// centraliza la redirección), así que hay que atraparlo acá.
 		try {
 			await requireAuth();
 		} catch {
@@ -1840,10 +1614,8 @@
 			return;
 		}
 
-		// 2. Usuario + datos del ATS
 		await cargarUsuarioYDatos();
 
-		// 3. Event listeners — los del PIN se registran en renderFirma al crear el DOM
 		btnBackEl.addEventListener('click', () => {
 			window.location.assign('/ats-nuevo.html');
 		});
