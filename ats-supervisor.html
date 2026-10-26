@@ -592,7 +592,6 @@
 		}
 		.btn-volver-ats:hover { border-color: var(--accent); color: var(--accent); }
 
-		/* Aviso de ATS ya firmado si el usuario llega a intentar reenviar el form */
 		.firma-ya-firmado-aviso {
 			padding:       10px 12px;
 			border-radius: 8px;
@@ -621,8 +620,6 @@
 			flex: 1; display: flex; flex-direction: column; align-items: center;
 			justify-content: center; padding: 32px 24px; text-align: center; gap: 8px;
 		}
-		/* Sin esto, [hidden] pierde contra el display:flex de arriba y el
-		   cartel de error queda visible siempre, aunque no haya error. */
 		.page-error[hidden] { display: none; }
 		.page-error__icon  { font-size: 40px; }
 		.page-error__title { font-family: var(--font-condensed); font-size: var(--text-xl); font-weight: 700; color: var(--text-secondary); }
@@ -801,13 +798,6 @@
 	 *   Usa `firmarAts({ instanciaId, pin, localId })` de `/src/js/atshel-supabase.js`,
 	 *   que solicita un nonce fresco con `fn_crear_nonce(auth.uid())` y ejecuta la RPC
 	 *   transaccional `fn_firmar_ats(p_instancia_id, p_nonce, p_pin, p_atshel_local_id)`.
-	 *   En una única transacción en Postgres:
-	 *     - Verifica `auth.uid()` y pertenencia a la empresa.
-	 *     - Consume atómicamente el nonce (anti-replay).
-	 *     - Verifica el PIN (confirmando el incremento de `pin_intentos_fallidos` si falla).
-	 *     - Valida inducción, charla pre-trabajo, asistencia y vencimientos normativos.
-	 *     - Actualiza `ats_instancias` (`estado = 'Firmado'`, `bloqueado = true`, `version + 1`)
-	 *       e inserta la fila inmutable en `ats_firmas`.
 	 */
 
 	import {
@@ -843,12 +833,12 @@
 	let _respuestas   = [];
 	let _campos       = [];
 	let _charlas      = [];
-	let _charlasError = null; // mensaje si la última consulta de charlas falló (null = OK)
-	let _firmantes    = [];  // ats_firmas
+	let _charlasError = null;
+	let _firmantes    = [];
 	let _usuario      = null;
-	let _usuarios     = [];  // todos los usuarios de la empresa
+	let _usuarios     = [];
 	let _submitting   = false;
-	let _firmaLocalId = null; // clave de idempotencia conservada solo ante reintentos de red
+	let _firmaLocalId = null;
 
 	// ── Referencias DOM ──────────────────────────────────────
 	const btnBackEl          = document.getElementById('btn-back');
@@ -1054,7 +1044,6 @@
 			return;
 		}
 
-		// Verificar pre-requisitos para firma
 		const tieneCharla    = charlas.length > 0;
 		const esAsistente    = charlas.some(ch =>
 			(ch.ats_capacitacion_asistentes ?? []).some(a => a.trabajador_id === _usuario?.id)
@@ -1278,26 +1267,54 @@
 	}
 
 	/**
-	 * Verifica que no queden ediciones locales pendientes en `ps_crud` para este ATS
-	 * antes de bloquearlo en el servidor con `fn_firmar_ats`.
+	 * Espera a que no queden operaciones locales en `ps_crud` sobre las 4 tablas
+	 * involucradas en la validación de firma (ats_instancias, ats_respuestas,
+	 * ats_capacitaciones_pre_trabajo y ats_capacitacion_asistentes).
 	 */
-	async function esperarSincronizacionLocalAts(instanciaId, timeoutMs = 6000) {
+	async function esperarSincronizacionLocalAts(timeoutMs = 15000) {
 		if (!isPowerSyncReady()) return true;
 		const inicio = Date.now();
 
 		while (Date.now() - inicio < timeoutMs) {
 			try {
 				const filas = await queryLocal(
-					'SELECT count(*) as total FROM ps_crud WHERE data LIKE ?',
-					[`%${instanciaId}%`]
+					`SELECT count(*) as total FROM ps_crud
+					 WHERE data LIKE '%"ats_instancias"%'
+					    OR data LIKE '%"ats_respuestas"%'
+					    OR data LIKE '%"ats_capacitaciones_pre_trabajo"%'
+					    OR data LIKE '%"ats_capacitacion_asistentes"%'`
 				);
 				const pendientes = Number(filas?.[0]?.total ?? 0);
 				if (pendientes === 0) return true;
 			} catch {
 				return true;
 			}
-			await new Promise(r => setTimeout(r, 400));
+			await new Promise(r => setTimeout(r, 500));
 		}
+		return false;
+	}
+
+	/**
+	 * Si una firma tuvo éxito en el servidor pero la respuesta se perdió por corte de red
+	 * (o el usuario volvió a tocar y recibió ERR_FIR_03), refresca el estado real y muestra éxito.
+	 */
+	async function verificarSiYaSeFirmoEnServidor() {
+		try {
+			const { data: actual } = await supabase
+				.from('ats_instancias')
+				.select('id, estado, firmado_en, bloqueado, version')
+				.eq('id', _instanciaId)
+				.single();
+
+			if (actual && actual.estado === 'Firmado') {
+				_instancia    = { ..._instancia, ...actual };
+				_firmaLocalId = null;
+				showToast('¡ATS firmado correctamente!', 'success');
+				renderHeader(_instancia, _plantilla);
+				renderFirma(_instancia, _charlas);
+				return true;
+			}
+		} catch {}
 		return false;
 	}
 
@@ -1331,19 +1348,19 @@
 		document.getElementById('btn-firmar-spinner').hidden = false;
 
 		try {
-			// 1. Asegurar que no queden cambios locales sin subir en ps_crud para este ATS
-			const syncOk = await esperarSincronizacionLocalAts(_instanciaId, 6000);
+			// 1. Esperar a que la cola local ps_crud haya subido el ATS y la charla
+			const syncOk = await esperarSincronizacionLocalAts(15000);
 			if (!syncOk) {
-				pinErrorEl.textContent = 'Aún hay cambios de este ATS sincronizándose con el servidor. Esperá unos segundos y volvé a intentar.';
+				pinErrorEl.textContent = 'Esperando sincronización con el servidor. Reintentá en unos segundos.';
 				return;
 			}
 
-			// 2. Generar (o reusar tras corte de red) el identificador local de la firma
+			// 2. Generar (o conservar tras corte de red) la clave de idempotencia
 			if (!_firmaLocalId) {
 				_firmaLocalId = generateLocalId();
 			}
 
-			// 3. Ejecutar firma atómica (crea nonce fresco y llama a fn_firmar_ats en una transacción)
+			// 3. Ejecutar firma atómica en el servidor
 			const res = await firmarAts({
 				instanciaId: _instanciaId,
 				pin,
@@ -1351,12 +1368,17 @@
 			});
 
 			if (!res.ok) {
-				// Si el servidor respondió con un código de negocio/PIN, rotar _firmaLocalId
 				if (res.codigoError) {
 					_firmaLocalId = null;
 				}
 
 				const code = res.codigoError || '';
+
+				// Si devuelve ERR_FIR_03 (ya firmado) o error de red (ERR_SYS_03), verificar estado real en el servidor
+				if (code === 'ERR_FIR_03' || (!code && (res.error || '').includes('ERR_SYS_03'))) {
+					const yaEstabaFirmado = await verificarSiYaSeFirmoEnServidor();
+					if (yaEstabaFirmado) return;
+				}
 
 				if (code === 'ERR_PIN_03') {
 					const rest = res.intentosRestantes;
@@ -1367,6 +1389,8 @@
 					pinErrorEl.textContent = 'Cuenta bloqueada por múltiples intentos fallidos. Esperá 15 minutos.';
 				} else if (code === 'ERR_PIN_01' || code === 'ERR_PIN_05') {
 					pinErrorEl.textContent = 'Todavía no configuraste tu PIN de firma.';
+				} else if (code === 'ERR_FIR_05') {
+					pinErrorEl.textContent = 'El código de seguridad expiró o ya fue usado. Reintentá.';
 				} else if (code === 'ERR_HSE_04') {
 					pinErrorEl.textContent = 'Tu inducción general no está completa. Completala antes de firmar.';
 				} else if (code === 'ERR_HSE_05') {
@@ -1375,18 +1399,6 @@
 					pinErrorEl.textContent = 'Debés figurar como asistente en la charla pre-trabajo.';
 				} else if (code === 'ERR_HSE_02') {
 					pinErrorEl.textContent = 'Operario no apto por vencimiento normativo (certificación vencida).';
-				} else if (code === 'ERR_FIR_03') {
-					// El ATS ya había sido firmado por otra sesión/intento -> refrescar vista
-					const { data: actual } = await supabase
-						.from('ats_instancias')
-						.select('id, estado, firmado_en, bloqueado, version')
-						.eq('id', _instanciaId)
-						.single();
-					if (actual) _instancia = { ..._instancia, ...actual };
-					showToast('Este ATS ya se encontraba firmado.', 'info');
-					renderHeader(_instancia, _plantilla);
-					renderFirma(_instancia, _charlas);
-					return;
 				} else {
 					pinErrorEl.textContent = res.error || 'No se pudo completar la firma. Intentá de nuevo.';
 				}
@@ -1397,7 +1409,7 @@
 				return;
 			}
 
-			// 4. Éxito atómico (ats_instancias + ats_firmas confirmados en la misma transacción)
+			// 4. Éxito atómico
 			_firmaLocalId = null;
 			showToast('¡ATS firmado correctamente!', 'success');
 
@@ -1414,7 +1426,10 @@
 			return;
 
 		} catch (err) {
-			pinErrorEl.textContent = err.message || 'Error inesperado al firmar.';
+			const yaEstabaFirmado = await verificarSiYaSeFirmoEnServidor();
+			if (!yaEstabaFirmado) {
+				pinErrorEl.textContent = err.message || 'Error inesperado al firmar.';
+			}
 		} finally {
 			_submitting = false;
 			if (btnFirmarEl) {
