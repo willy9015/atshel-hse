@@ -3,30 +3,16 @@
  * Cliente Supabase para ATSHEL HSE Manager.
  * Argumentos RPC verificados contra schema real (MCP 2026-10).
  *
- * v3.2.0 — Firma Atómica de ATS (H-01, H-06, H-07) + Blindaje Offline MPA
+ * v3.2.1 — Firma Atómica de ATS (H-01, H-06, H-07) + Retry PostgREST
  *
- * Cambios v3.2.0:
- *   1. firmarAts({ instanciaId, pin, localId }) — nueva función que ejecuta el flujo
- *      transaccional atómico fn_firmar_ats(p_instancia_id, p_nonce, p_pin, p_atshel_local_id):
- *        - Solicita un nonce fresco de un solo uso con crearNonce(session.user.id).
- *        - Envía la firma con clave de idempotencia (p_atshel_local_id) para resistir microcortes.
- *        - Procesa respuestas JSON de negocio (ERR_PIN_03 con intentos_restantes, ERR_PIN_02, etc.).
- *   2. ATSHELError — clase de error unificada con código estandarizado.
+ * Cambios v3.2.1:
+ *   1. _withRetry() — detecta tanto excepciones nativas de fetch como respuestas
+ *      `{ data: null, error, status: 0 }` de postgrest-js cuando cae la red,
+ *      lanzando el error al agotar los intentos para activar la recuperación en firmarAts().
+ *   2. firmarAts({ instanciaId, pin, localId }) — ejecuta fn_crear_nonce + fn_firmar_ats
+ *      preservando codigoError e intentosRestantes.
  *   3. Caché de usuario en RAM + localStorage aislado por user.id (`atshel_usuario_cache_<uuid>`).
- *   4. _withRetry() — reintentos automáticos con corte instantáneo (0ms) si navigator.onLine === false.
- *   5. logout() — soporta cierre de sesión sin señal ({ scope: 'local' }).
- *
- * Exporta:
- *   supabase, ATSHELError,
- *   getSession(), getUsuario(), getEmpresaId(), getRol(),
- *   invalidarCacheUsuario(),
- *   login(), logout(), recuperarPassword(),
- *   crearNonce(), verificarPin(), establecerPin(), firmarAts(),
- *   verificarSesion(), calcularKpis(),
- *   terminos.{ obtenerVigente, aceptar, usuarioAcepto },
- *   registrarEmpresa(),
- *   requireAuth(), requireRole(),
- *   handleSupabaseError()
+ *   4. logout() — soporta cierre de sesión sin señal ({ scope: 'local' }).
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -51,15 +37,7 @@ const _log = {
 // 1. CLASE DE ERROR UNIFICADA
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Error estándar de ATSHEL con código y contexto.
- */
 export class ATSHELError extends Error {
-	/**
-	 * @param {string} codigo — Código de error (ej: 'ERR_SYS_03')
-	 * @param {string} mensaje — Mensaje legible para el usuario
-	 * @param {Object} [contexto] — Datos adicionales para debugging
-	 */
 	constructor(codigo, mensaje, contexto = {}) {
 		super(`${codigo}: ${mensaje}`);
 		this.name     = 'ATSHELError';
@@ -101,7 +79,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
 	},
 	global: {
 		headers: {
-			'X-Client-Info': 'atshel-hse/3.2',
+			'X-Client-Info': 'atshel-hse/3.2.1',
 		},
 	},
 });
@@ -142,9 +120,6 @@ function _leerUsuarioStorage(userId) {
 	}
 }
 
-/**
- * Invalida el caché del usuario en RAM y elimina los perfiles persistidos en localStorage.
- */
 export function invalidarCacheUsuario() {
 	_usuarioCache   = null;
 	_usuarioCacheTs = 0;
@@ -183,7 +158,9 @@ supabase.auth.onAuthStateChange((event, session) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// 4. HELPER: RETRY CON BACKOFF EXPONENCIAL (CORTE RÁPIDO OFFLINE)
+// 4. HELPER: RETRY CON BACKOFF EXPONENCIAL
+//    Soporta tanto excepciones de fetch como respuestas { error, status: 0 }
+//    devueltas sin lanzar por postgrest-js ante cortes de red.
 // ─────────────────────────────────────────────────────────────
 
 const RETRY_DELAYS = [500, 1_500, 3_000];
@@ -193,29 +170,32 @@ async function _withRetry(fn, maxIntentos = 3) {
 		throw new Error('Failed to fetch (dispositivo offline)');
 	}
 
+	const esRed = (m = '') => /fetch|network|Failed to fetch|NetworkError|FetchError/i.test(m);
 	let ultimoError;
 
 	for (let i = 0; i < maxIntentos; i++) {
 		try {
-			return await fn();
+			const res = await fn();
+			if (res?.error && (res.status === 0 || esRed(res.error.message))) {
+				ultimoError = new Error(res.error.message || 'NetworkError');
+			} else {
+				return res;
+			}
 		} catch (error) {
-			ultimoError = error;
-
-			const esErrorDeRed =
-				error.message?.includes('fetch') ||
-				error.message?.includes('network') ||
-				error.message?.includes('Failed to fetch') ||
-				error.message?.includes('NetworkError');
-
-			if (!esErrorDeRed || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+			if (!esRed(error?.message) || (typeof navigator !== 'undefined' && !navigator.onLine)) {
 				throw error;
 			}
+			ultimoError = error;
+		}
 
-			if (i < maxIntentos - 1) {
-				const espera = RETRY_DELAYS[i] ?? RETRY_DELAYS.at(-1);
-				_log.warn(`Intento ${i + 1} fallido. Reintentando en ${espera}ms...`);
-				await new Promise((r) => setTimeout(r, espera));
-			}
+		if (typeof navigator !== 'undefined' && !navigator.onLine) {
+			throw ultimoError;
+		}
+
+		if (i < maxIntentos - 1) {
+			const espera = RETRY_DELAYS[i] ?? RETRY_DELAYS.at(-1);
+			_log.warn(`Intento ${i + 1} fallido por red. Reintentando en ${espera}ms...`);
+			await new Promise((r) => setTimeout(r, espera));
 		}
 	}
 
@@ -430,19 +410,8 @@ function _validarPin(pin) {
 
 // ─────────────────────────────────────────────────────────────
 // 8. PIN Y FIRMA ATÓMICA DE ATS — RPC VERIFICADOS CON MCP
-//
-//    fn_crear_nonce(p_usuario_id uuid) → uuid
-//    fn_verificar_pin(p_usuario_id uuid, p_pin text) → boolean
-//    fn_establecer_pin(p_usuario_id uuid, p_pin text) → void
-//    fn_firmar_ats(p_instancia_id uuid, p_nonce uuid, p_pin text, p_atshel_local_id text) → jsonb
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Solicita un nonce de firma de un solo uso (expira en 5 minutos).
- *
- * @param {string} usuarioId — UUID del usuario autenticado
- * @returns {Promise<{ ok: boolean, nonceId: string|null, error: string|null }>}
- */
 export async function crearNonce(usuarioId) {
 	if (!usuarioId) {
 		return { ok: false, nonceId: null, error: 'ERR_SYS_06: usuarioId requerido para crear nonce.' };
@@ -465,13 +434,6 @@ export async function crearNonce(usuarioId) {
 	}
 }
 
-/**
- * Verifica el PIN del usuario de forma independiente (cuando no es firma de ATS).
- *
- * @param {string} usuarioId — UUID del usuario
- * @param {string} pin — PIN en texto plano (4-6 dígitos numéricos)
- * @returns {Promise<{ ok: boolean, error: string|null }>}
- */
 export async function verificarPin(usuarioId, pin) {
 	if (!usuarioId) return { ok: false, error: 'ERR_SYS_07: usuarioId requerido.' };
 
@@ -506,13 +468,6 @@ export async function verificarPin(usuarioId, pin) {
 	}
 }
 
-/**
- * Establece el PIN inicial del usuario (setup.html).
- *
- * @param {string} usuarioId — UUID del usuario
- * @param {string} pin — PIN en texto plano (4-6 dígitos numéricos)
- * @returns {Promise<{ ok: boolean, error: string|null }>}
- */
 export async function establecerPin(usuarioId, pin) {
 	if (!usuarioId) return { ok: false, error: 'ERR_SYS_08: usuarioId requerido.' };
 
@@ -542,25 +497,6 @@ export async function establecerPin(usuarioId, pin) {
 
 /**
  * Firma un ATS de forma atómica en el servidor (Remediación H-06 y H-07).
- *
- * Contrato verificado contra Migración 1 y 2 en Supabase:
- *   1. Pide un nonce fresco con fn_crear_nonce(session.user.id).
- *      Cada intento de firma (incluso con PIN fallido) quema el nonce en servidor.
- *   2. Invoca fn_firmar_ats({ p_instancia_id, p_nonce, p_pin, p_atshel_local_id }).
- *   3. Si ocurre un corte de red en medio de la respuesta, _withRetry reintenta con
- *      el mismo p_atshel_local_id y recibe { ok: true, ya_firmado: true } sin duplicar firma.
- *   4. Lee errores de negocio desde data.error (incluyendo ERR_PIN_03 con intentos_restantes).
- *
- * @param {{ instanciaId: string, pin: string, localId?: string }} params
- * @returns {Promise<{
- *   ok: boolean,
- *   firmaId?: string|null,
- *   firmadoEn?: string|null,
- *   yaFirmado?: boolean,
- *   codigoError?: string,
- *   intentosRestantes?: number,
- *   error: string|null
- * }>}
  */
 export async function firmarAts({ instanciaId, pin, localId = null }) {
 	if (!instanciaId) {
@@ -886,7 +822,3 @@ export function handleSupabaseError(error, contexto = '') {
 
 	return `ERR_SYS_14: ${msg}`;
 }
-
-// ─────────────────────────────────────────────────────────────
-// FIN DE atshel-supabase.js v3.2.0
-// ─────────────────────────────────────────────────────────────
